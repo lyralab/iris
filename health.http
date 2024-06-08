@@ -1,0 +1,5 @@
+### Ready
+GET http://{{HTTP_HOST}}:{{HTTP_PORT}}/ready
+
+### Healthy
+GET http://{{HTTP_HOST}}:{{HTTP_PORT}}/healthy

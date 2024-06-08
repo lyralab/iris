@@ -1,0 +1,23 @@
+### Get All firing alerts
+GET {{HTTP_HOST}}:{{HTTP_PORT}}/v0/alerts/firing
+Authorization: Basic admin abc
+
+### Get Firing Alert with pagination
+GET http://{{HTTP_HOST}}:{{HTTP_PORT}}/v0/alerts/firing?pagination=10&page=1
+Authorization: Basic admin abc
+
+###
+GET http://{{HTTP_HOST}}:{{HTTP_PORT}}/v0/alerts/resolved
+Authorization: Basic admin abc
+
+###
+GET http://{{HTTP_HOST}}:{{HTTP_PORT}}/v0/alerts/{{ALERT_ID}}
+Authorization: Basic admin abc
+
+###
+GET http://{{HTTP_HOST}}:{{HTTP_PORT}}/v0/alerts/?page=1&pagination=10&status=firing
+Authorization: Basic admin abc
+
+###
+GET http://{{HTTP_HOST}}:{{HTTP_PORT}}/v0/alerts/firingCount
+Authorization: Basic admin abc
