@@ -45,7 +45,7 @@ func Handler(as alerts.AlertsService, hs health_check.HealthService, adminPasswo
 	router.Use(gin.Recovery())
 	router.Use(helmet.Default())
 	router.SetTrustedProxies(nil)
-	router.LoadHTMLGlob("pkg/http/html/*")
+	router.LoadHTMLGlob("assets/*")
 	router.GET("/ready", rest.Ready(hs))
 	router.GET("/healthy", rest.Healthy(hs))
 	messageRouter := router.Group("v0/messages", gin.BasicAuth(gin.Accounts{

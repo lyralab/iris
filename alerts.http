@@ -7,7 +7,7 @@ GET http://{{HTTP_HOST}}:{{HTTP_PORT}}/v0/alerts/firing?pagination=10&page=1
 Authorization: Basic admin abc
 
 ###
-GET http://{{HTTP_HOST}}:{{HTTP_PORT}}/v0/alerts/resolved
+GET http://{{HTTP_HOST}}:{{HTTP_PORT}}/v0/alerts
 Authorization: Basic admin abc
 
 ###
