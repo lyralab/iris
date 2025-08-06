@@ -182,3 +182,15 @@ func (us *userServiceImpl) GetAllUsers() ([]*User, error) {
 	us.logger.Infow("Successfully retrieved all users", "count", len(users))
 	return users, nil
 }
+
+func (us *userServiceImpl) GetByUserName(name string) (*User, error) {
+	if name == "" {
+		return nil, errors.New("username is required")
+	}
+	user := &User{UserName: name}
+	err := us.repo.GetUserByUsername(user)
+	if err != nil {
+		return nil, err
+	}
+	return user, nil
+}

@@ -393,6 +393,31 @@ func GetAllUsersHandler(us user.UserInterfaceService, logger *zap.SugaredLogger)
 	}
 }
 
+func GetUserInfoHandler(us user.UserInterfaceService, logger *zap.SugaredLogger) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userName, ok := c.Get("username")
+		if !ok {
+			logger.Errorw("cannot get username or role from context")
+			c.AbortWithStatusJSON(500, gin.H{"status": "error", "error": "token is invalid"})
+			return
+		}
+
+		u, err := us.GetByUserName(userName.(string))
+		if err != nil {
+			logger.Errorw("cannot get user", "error", err)
+			c.AbortWithStatusJSON(500, gin.H{"status": "error", "error": err})
+			return
+		}
+		userResponse := map[string]string{
+			"username":  u.UserName,
+			"firstName": u.FirstName,
+			"lastName":  u.LastName,
+			"email":     u.Email,
+			"mobile":    u.Mobile,
+		}
+		c.JSON(200, gin.H{"status": "OK", "user": userResponse, "user_id": u.ID})
+	}
+}
 func (ub *UserSignupBody) toUser() *user.User {
 	return &user.User{
 		UserName:  ub.UserName,

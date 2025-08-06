@@ -32,8 +32,10 @@ func NewAlertService(l *zap.SugaredLogger, ai AlertRepository) AlertsService {
 
 func (as *alertsService) AddAlertManagerAlerts(alerts []alertmanager.Alert) (int64, error) {
 	var num int64 = 0
+	as.log.Infow("we are going to save alerts", "alerts", alerts)
 	for _, alert := range alerts {
 		var al Alert
+		as.log.Info("we are going to save alerts")
 		al.convertAlertMangerAlerts(alert)
 		r, err := as.ar.AddAlert(&al)
 		if err != nil {

@@ -15,4 +15,5 @@ var (
 	ErrRoleNotFound             = errors.New("role not found")
 
 	ErrGroupAlreadyexisted = errors.New("group already exists")
+	ErrGroupNotFound       = errors.New("group not found")
 )

@@ -1,23 +1,15 @@
-### Get All firing alerts
-GET {{HTTP_HOST}}:{{HTTP_PORT}}/v0/alerts/firing
-Authorization: Basic admin abc
-
-### Get Firing Alert with pagination
-GET http://{{HTTP_HOST}}:{{HTTP_PORT}}/v0/alerts/firing?pagination=10&page=1
-Authorization: Basic admin abc
-
-###
+### Get All alerts
 GET http://{{HTTP_HOST}}:{{HTTP_PORT}}/v0/alerts
-Authorization: Basic admin abc
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3NlcyI6IiIsImV4cCI6MTc1Mzg2MjYzOCwicm9sZSI6InZpZXdlciIsInVzZXJuYW1lIjoiYWxpLnNvbHRhbmkifQ.JL94geaMSXFyR8TxKGKPGP4EVyCipsDvByxYXBqDxeM
 
 ###
 GET http://{{HTTP_HOST}}:{{HTTP_PORT}}/v0/alerts/{{ALERT_ID}}
-Authorization: Basic admin abc
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3NlcyI6IioiLCJleHAiOjE3NDQwNDEwMjQsInJvbGUiOiJhZG1pbiIsInVzZXJuYW1lIjoiYWRtaW4ifQ.n9I6yeKr4-P7_DuKlNA3TlBVGT9frokZyAsGhubmSiQ
 
 ###
-GET http://{{HTTP_HOST}}:{{HTTP_PORT}}/v0/alerts/?page=1&pagination=10&status=firing
-Authorization: Basic admin abc
+GET http://{{HTTP_HOST}}:{{HTTP_PORT}}/v0/alerts/?page=1&pagination=10&status=resolved
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3NlcyI6IiIsImV4cCI6MTc1Mzg2MjYzOCwicm9sZSI6InZpZXdlciIsInVzZXJuYW1lIjoiYWxpLnNvbHRhbmkifQ.JL94geaMSXFyR8TxKGKPGP4EVyCipsDvByxYXBqDxeM
 
 ###
 GET http://{{HTTP_HOST}}:{{HTTP_PORT}}/v0/alerts/firingCount
-Authorization: Basic admin abc
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3NlcyI6IiIsImV4cCI6MTc1Mzg2MjYzOCwicm9sZSI6InZpZXdlciIsInVzZXJuYW1lIjoiYWxpLnNvbHRhbmkifQ.JL94geaMSXFyR8TxKGKPGP4EVyCipsDvByxYXBqDxeM

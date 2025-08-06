@@ -1,6 +1,12 @@
 package kavenegar
 
+import (
+	kn "github.com/kavenegar/kavenegar-go"
+	"go.uber.org/zap"
+)
+
 type kavenegarService struct {
-	ApiToken string
-	Sender   string
+	API    *kn.Kavenegar
+	Sender string
+	Logger *zap.SugaredLogger
 }
