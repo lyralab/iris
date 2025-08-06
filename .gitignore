@@ -1,1 +1,9 @@
 node_modules
+/.idea/AugmentWebviewStateStore.xml
+/.idea/dataSources.xml
+/.idea/iris.iml
+/.idea/runConfigurations/iris.xml
+/.idea/modules.xml
+/package-lock.json
+/.idea/sqldialects.xml
+/.idea/tab-highlighter.xml
