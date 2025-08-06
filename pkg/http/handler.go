@@ -1,24 +1,23 @@
 package http
 
 import (
-	"fmt"
-	"github.com/root-ali/iris/pkg/alerts"
-	"github.com/root-ali/iris/pkg/health_check"
-	"github.com/root-ali/iris/pkg/http/html"
-	"github.com/root-ali/iris/pkg/http/rest"
 	"time"
 
 	helmet "github.com/danielkov/gin-helmet"
+	"github.com/gin-gonic/contrib/cors"
+	"github.com/gin-gonic/contrib/static"
 	"github.com/gin-gonic/gin"
 	"github.com/penglongli/gin-metrics/ginmetrics"
+	"github.com/root-ali/iris/pkg/http/middlewares"
+	"github.com/root-ali/iris/pkg/http/rest"
 )
 
-func Handler(as alerts.AlertsService, hs health_check.HealthService, adminPassword string, ginMode string) *gin.Engine {
+func (ht *HttpHandler) Handler() *gin.Engine {
 	router := gin.Default()
-
-	if ginMode != "production" && ginMode != "test" {
+	//ht.GinMode = "production"
+	if ht.GinMode != "production" && ht.GinMode != "test" {
 		gin.SetMode(gin.DebugMode)
-	} else if ginMode == "test" {
+	} else if ht.GinMode == "test" {
 		gin.SetMode(gin.TestMode)
 	} else {
 		gin.SetMode(gin.ReleaseMode)
@@ -29,35 +28,135 @@ func Handler(as alerts.AlertsService, hs health_check.HealthService, adminPasswo
 	m.SetSlowTime(10)
 	m.SetDuration([]float64{0.1, 0.3, 1.2, 5, 10})
 	m.Use(router)
-	router.Use(gin.LoggerWithFormatter(func(param gin.LogFormatterParams) string {
-		return fmt.Sprintf("%s - [%s] \"%s %s %s %d %s \"%s\" %s\"\n",
-			param.ClientIP,
-			param.TimeStamp.Format(time.RFC1123),
-			param.Method,
-			param.Path,
-			param.Request.Proto,
-			param.StatusCode,
-			param.Latency,
-			param.Request.UserAgent(),
-			param.ErrorMessage,
-		)
+	router.Use(gin.LoggerWithConfig(gin.LoggerConfig{
+		Formatter: func(param gin.LogFormatterParams) string {
+			ht.Logger.Infow("Received HTTP request",
+				"IP", param.ClientIP,
+				"Timestamps", param.TimeStamp.Format("02/Jan/2006:15:04:05 -0700"),
+				"Method", param.Method,
+				"Path", param.Path,
+				"Protocol", param.Request.Proto,
+				"StatusCode", param.StatusCode,
+				"Latency", param.Latency,
+				"UserAgent", param.Request.UserAgent(),
+				"BodySize", param.BodySize,
+				"Error", param.ErrorMessage,
+			)
+			return ""
+		},
 	}))
+	config := cors.DefaultConfig()
+	config.AllowAllOrigins = false
+	config.AllowCredentials = true
+	config.AllowedOrigins = []string{"http://localhost:3000"}
+	config.AllowedMethods = []string{"*"}
+	config.AllowedHeaders = []string{"*"}
+	config.MaxAge = 24 * time.Hour
+	router.Use(cors.New(config))
 	router.Use(gin.Recovery())
 	router.Use(helmet.Default())
-	router.SetTrustedProxies(nil)
-	router.LoadHTMLGlob("assets/*")
-	router.GET("/ready", rest.Ready(hs))
-	router.GET("/healthy", rest.Healthy(hs))
-	messageRouter := router.Group("v0/messages", gin.BasicAuth(gin.Accounts{
-		"admin": adminPassword,
-	}))
-	alertRouter := router.Group("v0/alerts", gin.BasicAuth(gin.Accounts{
-		"admin": adminPassword,
-	}))
-	messageRouter.POST("/alertmanager", rest.AlertManagerHandler(as))
-	alertRouter.GET("/", rest.GetAlerts(as))
-	alertRouter.GET("", rest.GetAlerts(as))
-	alertRouter.GET("/firingCount", rest.GetFiringAlertsBySeverity(as))
-	router.GET("/", html.Index(as))
+	err := router.SetTrustedProxies(nil)
+	if err != nil {
+		return nil
+	}
+	router.GET("/ready", rest.Ready(ht.HS))
+	router.GET("/healthy", rest.Healthy(ht.HS))
+
+	// Captcha handler routes
+	captchaRouter := router.Group("/v0/captcha")
+	captchaRouter.GET("/generate",
+		rest.GenerateCaptchaHandler(ht.CS, ht.Logger))
+	// captchaRouter.POST("/verify",
+	// 	middlewares.CheckContentTypeHeader("application/json", ht.Logger),
+	// 	rest.VerifyCaptchaHandler(ht.CS, ht.Logger))
+
+	// Message handler routes
+	messageRouter := router.Group("v1/messages",
+		middlewares.BasicAuth("admin", "admin"))
+	messageRouter.POST("/alertmanager",
+		rest.AlertManagerHandler(ht.AS))
+
+	// Alerts handler routes
+	alertRouter := router.Group("v0/alerts")
+	alertRouter.GET("/",
+		middlewares.ValidateJWTToken(ht.ATHS, "admin,viewer", ht.Logger),
+		rest.GetAlerts(ht.AS))
+	alertRouter.GET("",
+		middlewares.ValidateJWTToken(ht.ATHS, "admin,viewer", ht.Logger),
+		rest.GetAlerts(ht.AS))
+	alertRouter.GET("/firingCount",
+		middlewares.ValidateJWTToken(ht.ATHS, "admin,viewer", ht.Logger),
+		rest.GetFiringAlertsBySeverity(ht.AS))
+
+	// User handler routes
+	userRouter := router.Group("v0/users")
+	userRouter.POST("",
+		middlewares.ValidateJWTToken(ht.ATHS, "admin", ht.Logger),
+		middlewares.CheckContentTypeHeader("application/json", ht.Logger),
+		rest.AddUserHandler(ht.US, ht.Logger))
+	userRouter.POST("/signin",
+		middlewares.CheckContentTypeHeader("application/json", ht.Logger),
+		middlewares.VerifyCaptchaMiddleware(ht.CS, ht.Logger),
+		rest.LoginUserHandler(ht.US, ht.ATHS, ht.Logger),
+	)
+	userRouter.PUT("/verify",
+		middlewares.ValidateJWTToken(ht.ATHS, "admin", ht.Logger),
+		middlewares.CheckContentTypeHeader("application/json", ht.Logger),
+		rest.VerifyUserHandler(ht.US, ht.Logger),
+	)
+	userRouter.PUT("",
+		middlewares.ValidateJWTToken(ht.ATHS, "admin", ht.Logger),
+		middlewares.CheckContentTypeHeader("application/json", ht.Logger),
+		rest.UpdateUserHandler(ht.US, ht.Logger),
+	)
+	userRouter.GET("",
+		middlewares.ValidateJWTToken(ht.ATHS, "admin", ht.Logger),
+		rest.GetAllUsersHandler(ht.US, ht.Logger),
+	)
+	userRouter.GET("/me",
+		middlewares.ValidateJWTToken(ht.ATHS, "", ht.Logger),
+		rest.GetUserInfoHandler(ht.US, ht.Logger),
+	)
+	// TODO: implement GetUserByID and GetUserByEmail handlers
+	// userRouter.GET("/:id",
+	// 	middlewares.ValidateJWTToken(ht.ATHS, "admin,viewer", ht.Logger),
+	// 	rest.GetUserByIDHandler(ht.US, ht.Logger),
+	// )
+	// userRouter.GET("/email/:email",
+	// 	middlewares.ValidateJWTToken(ht.ATHS, "admin,viewer", ht.Logger),
+	// 	rest.GetUserByEmailHandler(ht.US, ht.Logger),
+	// )
+	userRouter.GET("/:user_id/groups",
+		middlewares.ValidateJWTToken(ht.ATHS, "", ht.Logger),
+		rest.GetUserGroupsHandler(ht.GR, ht.Logger),
+	)
+
+	// Group handler routes
+	groupRouter := router.Group("v0/groups")
+	groupRouter.POST("",
+		middlewares.ValidateJWTToken(ht.ATHS, "admin", ht.Logger),
+		middlewares.CheckContentTypeHeader("application/json", ht.Logger),
+		rest.CreateGroupHandler(ht.GR, ht.Logger))
+	groupRouter.GET("",
+		middlewares.ValidateJWTToken(ht.ATHS, "admin", ht.Logger),
+		rest.GetAllGroupHandler(ht.GR, ht.Logger))
+	groupRouter.GET("/:group_id",
+		middlewares.ValidateJWTToken(ht.ATHS, "admin,viewer", ht.Logger),
+		rest.GetGroupHandler(ht.GR, ht.Logger))
+	groupRouter.DELETE("",
+		middlewares.ValidateJWTToken(ht.ATHS, "admin", ht.Logger),
+		middlewares.CheckContentTypeHeader("application/json", ht.Logger),
+		rest.DeleteGroupHandler(ht.GR, ht.Logger))
+	groupRouter.POST("/:group_id/users",
+		middlewares.CheckContentTypeHeader("application/json", ht.Logger),
+		middlewares.ValidateJWTToken(ht.ATHS, "admin", ht.Logger),
+		rest.AddUserToGroupHandler(ht.GR, ht.Logger))
+	groupRouter.GET("/:group_id/users",
+		middlewares.ValidateJWTToken(ht.ATHS, "admin", ht.Logger),
+		middlewares.CheckContentTypeHeader("application/json", ht.Logger),
+		rest.GetUsersInGroupHandler(ht.GR, ht.Logger),
+	)
+
+	router.Use(static.Serve("/", static.LocalFile("./web/build", true)))
 	return router
 }

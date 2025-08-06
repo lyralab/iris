@@ -54,11 +54,10 @@ func GetAlerts(as alerts.AlertsService) gin.HandlerFunc {
 	}
 }
 
-//func schemaValidator()
-
 func GetFiringAlertsBySeverity(as alerts.AlertsService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		als, err := as.GetFiringAlertsBySeverity()
+
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"status":  "error",

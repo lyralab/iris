@@ -18,7 +18,6 @@ func AlertManagerHandler(as alerts.AlertsService) gin.HandlerFunc {
 				"message": "request body is empty",
 			})
 		} else {
-			//fmt.Println("Request Body", c.Request.Body)
 			amr := &alertmanager.AlertManager{}
 			err := json.Unmarshal(body, amr)
 			if err != nil {
@@ -28,8 +27,13 @@ func AlertManagerHandler(as alerts.AlertsService) gin.HandlerFunc {
 				})
 				fmt.Println(err)
 			} else {
-				as.AddAlertManagerAlerts(amr.Alerts)
-				c.JSON(http.StatusOK, gin.H{"status": "ok"})
+				fmt.Println("we are going to save alerts", amr.Alerts)
+				n, err := as.AddAlertManagerAlerts(amr.Alerts)
+				fmt.Println("number of alerts is saved", n)
+				if err != nil {
+					c.JSON(http.StatusInternalServerError, gin.H{"error": err})
+				}
+				c.JSON(http.StatusOK, gin.H{"status": "ok", "count": n})
 			}
 		}
 	}

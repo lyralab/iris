@@ -55,4 +55,5 @@ type UserInterfaceService interface {
 	VerifyUser(*User) error
 	UpdateUser(*User) error
 	GetAllUsers() ([]*User, error)
+	GetByUserName(string) (*User, error)
 }
