@@ -1,0 +1,78 @@
+<div class="container">
+
+    <!-- Alert Summary Section -->
+    <div class="alert-summary">
+        <h2>Alert Summary</h2>
+        <div class="summary-items">
+            <div class="summary-item critical">
+                <div class="icon">🔥</div>
+                <div class="count">12</div>
+                <div class="label">Critical</div>
+            </div>
+            <div class="summary-item high">
+                <div class="icon">⚠️</div>
+                <div class="count">35</div>
+                <div class="label">High</div>
+            </div>
+           <div class="summary-item medium">
+                <div class="icon">🟡</div>
+                <div class="count">60</div>
+                <div class="label">Medium</div>
+            </div>
+           <div class="summary-item low">
+                <div class="icon">🟢</div>
+                <div class="count">100</div>
+                <div class="label">Low</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top 10 Firing Issues Section -->
+    <div class="firing-issues">
+         <h2>Top 10 Firing Issues</h2>
+         <div class="filters">
+            <label for="severity-filter">Severity:</label>
+                <select id="severity-filter">
+                    <option value="critical">Critical</option>
+                    <option value="high">High</option>
+                    <option value="medium">Medium</option>
+                    <option value="low">Low</option>
+                </select>
+          </div>
+         <ul class="issues-list">
+             <li class="issue-item critical">
+               <span class="issue-name">Database Connection Error</span>
+               <span class="issue-count"> 5</span>
+             </li>
+              <li class="issue-item high">
+               <span class="issue-name">High CPU Usage</span>
+               <span class="issue-count"> 3</span>
+             </li>
+          </ul>
+    </div>
+
+   <!-- Latest Resolved Issues Section -->
+   <div class="resolved-issues">
+        <h2>Latest Resolved Issues</h2>
+         <div class="filters">
+            <label for="resolved-severity-filter">Severity:</label>
+                <select id="resolved-severity-filter">
+                    <option value="all">All</option>
+                    <option value="critical">Critical</option>
+                    <option value="high">High</option>
+                    <option value="medium">Medium</option>
+                    <option value="low">Low</option>
+                </select>
+          </div>
+         <ul class="resolved-list">
+            <li class="resolved-item critical">
+                <span class="issue-name">Slow API Responce</span>
+                <span class="issue-time">10min Ago</span>
+            </li>
+            <li class="resolved-item medium">
+                <span class="issue-name">Disk Usage Full</span>
+                 <span class="issue-time">30min Ago</span>
+             </li>
+         </ul>
+   </div>
+</div>

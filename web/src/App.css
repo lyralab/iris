@@ -1,0 +1,287 @@
+/*.container {*/
+/*  max-width: 1000px;*/
+/*  margin: 20px auto;*/
+/*  padding: 20px;*/
+/*  background-color: #f9f9f9;*/
+/*  border-radius: 8px;*/
+/*  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);*/
+/*  font-family: sans-serif;*/
+/*}*/
+
+/*.alert-summary {*/
+/*  margin-bottom: 30px;*/
+/*}*/
+
+/*.alert-summary h2, .firing-issues h2 ,.resolved-issues h2{*/
+/*    border-bottom: 2px solid #ddd;*/
+/*    padding-bottom: 10px;*/
+/*}*/
+
+/*.summary-items {*/
+/*  display: flex;*/
+/*  justify-content: space-around;*/
+/*  flex-wrap: wrap;*/
+/*}*/
+
+/*.summary-item {*/
+/*  padding: 20px;*/
+/*  text-align: center;*/
+/*  border-radius: 8px;*/
+/*  margin: 10px;*/
+/*  width:100px;*/
+/*  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);*/
+/*}*/
+/*.summary-item div{*/
+/*  margin-bottom: 5px*/
+/*}*/
+/*.summary-item.critical {*/
+/*  background-color: #ffcccc;*/
+/*  color: #cc0000;*/
+/*}*/
+
+/*.summary-item.high {*/
+/*  background-color: #ffe6cc;*/
+/*  color: #cc6600;*/
+/*}*/
+/*.summary-item.medium {*/
+/*  background-color: #fff2cc;*/
+/*  color: #cc9900;*/
+/*}*/
+/*.summary-item.low {*/
+/*  background-color: #e6f9e6;*/
+/*  color: #006600;*/
+/*}*/
+
+/*!* Firing Issues *!*/
+/*.firing-issues{*/
+/*  margin-bottom: 30px;*/
+/*}*/
+
+/*.firing-issues .filters {*/
+/*  display: flex;*/
+/*  align-items: center;*/
+/*  margin-bottom: 10px;*/
+/*  justify-content: right;*/
+/*}*/
+/*.firing-issues .filters label{*/
+/*    margin-right: 5px;*/
+/*}*/
+
+/*.issues-list {*/
+/*    list-style: none;*/
+/*    padding: 0;*/
+/*}*/
+
+/*.issue-item {*/
+/*  background: #fff;*/
+/*  padding: 10px;*/
+/*  margin-bottom: 5px;*/
+/*  border-radius: 4px;*/
+/*    display: flex;*/
+/*    justify-content: space-between;*/
+/*     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);*/
+/*}*/
+/*.issue-item.critical{*/
+/*  border-left: 5px solid #cc0000;*/
+/*}*/
+/*.issue-item.high{*/
+/*  border-left: 5px solid #cc6600;*/
+/*}*/
+/*.issue-item .issue-count{*/
+/*    font-weight: bold;*/
+/*}*/
+
+
+/*!* Resolved Issues *!*/
+/*.resolved-issues .filters {*/
+/*  display: flex;*/
+/*  align-items: center;*/
+/*  margin-bottom: 10px;*/
+/*  justify-content: right;*/
+/*}*/
+/*.resolved-issues .filters label{*/
+/*    margin-right: 5px;*/
+/*}*/
+/*.resolved-list {*/
+/*    list-style: none;*/
+/*    padding: 0;*/
+/*}*/
+/*.resolved-item {*/
+/*  background: #fff;*/
+/*  padding: 10px;*/
+/*  margin-bottom: 5px;*/
+/*  border-radius: 4px;*/
+/*     display: flex;*/
+/*    justify-content: space-between;*/
+/*    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);*/
+/*}*/
+/*.resolved-item.critical{*/
+/*  border-left: 5px solid #cc0000;*/
+/*}*/
+/*.resolved-item.medium{*/
+/*    border-left: 5px solid #cc9900;*/
+/*}*/
+
+/*.resolved-item .issue-time {*/
+/*    font-size: 0.8em;*/
+/*    color: #777;*/
+/*}*/
+.container {
+  max-width: 1000px;
+  margin: 20px auto;
+  padding: 20px;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  font-family: sans-serif;
+}
+
+.alert-summary {
+  margin-bottom: 30px;
+}
+
+.alert-summary h2, .firing-issues h2 ,.resolved-issues h2{
+    border-bottom: 2px solid #ddd;
+    padding-bottom: 10px;
+}
+
+.summary-items {
+  display: flex;
+  justify-content: space-around;
+  flex-wrap: wrap;
+}
+
+.summary-item {
+  padding: 20px;
+  text-align: center;
+  border-radius: 8px;
+  margin: 10px;
+  width:100px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+.summary-item div{
+  margin-bottom: 5px
+}
+.summary-item.critical {
+  background-color: #ffcccc;
+  color: #cc0000;
+}
+.summary-item.high {
+  background-color: #ffe6cc;
+  color: #cc6600;
+}
+.summary-item.warning {
+  background-color: #fff2cc;
+  color: #cc9900;
+}
+.summary-item.medium {
+  background-color: #fff2cc;
+  color: #cc9900;
+}
+.summary-item.low {
+  background-color: #e6f9e6;
+  color: #006600;
+}
+.summary-item.page {
+  background-color: #e6f9e6;
+  color: #006600;
+}
+
+/* Firing Issues */
+.firing-issues{
+  margin-bottom: 30px;
+}
+
+.firing-issues .filters {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+  justify-content: right;
+}
+.firing-issues .filters label{
+    margin-right: 5px;
+}
+
+.issues-list {
+    list-style: none;
+    padding: 0;
+}
+
+.issue-item {
+  background: #fff;
+  padding: 10px;
+  margin-bottom: 5px;
+  border-radius: 4px;
+    display: flex;
+    justify-content: space-between;
+     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+.issue-item.critical{
+  border-left: 5px solid #cc0000;
+}
+.issue-item.high{
+  border-left: 5px solid #cc6600;
+}
+.issue-item .issue-time{
+    font-size: 0.8em;
+    color: #777;
+}
+
+
+/* Resolved Issues */
+.resolved-issues {
+  margin-bottom: 30px;
+}
+.resolved-issues .filters {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+  justify-content: right;
+}
+.resolved-issues .filters label{
+    margin-right: 5px;
+}
+.resolved-list {
+    list-style: none;
+    padding: 0;
+}
+.resolved-item {
+  background: #fff;
+  padding: 10px;
+  margin-bottom: 5px;
+  border-radius: 4px;
+     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+.resolved-item.critical{
+  border-left: 5px solid #cc0000;
+}
+.resolved-item.medium{
+    border-left: 5px solid #cc9900;
+}
+.resolved-item .issue-details{
+    display: flex;
+    flex-direction: column;
+}
+
+.resolved-item .issue-description {
+  font-size: 0.9em;
+  color: #555;
+    margin-bottom: 5px;
+}
+
+.resolved-item .issue-times {
+    display: flex;
+    font-size: 0.8em;
+    color: #777;
+    justify-content: space-between;
+    margin-bottom: 5px
+}
+
+.resolved-item .issue-times span{
+    margin-right: 10px;
+}
+
+.resolved-item .issue-duration {
+    font-weight: bold;
+    font-size: 0.8em
+}
