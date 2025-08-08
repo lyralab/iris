@@ -3,6 +3,8 @@ package notifications
 type NotificationInterface interface {
 	Send(message Message) ([]string, error)
 	Status(messageID string) (MessageStatusType, error)
+	Verify() (string, error)
+	GetName() string
 }
 
 type Message struct {
