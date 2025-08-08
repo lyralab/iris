@@ -1,10 +1,11 @@
 package kavenegar
 
 import (
+	"strconv"
+
 	kn "github.com/kavenegar/kavenegar-go"
 	"github.com/root-ali/iris/pkg/notifications"
 	"go.uber.org/zap"
-	"strconv"
 )
 
 func NewKavenegarService(apiToken string, sender string, logger *zap.SugaredLogger) notifications.NotificationInterface {
@@ -46,4 +47,18 @@ func (k *kavenegarService) kavenegarSend(sender string, messages notifications.M
 		messageIDs = append(messageIDs, strconv.Itoa(int(r.MessageID)))
 	}
 	return messageIDs, nil
+}
+
+func (k *kavenegarService) Verify() (string, error) {
+	accInfo, err := k.API.Account.Info()
+	if err != nil {
+		k.Logger.Errorw("Failed to get account info", "error", err)
+		return "", err
+	}
+	k.Logger.Infow("Kavenegar account info", "RemainAccount", accInfo.Remaincredit)
+	return strconv.Itoa(accInfo.Remaincredit), nil
+}
+
+func (k *kavenegarService) GetName() string {
+	return "Kavenegar"
 }
