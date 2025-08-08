@@ -16,6 +16,9 @@ import (
 	"github.com/root-ali/iris/pkg/health_check"
 	"github.com/root-ali/iris/pkg/http"
 	migrationpostgresql "github.com/root-ali/iris/pkg/migration/postgresql"
+	"github.com/root-ali/iris/pkg/notifications"
+	"github.com/root-ali/iris/pkg/notifications/kavenegar"
+	"github.com/root-ali/iris/pkg/notifications/smsir"
 	"github.com/root-ali/iris/pkg/roles"
 	"github.com/root-ali/iris/pkg/storage/postgresql"
 	"github.com/root-ali/iris/pkg/user"
@@ -23,7 +26,10 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
+// Iris is the main configuration structure for the Iris application.
 type Iris struct {
+
+	// Postgres holds the configuration for the PostgreSQL database connection.
 	Postgres struct {
 		Host string `env:"POSTGRES_HOST"`
 		Port string `env:"POSTGRES_PORT"`
@@ -32,6 +38,8 @@ type Iris struct {
 		Pass string `env:"POSTGRES_PASS"`
 		SSL  bool   `env:"POSTGRES_SSL default=false"`
 	}
+
+	// Http holds the configuration for the HTTP server.
 	Http struct {
 		Port      string `env:"HTTP_PORT" envDefault:"9090"`
 		AdminPass string `env:"ADMIN_PASS"`
@@ -39,12 +47,50 @@ type Iris struct {
 	Go struct {
 		Mode string `env:"GO_ENV" envDefault:"debug"`
 	}
+	Notifications struct {
+		// Smsir is the configuration for the Smsir notification service.
+		Smsir struct {
+			// ApiKey is the API token for Smsir service.
+			ApiKey string `env:"SMSIR_API_TOKEN"`
+			// LineNumber is the phone number that will be used to send SMS messages.
+			LineNumber int `env:"SMSIR_LINE_NUMBER" envDefault:"30007732911486"`
+			// Enabled indicates whether the Smsir service is enabled.
+			Enabled bool `env:"SMSIR_ENABLED" envDefault:"false"`
+		}
+		// Kavenegar is the configuration for the Kavenegar notification service.
+		Kavenegar struct {
+			// ApiToken is the API token for Kavenegar service.
+			ApiToken string `env:"KAVENEGAR_API_TOKEN"`
+			// Sender is the phone number that will be used to send SMS messages.
+			Sender string `env:"KAVENEGAR_SENDER" envDefault:""`
+			// Enabled indicates whether the Kavenegar service is enabled.
+			Enabled bool `env:"KAVENEGAR_ENABLED" envDefault:"false"`
+		}
+		// Email is the configuration for the email notification service.
+		Email struct {
+			Host     string `env:"EMAIL_HOST"`
+			Port     string `env:"EMAIL_PORT"`
+			User     string `env:"EMAIL_USER"`
+			Password string `env:"EMAIL_PASSWORD"`
+			From     string `env:"EMAIL_FROM"`
+			Enabled  bool   `env:"EMAIL_ENABLED" envDefault:"false"`
+		}
+	}
 
+	// Logger is the logger used throughout the application.
 	Logger *zap.SugaredLogger
 
-	JwtSecret            string `env:"JWT_SECRET"`
-	SignupEnabled        bool   `env:"SIGNUP_ENABLED" envDefault=true`
-	postgresRepositories *postgresql.Storage
+	// JwtSecret is the secret key used for signing JWT tokens.
+	JwtSecret string `env:"JWT_SECRET"`
+
+	// SignupEnabled indicates whether user signup is enabled.
+	SignupEnabled bool `env:"SIGNUP_ENABLED" envDefault=true`
+
+	// PostgresRepositories holds the storage layer for the application.
+	PostgresRepositories *postgresql.Storage
+
+	// NotificationServices holds the notification services used in the application.
+	NotificationServices []notifications.NotificationInterface
 }
 
 func main() {
@@ -78,12 +124,13 @@ func main() {
 	}
 	i.migratePostgresDatabase(postgres)
 	i.initiateRepositories(postgres)
-	alertService := alerts.NewAlertService(i.Logger, i.postgresRepositories)
-	healthService := health_check.NewHealthService(i.Logger, i.postgresRepositories)
-	roleService := roles.NewRolesService(i.Logger, i.postgresRepositories)
-	userService := user.NewUserService(i.postgresRepositories, roleService, i.Logger)
+	i.initNotificationsService(i.Logger)
+	alertService := alerts.NewAlertService(i.Logger, i.PostgresRepositories)
+	healthService := health_check.NewHealthService(i.Logger, i.PostgresRepositories)
+	roleService := roles.NewRolesService(i.Logger, i.PostgresRepositories)
+	userService := user.NewUserService(i.PostgresRepositories, roleService, i.Logger)
 	authService := auth.NewAuthService([]byte(i.JwtSecret), roleService, i.Logger)
-	groupService := groups.NewGroupService(i.Logger, i.postgresRepositories)
+	groupService := groups.NewGroupService(i.Logger, i.PostgresRepositories)
 	captchaService := captcha.NewCaptchaService(i.Logger)
 	err = roleService.InitiateDefaultRoles()
 	if err != nil {
@@ -120,7 +167,7 @@ func (i *Iris) migratePostgresDatabase(p *postgresql.Postgres) {
 }
 
 func (i *Iris) initiateRepositories(p *postgresql.Postgres) {
-	i.postgresRepositories = postgresql.New(i.Logger, p)
+	i.PostgresRepositories = postgresql.New(i.Logger, p)
 }
 
 func configureZapLogger(mode string) (logger *zap.Logger, err error) {
@@ -144,4 +191,28 @@ func configureZapLogger(mode string) (logger *zap.Logger, err error) {
 	}
 
 	return logger, nil
+}
+
+func (i *Iris) initNotificationsService(logger *zap.SugaredLogger) {
+	if i.Notifications.Smsir.Enabled {
+		smsirService := smsir.NewSmsirService(i.Notifications.Smsir.ApiKey, 30007732911486, logger)
+		i.NotificationServices = append(i.NotificationServices, smsirService)
+		VerifySmsirService, err := smsirService.Verify()
+		if err != nil {
+			logger.Errorw("Failed to verify Smsir service", "error", err)
+		} else {
+			logger.Infow("Smsir service verified successfully", "response", VerifySmsirService)
+		}
+		i.Logger.Info("Smsir service initialized")
+	}
+	if i.Notifications.Kavenegar.Enabled {
+		kavenegarService := kavenegar.NewKavenegarService(i.Notifications.Kavenegar.ApiToken, "", logger)
+		i.NotificationServices = append(i.NotificationServices, kavenegarService)
+		verifyKavenegarService, err := kavenegarService.Verify()
+		if err != nil {
+			logger.Errorw("Failed to verify Kavenegar service", "error", err)
+		} else {
+			logger.Infow("Kavenegar service verified successfully", "response", verifyKavenegarService)
+		}
+	}
 }
