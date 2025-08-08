@@ -1,8 +1,36 @@
 package smsir
 
-import "go.uber.org/zap"
+import (
+	"net/http"
+
+	"go.uber.org/zap"
+)
 
 type smsirService struct {
-	ApiKey string
-	Logger *zap.SugaredLogger
+	Client     *http.Client
+	LineNumber int
+	Logger     *zap.SugaredLogger
+}
+
+type customTransport struct {
+	Base   http.RoundTripper
+	Header http.Header
+}
+
+type SendSMSRequestBody struct {
+	Mobiles     []string `json:"mobiles"`
+	MessageText string   `json:"messageText"`
+	LineNumber  int      `json:"lineNumber,omitempty"`
+}
+
+type VerifyResponseBody struct {
+	Status  int     `json:"status"`
+	Message string  `json:"message"`
+	Data    float64 `json:"data"`
+}
+
+type SendSmsResponseBody struct {
+	Status  int    `json:"status"`
+	Message string `json:"message"`
+	Data    []int  `json:"data"`
 }
