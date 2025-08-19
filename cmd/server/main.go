@@ -1,16 +1,14 @@
 package main
 
-// TODO add documantion for every function and types
-// TODO add project config
-// TODO add start and exit service function
-
 import (
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/caarlos0/env/v10"
 	"github.com/root-ali/iris/pkg/alerts"
 	"github.com/root-ali/iris/pkg/auth"
+	"github.com/root-ali/iris/pkg/cache"
 	"github.com/root-ali/iris/pkg/captcha"
 	"github.com/root-ali/iris/pkg/groups"
 	"github.com/root-ali/iris/pkg/health_check"
@@ -20,6 +18,7 @@ import (
 	"github.com/root-ali/iris/pkg/notifications/kavenegar"
 	"github.com/root-ali/iris/pkg/notifications/smsir"
 	"github.com/root-ali/iris/pkg/roles"
+	"github.com/root-ali/iris/pkg/scheduler/cache_receptors"
 	"github.com/root-ali/iris/pkg/storage/postgresql"
 	"github.com/root-ali/iris/pkg/user"
 	"go.uber.org/zap"
@@ -77,6 +76,23 @@ type Iris struct {
 		}
 	}
 
+	// Scheduler holds the configuration for the  schedulers.
+	Scheduler struct {
+		// MobileScheduler is the configuration for the mobile scheduler.
+		MobileScheduler struct {
+			// StartAt is the time when the scheduler should start.
+			StartAt time.Duration `env:"MOBILE_SCHEDULER_START_AT" envDefault:"2"`
+			// Interval is the interval at which the scheduler should run.
+			Interval time.Duration `env:"MOBILE_SCHEDULER_INTERVAL" envDefault:"10s"`
+			// Workers is the number of workers that should be used by the scheduler.
+			Workers int `env:"MOBILE_SCHEDULER_WORKERS" envDefault:"1"`
+			// QueueSize is the size of the queue that should be used by the scheduler.
+			QueueSize int `env:"MOBILE_SCHEDULER_QUEUE_SIZE" envDefault:"1"`
+			// CacheCapacity is the capacity of the cache that should be used by the scheduler.
+			CacheCapacity int `env:"MOBILE_SCHEDULER_CACHE_CAPACITY" envDefault:"1000"`
+		}
+	}
+
 	// Logger is the logger used throughout the application.
 	Logger *zap.SugaredLogger
 
@@ -125,6 +141,7 @@ func main() {
 	i.migratePostgresDatabase(postgres)
 	i.initiateRepositories(postgres)
 	i.initNotificationsService(i.Logger)
+	i.initializeMobileScheduler()
 	alertService := alerts.NewAlertService(i.Logger, i.PostgresRepositories)
 	healthService := health_check.NewHealthService(i.Logger, i.PostgresRepositories)
 	roleService := roles.NewRolesService(i.Logger, i.PostgresRepositories)
@@ -210,9 +227,53 @@ func (i *Iris) initNotificationsService(logger *zap.SugaredLogger) {
 		i.NotificationServices = append(i.NotificationServices, kavenegarService)
 		verifyKavenegarService, err := kavenegarService.Verify()
 		if err != nil {
-			logger.Errorw("Failed to verify Kavenegar service", "error", err)
+			logger.Errorw("Failed to verify Kavenegar service",
+				"error", err)
 		} else {
-			logger.Infow("Kavenegar service verified successfully", "response", verifyKavenegarService)
+			logger.Infow("Kavenegar service verified successfully",
+				"response", verifyKavenegarService)
 		}
+	}
+}
+
+func (i *Iris) initializeCacheService() {
+	cacheService := cache.New[string, string](i.Logger,
+		cache.WithCapacity(1000),
+		cache.WithCleanupInterval(5),
+		cache.WithJanitor(true))
+	err := cacheService.Set("exampleKey", "exampleValue", 0)
+	if err != nil {
+		i.Logger.Errorw("Cache service failed to set value", "error", err)
+		return
+	}
+	value, found := cacheService.Get("exampleKey")
+	if found {
+		i.Logger.Infow("Cache service initialized", "key", "exampleKey", "value", value)
+	} else {
+		i.Logger.Errorw("Cache service failed to retrieve value for key", "key", "exampleKey")
+	}
+	cacheService.Delete("exampleKey")
+}
+
+func (i *Iris) initializeMobileScheduler() {
+	cacheService := cache.New[string, []string](i.Logger,
+		cache.WithCapacity(i.Scheduler.MobileScheduler.CacheCapacity))
+
+	cacheReceptorConfig := cache_receptors.Config{
+		StartAt:   time.Now().Add(i.Scheduler.MobileScheduler.StartAt * time.Second),
+		Interval:  i.Scheduler.MobileScheduler.Interval,
+		Workers:   i.Scheduler.MobileScheduler.Workers,
+		QueueSize: i.Scheduler.MobileScheduler.QueueSize,
+	}
+	cacheReceptorService, err := cache_receptors.NewCacheReceptorsScheduler(i.PostgresRepositories,
+		cacheService, i.Logger, cacheReceptorConfig)
+	if err != nil {
+		i.Logger.Errorw("Failed to create cache receptor service", "error", err)
+	}
+	err = cacheReceptorService.Start()
+	if err != nil {
+		i.Logger.Errorw("Failed to start cache receptor service", "error", err)
+	} else {
+		i.Logger.Info("Cache receptor service started successfully")
 	}
 }
