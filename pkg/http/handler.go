@@ -59,6 +59,9 @@ func (ht *HttpHandler) Handler() *gin.Engine {
 	if err != nil {
 		return nil
 	}
+	router.OPTIONS("/*path", func(c *gin.Context) {
+		c.JSON(200, gin.H{})
+	})
 	router.GET("/ready", rest.Ready(ht.HS))
 	router.GET("/healthy", rest.Healthy(ht.HS))
 

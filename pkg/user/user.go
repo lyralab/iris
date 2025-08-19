@@ -3,6 +3,7 @@ package user
 import (
 	"errors"
 	"math/rand"
+	"regexp"
 	"time"
 
 	"github.com/oklog/ulid/v2"
@@ -84,11 +85,24 @@ func (us *userServiceImpl) CreateDefaultAdminUser() error {
 		u.CreatedAt = t
 		u.ModifiedAt = t
 		u.Status = "Verified"
-		generatedPassword, err := generateRandomPassword(20)
-		if err != nil {
-			us.logger.Info("cannot generate random password ", "error", err)
-			return err
+		var generatedPassword string
+		for {
+			generatedPassword, err = generateRandomPassword(20)
+			if err != nil {
+				us.logger.Info("cannot generate random password ", "error", err)
+				return err
+			}
+			matched, _ := regexp.MatchString(`[^a-zA-Z0-9]`, generatedPassword)
+			if matched {
+				us.logger.Info("Generated password contains special characters")
+				break
+			} else {
+				us.logger.Infow("Generated password is not valid, retrying...", "password", generatedPassword)
+				continue
+			}
+
 		}
+
 		roleId, err := us.role.GetRoleIDByName("admin")
 		if err != nil {
 			us.logger.Infow("Cannot get role id from database", "error", err)
