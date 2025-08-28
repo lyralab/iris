@@ -28,6 +28,8 @@ type Alert struct {
 type Labels struct {
 	Severity  string `json:"severity"`
 	AlertName string `json:"alertName"`
+	Method    string `json:"method"`
+	Receptor  string `json:"receptor"`
 }
 
 type Annotation struct {

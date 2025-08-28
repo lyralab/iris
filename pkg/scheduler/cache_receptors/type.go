@@ -18,7 +18,11 @@ type Repository interface {
 	GetUserNumber() (string, []string, error)
 }
 
-type cacheReceptor struct {
+type CacheService interface {
+	GetNumbers(group string) ([]string, error)
+}
+
+type CacheReceptor struct {
 	Repository Repository
 	Cache      cache.Interface[string, []string]
 
