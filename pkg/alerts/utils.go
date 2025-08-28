@@ -10,4 +10,6 @@ func (a *Alert) convertAlertMangerAlerts(alert alertmanager.Alert) {
 	a.StartsAt = *alert.StartsAt
 	a.EndsAt = *alert.EndsAt
 	a.Status = alert.Status
+	a.Method = alert.AlertLabels.Method
+	a.Receptor = alert.AlertLabels.Receptor
 }

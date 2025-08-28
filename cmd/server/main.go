@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/root-ali/iris/pkg/scheduler/alerts_schduler"
 	"log"
 	"time"
 
@@ -148,7 +149,6 @@ func main() {
 	i.migratePostgresDatabase(postgres)
 	i.initiateRepositories(postgres)
 	i.initNotificationsService(i.Logger)
-	i.initializeMobileScheduler()
 	i.initializeCacheService()
 	i.initializeProviderService()
 	alertService := alerts.NewAlertService(i.Logger, i.PostgresRepositories)
@@ -222,7 +222,29 @@ func configureZapLogger(mode string) (logger *zap.Logger, err error) {
 
 func (i *Iris) initNotificationsService(logger *zap.SugaredLogger) {
 	if i.Notifications.Smsir.Enabled {
-		smsirService := smsir.NewSmsirService(i.Notifications.Smsir.ApiKey, 30007732911486, i.Notifications.Smsir.Priority, logger)
+		cacheService := cache.New[string, []string](i.Logger,
+			cache.WithCapacity(i.Scheduler.MobileScheduler.CacheCapacity))
+
+		cacheReceptorConfig := cache_receptors.Config{
+			StartAt:   time.Now().Add(i.Scheduler.MobileScheduler.StartAt * time.Second),
+			Interval:  i.Scheduler.MobileScheduler.Interval,
+			Workers:   i.Scheduler.MobileScheduler.Workers,
+			QueueSize: i.Scheduler.MobileScheduler.QueueSize,
+		}
+		cacheReceptorService, err := cache_receptors.NewCacheReceptorsScheduler(i.PostgresRepositories,
+			cacheService, i.Logger, cacheReceptorConfig)
+		if err != nil {
+			i.Logger.Errorw("Failed to create cache receptor service", "error", err)
+		}
+		err = cacheReceptorService.Start()
+		if err != nil {
+			i.Logger.Errorw("Failed to start cache receptor service", "error", err)
+		} else {
+			i.Logger.Info("Cache receptor service started successfully")
+		}
+
+		smsirService := smsir.NewSmsirService(i.Notifications.Smsir.ApiKey, 30007732911486,
+			i.Notifications.Smsir.Priority, logger, cacheReceptorService)
 		i.NotificationServices = append(i.NotificationServices, smsirService)
 		VerifySmsirService, err := smsirService.Verify()
 		if err != nil {
@@ -231,6 +253,11 @@ func (i *Iris) initNotificationsService(logger *zap.SugaredLogger) {
 			logger.Infow("Smsir service verified successfully", "response", VerifySmsirService)
 		}
 		i.Logger.Info("Smsir service initialized")
+		alertScheduler := alerts_schduler.NewScheduler(i.PostgresRepositories, smsirService, i.Logger)
+		err = alertScheduler.Start()
+		if err != nil {
+			logger.Errorw("Failed to start Alert Schduler", "error", err)
+		}
 	}
 	if i.Notifications.Kavenegar.Enabled {
 		kavenegarService := kavenegar.NewKavenegarService(i.Notifications.Kavenegar.ApiToken, i.Notifications.Kavenegar.Priority, "", logger)
@@ -263,29 +290,6 @@ func (i *Iris) initializeCacheService() {
 		i.Logger.Errorw("Cache service failed to retrieve value for key", "key", "exampleKey")
 	}
 	cacheService.Delete("exampleKey")
-}
-
-func (i *Iris) initializeMobileScheduler() {
-	cacheService := cache.New[string, []string](i.Logger,
-		cache.WithCapacity(i.Scheduler.MobileScheduler.CacheCapacity))
-
-	cacheReceptorConfig := cache_receptors.Config{
-		StartAt:   time.Now().Add(i.Scheduler.MobileScheduler.StartAt * time.Second),
-		Interval:  i.Scheduler.MobileScheduler.Interval,
-		Workers:   i.Scheduler.MobileScheduler.Workers,
-		QueueSize: i.Scheduler.MobileScheduler.QueueSize,
-	}
-	cacheReceptorService, err := cache_receptors.NewCacheReceptorsScheduler(i.PostgresRepositories,
-		cacheService, i.Logger, cacheReceptorConfig)
-	if err != nil {
-		i.Logger.Errorw("Failed to create cache receptor service", "error", err)
-	}
-	err = cacheReceptorService.Start()
-	if err != nil {
-		i.Logger.Errorw("Failed to start cache receptor service", "error", err)
-	} else {
-		i.Logger.Info("Cache receptor service started successfully")
-	}
 }
 
 func (i *Iris) initializeProviderService() {

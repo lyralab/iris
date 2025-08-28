@@ -12,6 +12,9 @@ type AlertRepository interface {
 	//GetLatestFiringAlerts(int) ([]*Alert, error)
 	AlertsBySeverity() ([]*AlertsBySeverity, error)
 	GetAlerts(string, string, int, int) ([]*Alert, error)
+	GetUnsentAlerts() ([]Alert, error)
+	MarkAlertAsSent(alertID string) error
+	GetUnsentAlertID(alert Alert) (string, error)
 }
 
 type AlertsService interface {
