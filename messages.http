@@ -68,7 +68,7 @@ Authorization: Basic admin:{{ADMIN_PASS}}
 }
 
 ### AlertManager
-POST http://{{HTTP_HOST}}:{{HTTP_PORT}}/v0/messages/alertmanager
+POST http://{{HTTP_HOST}}:{{HTTP_PORT}}/v1/messages/alertmanager
 Authorization: Basic admin admin
 
 {
@@ -85,34 +85,50 @@ Authorization: Basic admin admin
     {
       "status": "firing",
       "labels": {
-        "alertName": "testingaasdasd1",
+        "alertName": "another",
         "method": "sms",
-        "receptor": "09153239343",
+        "receptor": "admins",
         "severity": "critical"
       },
       "annotations": {
-        "summary" : "this is a sssssssss asdasdasdasdasdasdasdasd"
+        "summary" : "another test"
       },
       "startsAt": "2024-01-12T12:34:32.908Z",
       "endsAt": "0001-01-09T12:40:32.908Z",
       "generatorURL": "",
-      "fingerprint": "123assssssdaasssssasdasdd"
+      "fingerprint": "123aaavcdssdaasssssasdasdd"
     },
     {
       "status": "firing",
       "labels": {
         "alertName": "testingaaaaaaa2",
         "method" : "call",
-        "receptor": "0",
+        "receptor": "admins",
         "severity": "warning"
       },
       "annotations": {
-        "summary": "this is aaaaaa   another message"
+        "summary": "attention"
       },
       "startsAt": "2024-01-01T12:34:32.908Z",
       "endsAt": "0001-01-09T12:34:32.908Z",
       "generatorURL": "",
       "fingerprint": "asdasdasd1111"
+    },
+        {
+      "status": "firing",
+      "labels": {
+        "alertName": "arp",
+        "method" : "call",
+        "receptor": "admins",
+        "severity": "warning"
+      },
+      "annotations": {
+        "summary": "hello arpjoker"
+      },
+      "startsAt": "2024-01-01T12:34:32.908Z",
+      "endsAt": "0001-01-09T12:34:32.908Z",
+      "generatorURL": "",
+      "fingerprint": "yess"
     }
   ]
 }

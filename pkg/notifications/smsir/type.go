@@ -1,6 +1,7 @@
 package smsir
 
 import (
+	"github.com/root-ali/iris/pkg/scheduler/cache_receptors"
 	"net/http"
 
 	"go.uber.org/zap"
@@ -10,6 +11,7 @@ type smsirService struct {
 	Client     *http.Client
 	LineNumber int
 	Logger     *zap.SugaredLogger
+	cache      cache_receptors.CacheService
 }
 
 type customTransport struct {

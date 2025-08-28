@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/root-ali/iris/pkg/scheduler/cache_receptors"
 	"io"
 	"net/http"
 	"strconv"
@@ -17,17 +18,27 @@ var (
 	Host = "https://api.sms.ir"
 )
 
-func NewSmsirService(apikey string, lineNubner int, logger *zap.SugaredLogger) notifications.NotificationInterface {
+func NewSmsirService(apikey string, lineNubner int, logger *zap.SugaredLogger,
+	cacheService cache_receptors.CacheService) notifications.NotificationInterface {
 	client := createAPIHandler(apikey)
-	return &smsirService{Client: client, LineNumber: lineNubner, Logger: logger}
+	return &smsirService{Client: client, LineNumber: lineNubner, Logger: logger, cache: cacheService}
 }
 
 func (s *smsirService) Send(message notifications.Message) ([]string, error) {
+	var sendGroupNumbers []string
+	for _, group := range message.Receptors {
+		nums, err := s.cache.GetNumbers(group)
+		if err != nil {
+			return nil, err
+		}
+		sendGroupNumbers = append(sendGroupNumbers, nums...)
+	}
 	requestBody := SendSMSRequestBody{
-		Mobiles:     message.Receptors,
+		Mobiles:     sendGroupNumbers,
 		MessageText: message.Message,
 		LineNumber:  s.LineNumber,
 	}
+
 	rbj, err := json.Marshal(requestBody)
 	if err != nil {
 		s.Logger.Errorw("Cannot marshal request body", "error", err)

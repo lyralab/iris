@@ -1,7 +1,9 @@
 package postgresql
 
 import (
+	"errors"
 	"github.com/root-ali/iris/pkg/alerts"
+	"gorm.io/gorm"
 )
 
 func (s *Storage) AddAlert(alert *alerts.Alert) (int64, error) {
@@ -97,4 +99,38 @@ func (s *Storage) Health() error {
 		return err
 	}
 	return nil
+}
+
+func (s *Storage) GetUnsentAlerts() ([]alerts.Alert, error) {
+	var results []alerts.Alert
+	if err := s.db.
+		Where("send_notif = ?", false).
+		Find(&results).Error; err != nil {
+		s.logger.Errorf("failed to fetch unsent alerts: %v", err)
+		return nil, err
+	}
+	return results, nil
+}
+
+func (s *Storage) MarkAlertAsSent(alertID string) error {
+	if err := s.db.Model(&alerts.Alert{}).
+		Where("id = ?", alertID).
+		Update("send_notif", true).Error; err != nil {
+		s.logger.Errorf("failed to update send_notif for alert %s: %v", alertID, err)
+		return err
+	}
+	return nil
+}
+
+func (s *Storage) GetUnsentAlertID(alert alerts.Alert) (string, error) {
+	if err := s.db.
+		Where("send_notif = ?", false).
+		First(&alert).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return "", nil
+		}
+		s.logger.Errorf("failed to fetch unsent alert ID: %v", err)
+		return "", err
+	}
+	return alert.Id, nil
 }
