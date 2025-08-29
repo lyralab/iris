@@ -6,6 +6,7 @@ import (
 	"github.com/root-ali/iris/pkg/captcha"
 	"github.com/root-ali/iris/pkg/groups"
 	"github.com/root-ali/iris/pkg/health_check"
+	"github.com/root-ali/iris/pkg/notifications"
 	"github.com/root-ali/iris/pkg/user"
 	"go.uber.org/zap"
 )
@@ -17,6 +18,7 @@ type HttpHandler struct {
 	ATHS          auth.AuthServiceInterface
 	GR            groups.GroupServiceInterface
 	CS            captcha.CaptchaServiceInterface
+	PS            notifications.ProviderServiceInterface
 	AdminPassword string
 	GinMode       string
 	SignupEnabled bool

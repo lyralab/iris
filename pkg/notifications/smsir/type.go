@@ -9,6 +9,7 @@ import (
 type smsirService struct {
 	Client     *http.Client
 	LineNumber int
+	Priority   int
 	Logger     *zap.SugaredLogger
 }
 

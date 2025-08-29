@@ -8,12 +8,13 @@ import (
 	"go.uber.org/zap"
 )
 
-func NewKavenegarService(apiToken string, sender string, logger *zap.SugaredLogger) notifications.NotificationInterface {
+func NewKavenegarService(apiToken string, p int, sender string, logger *zap.SugaredLogger) notifications.NotificationInterface {
 	api := kn.New(apiToken)
 	return &kavenegarService{
-		API:    api,
-		Sender: sender,
-		Logger: logger,
+		API:      api,
+		Sender:   sender,
+		Priority: p,
+		Logger:   logger,
 	}
 }
 
@@ -61,4 +62,12 @@ func (k *kavenegarService) Verify() (string, error) {
 
 func (k *kavenegarService) GetName() string {
 	return "Kavenegar"
+}
+
+func (k *kavenegarService) GetFlag() string {
+	return "sms"
+}
+
+func (k *kavenegarService) GetPriority() int {
+	return k.Priority
 }
