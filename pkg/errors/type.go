@@ -16,4 +16,6 @@ var (
 
 	ErrGroupAlreadyexisted = errors.New("group already exists")
 	ErrGroupNotFound       = errors.New("group not found")
+
+	ErrProviderNotFound = errors.New("provider not found")
 )

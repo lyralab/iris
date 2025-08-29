@@ -21,6 +21,7 @@ import (
 	"github.com/root-ali/iris/pkg/scheduler/cache_receptors"
 	"github.com/root-ali/iris/pkg/storage/postgresql"
 	"github.com/root-ali/iris/pkg/user"
+	"github.com/root-ali/iris/pkg/util"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -55,6 +56,8 @@ type Iris struct {
 			LineNumber int `env:"SMSIR_LINE_NUMBER" envDefault:"30007732911486"`
 			// Enabled indicates whether the Smsir service is enabled.
 			Enabled bool `env:"SMSIR_ENABLED" envDefault:"false"`
+			// Priority is the priority of the Smsir service.
+			Priority int `env:"SMSIR_PRIORITY" envDefault:"1"`
 		}
 		// Kavenegar is the configuration for the Kavenegar notification service.
 		Kavenegar struct {
@@ -64,6 +67,8 @@ type Iris struct {
 			Sender string `env:"KAVENEGAR_SENDER" envDefault:""`
 			// Enabled indicates whether the Kavenegar service is enabled.
 			Enabled bool `env:"KAVENEGAR_ENABLED" envDefault:"false"`
+			// Priority is the priority of the Kavenegar service.
+			Priority int `env:"KAVENEGAR_PRIORITY" envDefault:"2"`
 		}
 		// Email is the configuration for the email notification service.
 		Email struct {
@@ -81,9 +86,9 @@ type Iris struct {
 		// MobileScheduler is the configuration for the mobile scheduler.
 		MobileScheduler struct {
 			// StartAt is the time when the scheduler should start.
-			StartAt time.Duration `env:"MOBILE_SCHEDULER_START_AT" envDefault:"2"`
+			StartAt time.Duration `env:"MOBILE_SCHEDULER_START_AT" envDefault:"200"`
 			// Interval is the interval at which the scheduler should run.
-			Interval time.Duration `env:"MOBILE_SCHEDULER_INTERVAL" envDefault:"10s"`
+			Interval time.Duration `env:"MOBILE_SCHEDULER_INTERVAL" envDefault:"600s"`
 			// Workers is the number of workers that should be used by the scheduler.
 			Workers int `env:"MOBILE_SCHEDULER_WORKERS" envDefault:"1"`
 			// QueueSize is the size of the queue that should be used by the scheduler.
@@ -107,6 +112,8 @@ type Iris struct {
 
 	// NotificationServices holds the notification services used in the application.
 	NotificationServices []notifications.NotificationInterface
+	// ProviderService is the service for managing notification providers.
+	ProviderService notifications.ProviderServiceInterface
 }
 
 func main() {
@@ -142,6 +149,8 @@ func main() {
 	i.initiateRepositories(postgres)
 	i.initNotificationsService(i.Logger)
 	i.initializeMobileScheduler()
+	i.initializeCacheService()
+	i.initializeProviderService()
 	alertService := alerts.NewAlertService(i.Logger, i.PostgresRepositories)
 	healthService := health_check.NewHealthService(i.Logger, i.PostgresRepositories)
 	roleService := roles.NewRolesService(i.Logger, i.PostgresRepositories)
@@ -164,6 +173,7 @@ func main() {
 		ATHS:          authService,
 		GR:            groupService,
 		CS:            captchaService,
+		PS:            i.ProviderService,
 		AdminPassword: "admin",
 		GinMode:       "debug",
 		SignupEnabled: i.SignupEnabled,
@@ -212,7 +222,7 @@ func configureZapLogger(mode string) (logger *zap.Logger, err error) {
 
 func (i *Iris) initNotificationsService(logger *zap.SugaredLogger) {
 	if i.Notifications.Smsir.Enabled {
-		smsirService := smsir.NewSmsirService(i.Notifications.Smsir.ApiKey, 30007732911486, logger)
+		smsirService := smsir.NewSmsirService(i.Notifications.Smsir.ApiKey, 30007732911486, i.Notifications.Smsir.Priority, logger)
 		i.NotificationServices = append(i.NotificationServices, smsirService)
 		VerifySmsirService, err := smsirService.Verify()
 		if err != nil {
@@ -223,7 +233,7 @@ func (i *Iris) initNotificationsService(logger *zap.SugaredLogger) {
 		i.Logger.Info("Smsir service initialized")
 	}
 	if i.Notifications.Kavenegar.Enabled {
-		kavenegarService := kavenegar.NewKavenegarService(i.Notifications.Kavenegar.ApiToken, "", logger)
+		kavenegarService := kavenegar.NewKavenegarService(i.Notifications.Kavenegar.ApiToken, i.Notifications.Kavenegar.Priority, "", logger)
 		i.NotificationServices = append(i.NotificationServices, kavenegarService)
 		verifyKavenegarService, err := kavenegarService.Verify()
 		if err != nil {
@@ -275,5 +285,31 @@ func (i *Iris) initializeMobileScheduler() {
 		i.Logger.Errorw("Failed to start cache receptor service", "error", err)
 	} else {
 		i.Logger.Info("Cache receptor service started successfully")
+	}
+}
+
+func (i *Iris) initializeProviderService() {
+	ps := notifications.NewProvidersService(i.PostgresRepositories, i.Logger)
+	i.ProviderService = ps
+	for _, provider := range i.NotificationServices {
+		id, err := util.NewUUIDv7()
+		if err != nil {
+			panic(err)
+		}
+		p := &notifications.Providers{
+			ID:          id,
+			Name:        provider.GetName(),
+			Description: fmt.Sprintf("%s provider", provider.GetName()),
+			Flag:        provider.GetFlag(),
+			Priority:    provider.GetPriority(),
+			Provider:    provider,
+			Status:      true,
+		}
+		err = ps.AddProvider(p)
+		if err != nil {
+			i.Logger.Errorw("Failed to add provider", "provider", provider.GetName(), "error", err)
+		} else {
+			i.Logger.Infow("Provider added successfully", "provider", provider.GetName())
+		}
 	}
 }

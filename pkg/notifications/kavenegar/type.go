@@ -6,7 +6,8 @@ import (
 )
 
 type kavenegarService struct {
-	API    *kn.Kavenegar
-	Sender string
-	Logger *zap.SugaredLogger
+	API      *kn.Kavenegar
+	Sender   string
+	Priority int
+	Logger   *zap.SugaredLogger
 }
