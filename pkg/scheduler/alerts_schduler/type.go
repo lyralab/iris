@@ -59,8 +59,8 @@ func (s *Scheduler) processAlerts() {
 		alertID, err := s.repo.GetUnsentAlertID(al)
 		if err != nil {
 			s.logger.Errorw("Error getting unsent alert ID", "alertID", al, "error", err)
+			break
 		}
-		// here you integrate with SMS/email/slack etc.
 		msg := notifications.Message{
 			Subject:   al.Name,
 			Message:   al.Description,
