@@ -97,6 +97,12 @@ type Iris struct {
 			// CacheCapacity is the capacity of the cache that should be used by the scheduler.
 			CacheCapacity int `env:"MOBILE_SCHEDULER_CACHE_CAPACITY" envDefault:"1000"`
 		}
+
+		AlertScheduler struct {
+			Interval  time.Duration `env:"ALERT_SCHEDULER_INTERVAL" envDefault:"10s"`
+			Workers   int           `env:"ALERT_SCHEDULER_WORKERS" envDefault:"1"`
+			QueueSize int           `env:"ALERT_SCHEDULER_QUEUE_SIZE" envDefault:"10"`
+		}
 	}
 
 	// Logger is the logger used throughout the application.
@@ -253,7 +259,12 @@ func (i *Iris) initNotificationsService(logger *zap.SugaredLogger) {
 			logger.Infow("Smsir service verified successfully", "response", VerifySmsirService)
 		}
 		i.Logger.Info("Smsir service initialized")
-		alertScheduler := alerts_schduler.NewScheduler(i.PostgresRepositories, smsirService, i.Logger)
+		alertSchedulerConfig := alerts_schduler.SchedulerConfig{
+			Interval:  i.Scheduler.AlertScheduler.Interval,
+			Workers:   i.Scheduler.AlertScheduler.Workers,
+			QueueSize: i.Scheduler.AlertScheduler.QueueSize,
+		}
+		alertScheduler := alerts_schduler.NewScheduler(i.PostgresRepositories, smsirService, i.Logger, alertSchedulerConfig)
 		err = alertScheduler.Start()
 		if err != nil {
 			logger.Errorw("Failed to start Alert Schduler", "error", err)

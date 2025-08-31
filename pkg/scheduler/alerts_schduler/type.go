@@ -1,80 +1,151 @@
 package alerts_schduler
 
 import (
+	"context"
+	"sync"
+	"time"
+
 	"github.com/root-ali/iris/pkg/alerts"
 	"github.com/root-ali/iris/pkg/notifications"
 	"go.uber.org/zap"
-	"time"
 )
 
-type Scheduler struct {
-	smsProvider notifications.NotificationInterface
-	repo        alerts.AlertRepository
-	ticker      *time.Ticker
-	done        chan bool
-	logger      *zap.SugaredLogger
+type SchedulerConfig struct {
+	Interval  time.Duration
+	Workers   int
+	QueueSize int
 }
 
-func NewScheduler(repo alerts.AlertRepository, smsProvider notifications.NotificationInterface, logger *zap.SugaredLogger) *Scheduler {
+type Scheduler struct {
+	// deps
+	smsProvider notifications.NotificationInterface
+	repo        alerts.AlertRepository
+	logger      *zap.SugaredLogger
+
+	// config
+	cfg SchedulerConfig
+
+	// runtime
+	ctx       context.Context
+	cancel    context.CancelFunc
+	queue     chan alerts.Alert
+	wgWorkers sync.WaitGroup
+	wgLoop    sync.WaitGroup
+	ticker    *time.Ticker
+}
+
+func NewScheduler(
+	repo alerts.AlertRepository,
+	smsProvider notifications.NotificationInterface,
+	logger *zap.SugaredLogger,
+	cfg SchedulerConfig,
+) *Scheduler {
+	if cfg.Workers <= 0 {
+		cfg.Workers = 1
+	}
+	if cfg.QueueSize <= 0 {
+		cfg.QueueSize = 100
+	}
+	if cfg.Interval <= 0 {
+		cfg.Interval = 10 * time.Second
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
 	return &Scheduler{
 		repo:        repo,
-		done:        make(chan bool),
 		smsProvider: smsProvider,
 		logger:      logger,
+		cfg:         cfg,
+		ctx:         ctx,
+		cancel:      cancel,
+		queue:       make(chan alerts.Alert, cfg.QueueSize),
 	}
 }
 
 func (s *Scheduler) Start() error {
-	s.logger.Info("Alert Scheduler started...")
-	s.ticker = time.NewTicker(10 * time.Second)
-	go func() {
-		for {
-			select {
-			case <-s.done:
-				return
-			case <-s.ticker.C:
-				s.processAlerts()
-			}
-		}
-	}()
+	s.logger.Infow("Alert Scheduler started",
+		"workers", s.cfg.Workers,
+		"interval", s.cfg.Interval,
+		"queueSize", s.cfg.QueueSize,
+	)
+
+	// start workers
+	for i := 0; i < s.cfg.Workers; i++ {
+		s.wgWorkers.Add(1)
+		go s.worker(i)
+	}
+
+	// start producer loop
+	s.ticker = time.NewTicker(s.cfg.Interval)
+	s.wgLoop.Add(1)
+	go s.loop()
+
 	return nil
 }
 
 func (s *Scheduler) Stop() error {
 	s.logger.Info("Scheduler stopping...")
-	s.ticker.Stop()
-	s.done <- true
+	s.cancel()
+	if s.ticker != nil {
+		s.ticker.Stop()
+	}
+	s.wgLoop.Wait()
+	close(s.queue)
+	s.wgWorkers.Wait()
+	s.logger.Info("Scheduler stopped.")
 	return nil
 }
 
-func (s *Scheduler) processAlerts() {
-	s.logger.Info("Processing alerts...")
-	unSentAlerts, err := s.repo.GetUnsentAlerts()
+func (s *Scheduler) loop() {
+	defer s.wgLoop.Done()
+	for {
+		select {
+		case <-s.ctx.Done():
+			return
+		case <-s.ticker.C:
+			s.fetchAndEnqueue()
+		}
+	}
+}
+
+func (s *Scheduler) fetchAndEnqueue() {
+	s.logger.Debug("Fetching unsent alerts...")
+	unsent, err := s.repo.GetUnsentAlerts()
 	if err != nil {
 		s.logger.Errorw("Error getting unsent alerts", "error", err)
+		return
+	}
+	for _, al := range unsent {
+		select {
+		case s.queue <- al:
+		case <-s.ctx.Done():
+			return
+		}
+	}
+}
+
+func (s *Scheduler) worker(id int) {
+	defer s.wgWorkers.Done()
+	for al := range s.queue {
+		if err := s.handleAlert(al); err != nil {
+			s.logger.Errorw("Failed processing alert", "worker", id, "alert", al, "error", err)
+		}
+	}
+}
+
+func (s *Scheduler) handleAlert(al alerts.Alert) error {
+	alertID, err := s.repo.GetUnsentAlertID(al)
+	if err != nil {
+		return err
 	}
 
-	// Send notifications
-	for _, al := range unSentAlerts {
-		alertID, err := s.repo.GetUnsentAlertID(al)
-		if err != nil {
-			s.logger.Errorw("Error getting unsent alert ID", "alertID", al, "error", err)
-			break
-		}
-		msg := notifications.Message{
-			Subject:   al.Name,
-			Message:   al.Description,
-			Receptors: []string{al.Receptor}, // It could be a list of groups
-		}
-		_, err = s.smsProvider.Send(msg)
-		if err != nil {
-			s.logger.Errorw("Error sending alert to sms", "error", err)
-			continue
-		}
-		// After sending, update DB
-		err = s.repo.MarkAlertAsSent(alertID)
-		if err != nil {
-			s.logger.Errorw("Error marking alert as sent", "alertID", al, "error", err)
-		}
+	msg := notifications.Message{
+		Subject:   al.Name,
+		Message:   al.Description,
+		Receptors: []string{al.Receptor},
 	}
+	if _, err := s.smsProvider.Send(msg); err != nil {
+		return err
+	}
+	return s.repo.MarkAlertAsSent(alertID)
 }
