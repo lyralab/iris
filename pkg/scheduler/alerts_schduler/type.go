@@ -26,7 +26,7 @@ func NewScheduler(repo alerts.AlertRepository, smsProvider notifications.Notific
 
 func (s *Scheduler) Start() error {
 	s.logger.Info("Alert Scheduler started...")
-	s.ticker = time.NewTicker(5 * time.Second)
+	s.ticker = time.NewTicker(10 * time.Second)
 	go func() {
 		for {
 			select {

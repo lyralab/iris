@@ -81,18 +81,18 @@ func (s *CacheReceptor) setMobilesOnCache() {
 
 	s.Logger.Info("Starting Cache Receptors Service")
 
-	gn, err := s.Repository.GetGroupNumbers()
+	gn, err := s.Repository.GetGroupsNumbers()
 	if err != nil {
 		s.Logger.Errorw("Failed to get group numbers", "error", err)
 		return
 	}
+	s.Logger.Info("length group numbers", "length", len(gn))
 	for _, group := range gn {
 		s.Logger.Infow("Group with mobiles",
 			"group_id", group.GroupID,
 			"group_name", group.GroupName,
 			"mobiles", group.Mobiles)
 		mobiles := []string(group.Mobiles)
-		s.Cache.Delete("mobiles_" + group.GroupName)
 		if err := s.Cache.Set("mobiles_"+group.GroupName, mobiles, 0); err != nil {
 			s.Logger.Errorw("Failed to set mobiles in cache",
 				"group_id", group.GroupName,
@@ -103,50 +103,23 @@ func (s *CacheReceptor) setMobilesOnCache() {
 
 }
 
-func (s *CacheReceptor) setMobilesForGroup(name string) ([]string, error) {
-	gn, err := s.Repository.GetGroupNumbers()
-	if err != nil {
-		s.Logger.Errorw("Failed to get group numbers", "error", err)
-		return nil, err
-	}
-
-	for _, group := range gn {
-		if group.GroupName == name {
-			mobiles := []string(group.Mobiles)
-
-			// update cache
-			s.Cache.Delete("mobiles_" + group.GroupName)
-			if err := s.Cache.Set("mobiles_"+group.GroupName, mobiles, 0); err != nil {
-				s.Logger.Errorw("Failed to set mobiles in cache",
-					"group_id", group.GroupID,
-					"group_name", group.GroupName,
-					"error", err,
-				)
-				return nil, err
-			}
-
-			s.Logger.Infow("Updated cache for group",
-				"group_id", group.GroupID,
-				"group_name", group.GroupName,
-				"mobiles", mobiles,
-			)
-
-			return mobiles, nil
+func (s *CacheReceptor) GetNumbers(name string) ([]string, error) {
+	mobiles, ok := s.Cache.Get("mobiles_" + name)
+	if !ok {
+		g, err := s.Repository.GetGroupsNumbers(name)
+		if err != nil {
+			s.Logger.Errorw("Failed to get group numbers", "error", err)
+			return nil, err
 		}
+		if err := s.Cache.Set("mobiles_"+g[0].GroupName, g[0].Mobiles, 0); err != nil {
+			s.Logger.Errorw("Failed to set mobiles in cache",
+				"group_id", g[0].GroupName,
+				"error", err)
+			return nil, err
+		}
+		return g[0].Mobiles, nil
 	}
-
-	// group not found
-	return nil, fmt.Errorf("group %s not found", name)
-}
-
-func (s *CacheReceptor) GetNumbers(groupName string) ([]string, error) {
-	// try cache first
-	if nums, ok := s.Cache.Get("mobiles_" + groupName); ok {
-		return nums, nil
-	}
-
-	// if not cached, load from repository
-	return s.setMobilesForGroup(groupName)
+	return mobiles, nil
 }
 
 func (s *CacheReceptor) worker(id int) {
