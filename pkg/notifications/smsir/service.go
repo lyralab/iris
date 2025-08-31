@@ -18,10 +18,12 @@ var (
 	Host = "https://api.sms.ir"
 )
 
+
 func NewSmsirService(apikey string, lineNubner int, logger *zap.SugaredLogger,
 	cacheService cache_receptors.CacheService) notifications.NotificationInterface {
 	client := createAPIHandler(apikey)
 	return &smsirService{Client: client, LineNumber: lineNubner, Logger: logger, cache: cacheService}
+
 }
 
 func (s *smsirService) Send(message notifications.Message) ([]string, error) {
@@ -93,6 +95,14 @@ func createAPIHandler(apikey string) *http.Client {
 
 func (s *smsirService) GetName() string {
 	return "Smsir"
+}
+
+func (s *smsirService) GetFlag() string {
+	return "sms"
+}
+
+func (s *smsirService) GetPriority() int {
+	return s.Priority
 }
 
 func (s *smsirService) Verify() (string, error) {

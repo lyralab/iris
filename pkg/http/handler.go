@@ -160,6 +160,15 @@ func (ht *HttpHandler) Handler() *gin.Engine {
 		rest.GetUsersInGroupHandler(ht.GR, ht.Logger),
 	)
 
+	providerRouter := router.Group("v0/providers")
+	providerRouter.GET("",
+		middlewares.ValidateJWTToken(ht.ATHS, "admin", ht.Logger),
+		rest.GetProvidersHandler(ht.PS))
+	providerRouter.PUT("",
+		middlewares.ValidateJWTToken(ht.ATHS, "admin", ht.Logger),
+		middlewares.CheckContentTypeHeader("application/json", ht.Logger),
+		rest.ModifyProviderHandler(ht.PS))
+
 	router.Use(static.Serve("/", static.LocalFile("./web/build", true)))
 	return router
 }
