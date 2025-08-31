@@ -106,7 +106,7 @@ func (s *Storage) GetUnsentAlerts() ([]alerts.Alert, error) {
 	var results []alerts.Alert
 
 	if err := s.db.Where("send_notif = ?", false).
-		Limit(1). // Limit to 10 rows
+		Limit(3). // Limit to 10 rows
 		Find(&results).Error; err != nil {
 		s.logger.Errorf("failed to fetch unsent alerts: %v", err)
 		return nil, err
