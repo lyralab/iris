@@ -1,12 +1,16 @@
 package postgresql
 
-import "github.com/root-ali/iris/pkg/scheduler/cache_receptors"
+import (
+	"database/sql"
+	"github.com/root-ali/iris/pkg/scheduler/cache_receptors"
+)
 import _ "github.com/lib/pq"
 
-func (s *Storage) GetGroupNumbers() ([]cache_receptors.GroupWithMobiles, error) {
-
+func (s *Storage) GetGroupsNumbers(group ...string) ([]cache_receptors.GroupWithMobiles, error) {
 	var gms []cache_receptors.GroupWithMobiles
-	rows, err := s.db.Raw(`
+	var err error
+	// Prepare SQL query with a conditional WHERE clause.
+	query := `
     SELECT
         g.id   AS group_id,
         g.name AS group_name,
@@ -22,13 +26,30 @@ func (s *Storage) GetGroupNumbers() ([]cache_receptors.GroupWithMobiles, error) 
                        ON u.id = ug.user_id
                            AND u.deleted_at IS NULL
     WHERE g.deleted_at IS NULL
-    GROUP BY g.id, g.name
-    ORDER BY g.name;
-	`).Rows()
+    `
+
+	// If group is not empty, add the condition for group names.
+	if len(group) > 0 {
+		query += `AND g.name IN (?) `
+	}
+
+	query += `GROUP BY g.id, g.name
+			ORDER BY g.name;`
+
+	// If group is provided, pass it as an argument to the query; otherwise, don't pass any argument.
+	var rows *sql.Rows
+	if len(group) > 0 {
+		rows, err = s.db.Raw(query, group).Rows()
+	} else {
+		rows, err = s.db.Raw(query).Rows()
+	}
+
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
+
+	// Read rows and scan data.
 	for rows.Next() {
 		var g cache_receptors.GroupWithMobiles
 		err := rows.Scan(&g.GroupID, &g.GroupName, &g.Mobiles)

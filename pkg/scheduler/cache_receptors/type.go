@@ -12,7 +12,7 @@ import (
 )
 
 type Repository interface {
-	GetGroupNumbers() ([]GroupWithMobiles, error)
+	GetGroupsNumbers(...string) ([]GroupWithMobiles, error)
 	GetGroupEmails() (string, []string, error)
 	GetUserEmail() (string, []string, error)
 	GetUserNumber() (string, []string, error)
