@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/root-ali/iris/pkg/alerts"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 func (s *Storage) AddAlert(alert *alerts.Alert) (int64, error) {
@@ -103,34 +104,71 @@ func (s *Storage) Health() error {
 
 func (s *Storage) GetUnsentAlerts() ([]alerts.Alert, error) {
 	var results []alerts.Alert
-	if err := s.db.
-		Where("send_notif = ?", false).
+
+	if err := s.db.Where("send_notif = ?", false).
+		Limit(1). // Limit to 10 rows
 		Find(&results).Error; err != nil {
 		s.logger.Errorf("failed to fetch unsent alerts: %v", err)
 		return nil, err
 	}
+
 	return results, nil
 }
 
 func (s *Storage) MarkAlertAsSent(alertID string) error {
-	if err := s.db.Model(&alerts.Alert{}).
+	// Start a new transaction
+	tx := s.db.Begin()
+	if tx.Error != nil {
+		return tx.Error
+	}
+
+	// Lock the row for update using FOR UPDATE
+	if err := tx.Model(&alerts.Alert{}).
 		Where("id = ?", alertID).
+		Clauses(clause.Locking{Strength: "UPDATE",
+			Options: "SKIP LOCKED"}). // Lock the row for update
 		Update("send_notif", true).Error; err != nil {
+		// Log the error and rollback transaction in case of failure
 		s.logger.Errorf("failed to update send_notif for alert %s: %v", alertID, err)
+		tx.Rollback()
 		return err
 	}
+
+	// Commit the transaction to release the lock
+	if err := tx.Commit().Error; err != nil {
+		return err
+	}
+
 	return nil
 }
 
 func (s *Storage) GetUnsentAlertID(alert alerts.Alert) (string, error) {
-	if err := s.db.
-		Where("send_notif = ?", false).
+	// Start a new transaction
+	tx := s.db.Begin()
+	if tx.Error != nil {
+		return "", tx.Error
+	}
+
+	// Lock the row using `FOR UPDATE`
+	if err := tx.Where("send_notif = ?", false).Clauses(clause.Locking{Strength: "UPDATE",
+		Options: "SKIP LOCKED"}).
 		First(&alert).Error; err != nil {
+		// If no record is found, return nil
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return "", nil
 		}
+		// Log and return the error if any occurs during the fetching process
 		s.logger.Errorf("failed to fetch unsent alert ID: %v", err)
+		// Rollback transaction in case of an error
+		tx.Rollback()
 		return "", err
 	}
+
+	// Commit the transaction to release the lock
+	if err := tx.Commit().Error; err != nil {
+		return "", err
+	}
+
+	// Return the ID of the alert
 	return alert.Id, nil
 }
