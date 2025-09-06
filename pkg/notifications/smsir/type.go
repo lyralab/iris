@@ -9,7 +9,7 @@ import (
 
 type smsirService struct {
 	Client     *http.Client
-	LineNumber int
+	LineNumber string
 	Priority   int
 	Logger     *zap.SugaredLogger
 	cache      cache_receptors.CacheService

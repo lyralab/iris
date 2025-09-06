@@ -1,4 +1,4 @@
-package alerts_schduler
+package alert
 
 import (
 	"time"
