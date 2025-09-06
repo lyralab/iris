@@ -18,10 +18,10 @@ var (
 	Host = "https://api.sms.ir"
 )
 
-func NewSmsirService(apikey string, lineNumber int, p int, logger *zap.SugaredLogger,
+func NewSmsirService(apikey string, lineNumber string, p int, logger *zap.SugaredLogger,
 	cacheService cache_receptors.CacheService) notifications.NotificationInterface {
 	client := createAPIHandler(apikey)
-	return &smsirService{cache: cacheService,Client: client, Priority: p, LineNumber: lineNumber, Logger: logger}
+	return &smsirService{cache: cacheService, Client: client, Priority: p, LineNumber: lineNumber, Logger: logger}
 }
 
 func (s *smsirService) Send(message notifications.Message) ([]string, error) {
@@ -33,10 +33,11 @@ func (s *smsirService) Send(message notifications.Message) ([]string, error) {
 		}
 		sendGroupNumbers = append(sendGroupNumbers, nums...)
 	}
+	lineNumber, _ := strconv.Atoi(s.LineNumber)
 	requestBody := SendSMSRequestBody{
 		Mobiles:     sendGroupNumbers,
 		MessageText: message.Message,
-		LineNumber:  s.LineNumber,
+		LineNumber:  lineNumber,
 	}
 
 	rbj, err := json.Marshal(requestBody)
