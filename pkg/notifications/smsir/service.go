@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/root-ali/iris/pkg/scheduler/cache_receptors"
 	"io"
 	"net/http"
 	"strconv"
 	"time"
+
+	"github.com/root-ali/iris/pkg/scheduler/cache_receptors"
 
 	"github.com/root-ali/iris/pkg/notifications"
 	"go.uber.org/zap"
@@ -19,12 +20,12 @@ var (
 )
 
 func NewSmsirService(apikey string, lineNumber string, p int, logger *zap.SugaredLogger,
-	cacheService cache_receptors.CacheService) notifications.NotificationInterface {
+	cacheService cache_receptors.CacheService) *SmsirService {
 	client := createAPIHandler(apikey)
-	return &smsirService{cache: cacheService, Client: client, Priority: p, LineNumber: lineNumber, Logger: logger}
+	return &SmsirService{cache: cacheService, Client: client, Priority: p, LineNumber: lineNumber, Logger: logger}
 }
 
-func (s *smsirService) Send(message notifications.Message) ([]string, error) {
+func (s *SmsirService) Send(message notifications.Message) ([]string, error) {
 	var sendGroupNumbers []string
 	for _, group := range message.Receptors {
 		nums, err := s.cache.GetNumbers(group)
@@ -70,7 +71,7 @@ func (s *smsirService) Send(message notifications.Message) ([]string, error) {
 	return nil, nil
 }
 
-func (s *smsirService) Status(string) (notifications.MessageStatusType, error) {
+func (s *SmsirService) Status(string) (notifications.MessageStatusType, error) {
 	var messageStatus notifications.MessageStatusType
 
 	return messageStatus, nil
@@ -92,19 +93,19 @@ func createAPIHandler(apikey string) *http.Client {
 	return client
 }
 
-func (s *smsirService) GetName() string {
+func (s *SmsirService) GetName() string {
 	return "Smsir"
 }
 
-func (s *smsirService) GetFlag() string {
+func (s *SmsirService) GetFlag() string {
 	return "sms"
 }
 
-func (s *smsirService) GetPriority() int {
+func (s *SmsirService) GetPriority() int {
 	return s.Priority
 }
 
-func (s *smsirService) Verify() (string, error) {
+func (s *SmsirService) Verify() (string, error) {
 	req, _ := http.NewRequest("GET", Host+"/v1/credit", nil)
 	resp, err := s.Client.Do(req)
 	if err != nil {
