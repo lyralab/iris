@@ -2,12 +2,14 @@ package bootstrap
 
 import (
 	"fmt"
+
 	"github.com/gin-gonic/gin"
 	"github.com/root-ali/iris/internal/config"
 	"github.com/root-ali/iris/internal/logging"
 	"github.com/root-ali/iris/internal/schedulers"
 	"github.com/root-ali/iris/internal/server"
 	"github.com/root-ali/iris/internal/storage"
+	"github.com/root-ali/iris/pkg/cache"
 
 	"github.com/root-ali/iris/pkg/notifications"
 	"github.com/root-ali/iris/pkg/notifications/kavenegar"
@@ -80,9 +82,6 @@ func Init(cfg *config.Config) (*App, error) {
 		} else {
 			logger.Infow("smsir verified", "response", v)
 		}
-		err = schedulers.StartAlertScheduler(logger, repos.Postgres, smsirSvc, cfg.Scheduler.AlertScheduler.Interval,
-			cfg.Scheduler.AlertScheduler.Workers, cfg.Scheduler.AlertScheduler.QueueSize)
-
 		if err != nil {
 			logger.Errorw("alert scheduler start failed", "error", err)
 			return nil, err
@@ -105,7 +104,8 @@ func Init(cfg *config.Config) (*App, error) {
 	}
 
 	// provider registry
-	ps := notifications.NewProvidersService(repos.Postgres, logger)
+	providerCache := cache.New[string, *[]notifications.Providers](logger, cache.WithCapacity(3))
+	ps := notifications.NewProvidersService(repos.Postgres, allServices, providerCache, logger)
 	for _, p := range allServices {
 		id, err := util.NewUUIDv7()
 		if err != nil {
@@ -125,7 +125,8 @@ func Init(cfg *config.Config) (*App, error) {
 			logger.Infow("provider added", "provider", p.GetName())
 		}
 	}
-
+	err = schedulers.StartAlertScheduler(logger, repos.Postgres, allServices[0], ps, cfg.Scheduler.AlertScheduler.Interval,
+		cfg.Scheduler.AlertScheduler.Workers, cfg.Scheduler.AlertScheduler.QueueSize)
 	// HTTP router (and default data bootstraps like roles/admin)
 	router := server.RegisterRoutes(server.Deps{
 		Logger:          logger,
