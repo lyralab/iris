@@ -8,9 +8,9 @@ import (
 	"go.uber.org/zap"
 )
 
-func NewKavenegarService(apiToken string, p int, sender string, logger *zap.SugaredLogger) notifications.NotificationInterface {
+func NewKavenegarService(apiToken string, p int, sender string, logger *zap.SugaredLogger) *KavenegarService {
 	api := kn.New(apiToken)
-	return &kavenegarService{
+	return &KavenegarService{
 		API:      api,
 		Sender:   sender,
 		Priority: p,
@@ -18,11 +18,11 @@ func NewKavenegarService(apiToken string, p int, sender string, logger *zap.Suga
 	}
 }
 
-func (k *kavenegarService) Send(message notifications.Message) ([]string, error) {
+func (k *KavenegarService) Send(message notifications.Message) ([]string, error) {
 	return k.kavenegarSend(k.Sender, message)
 }
 
-func (k *kavenegarService) Status(messageID string) (notifications.MessageStatusType, error) {
+func (k *KavenegarService) Status(messageID string) (notifications.MessageStatusType, error) {
 	messageIDs := []string{messageID}
 	var messageStatus notifications.MessageStatusType
 	status, err := k.API.Message.Status(messageIDs)
@@ -38,7 +38,7 @@ func (k *kavenegarService) Status(messageID string) (notifications.MessageStatus
 	return messageStatus, nil
 }
 
-func (k *kavenegarService) kavenegarSend(sender string, messages notifications.Message) ([]string, error) {
+func (k *KavenegarService) kavenegarSend(sender string, messages notifications.Message) ([]string, error) {
 	resp, err := k.API.Message.Send("", messages.Receptors, messages.Message, nil)
 	if err != nil {
 		return nil, err
@@ -50,7 +50,7 @@ func (k *kavenegarService) kavenegarSend(sender string, messages notifications.M
 	return messageIDs, nil
 }
 
-func (k *kavenegarService) Verify() (string, error) {
+func (k *KavenegarService) Verify() (string, error) {
 	accInfo, err := k.API.Account.Info()
 	if err != nil {
 		k.Logger.Errorw("Failed to get account info", "error", err)
@@ -60,14 +60,14 @@ func (k *kavenegarService) Verify() (string, error) {
 	return strconv.Itoa(accInfo.Remaincredit), nil
 }
 
-func (k *kavenegarService) GetName() string {
+func (k *KavenegarService) GetName() string {
 	return "Kavenegar"
 }
 
-func (k *kavenegarService) GetFlag() string {
+func (k *KavenegarService) GetFlag() string {
 	return "sms"
 }
 
-func (k *kavenegarService) GetPriority() int {
+func (k *KavenegarService) GetPriority() int {
 	return k.Priority
 }
