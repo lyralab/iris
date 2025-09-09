@@ -3,6 +3,7 @@ package notifications
 import (
 	"time"
 
+	"github.com/root-ali/iris/pkg/cache"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
@@ -33,6 +34,11 @@ type ProviderServiceInterface interface {
 	GetProviderByName(name string) (*Providers, error)
 	GetProviderByID(id string) (*Providers, error)
 	GetAllProviders() ([]Providers, error)
+}
+
+type ProviderStatusInterface interface {
+	GetActiveProviders() ([]Providers, error)
+	GetProvidersPriority() ([]Providers, error)
 }
 
 type Providers struct {
@@ -67,7 +73,9 @@ var MessageStatusMap = map[MessageStatusType]string{
 	TypeMessageStatusDelivered: "Delivered",
 }
 
-type providerService struct {
+type ProviderService struct {
 	repo   ProviderRepositryInterface
+	cache  cache.Interface[string, *[]Providers]
+	ns     []NotificationInterface
 	Logger *zap.SugaredLogger
 }
