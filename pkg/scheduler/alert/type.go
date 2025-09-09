@@ -19,6 +19,7 @@ type SchedulerConfig struct {
 type Scheduler struct {
 	// deps
 	smsProvider notifications.NotificationInterface
+	provider    notifications.ProviderStatusInterface
 	repo        alerts.AlertRepository
 	logger      *zap.SugaredLogger
 
@@ -37,6 +38,7 @@ type Scheduler struct {
 func NewScheduler(
 	repo alerts.AlertRepository,
 	smsProvider notifications.NotificationInterface,
+	provider notifications.ProviderStatusInterface,
 	logger *zap.SugaredLogger,
 	cfg SchedulerConfig,
 ) *Scheduler {
@@ -54,6 +56,7 @@ func NewScheduler(
 	return &Scheduler{
 		repo:        repo,
 		smsProvider: smsProvider,
+		provider:    provider,
 		logger:      logger,
 		cfg:         cfg,
 		ctx:         ctx,

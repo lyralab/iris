@@ -1,6 +1,7 @@
 package alert
 
 import (
+	"errors"
 	"time"
 
 	"github.com/root-ali/iris/pkg/alerts"
@@ -89,8 +90,33 @@ func (s *Scheduler) handleAlert(al alerts.Alert) error {
 		Message:   al.Description,
 		Receptors: []string{al.Receptor},
 	}
-	if _, err := s.smsProvider.Send(msg); err != nil {
+	provider, err := s.getProvider(al.Method, 0)
+	if err != nil {
+		s.logger.Errorw("Failed to get provider", "error", err)
+		return err
+	}
+	_, err = provider.Send(msg)
+	if err != nil {
+		s.logger.Errorw("Failed to send alert via provider",
+			"provider", provider.GetName(), "error", err)
 		return err
 	}
 	return s.repo.MarkAlertAsSent(alertID)
+}
+
+func (s *Scheduler) getProvider(flag string, _ int) (notifications.NotificationInterface, error) {
+	s.logger.Debugw("Fetching provider for flag", "flag", flag)
+	providers, err := s.provider.GetProvidersPriority()
+	if err != nil {
+		s.logger.Errorw("Failed to get providers", "error", err)
+		return nil, err
+	}
+	for _, p := range providers {
+		if p.Status == true && p.Flag == flag {
+			s.logger.Debugw("Found active provider", "name", p.Name, "flag", flag)
+			return p.Provider, nil
+		}
+	}
+	s.logger.Warnw("No active provider found for flag", "flag", flag)
+	return notifications.NotificationInterface(nil), errors.New("no active provider found")
 }
