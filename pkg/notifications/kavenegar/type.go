@@ -5,7 +5,7 @@ import (
 	"go.uber.org/zap"
 )
 
-type kavenegarService struct {
+type KavenegarService struct {
 	API      *kn.Kavenegar
 	Sender   string
 	Priority int

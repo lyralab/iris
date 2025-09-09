@@ -1,13 +1,14 @@
 package smsir
 
 import (
-	"github.com/root-ali/iris/pkg/scheduler/cache_receptors"
 	"net/http"
+
+	"github.com/root-ali/iris/pkg/scheduler/cache_receptors"
 
 	"go.uber.org/zap"
 )
 
-type smsirService struct {
+type SmsirService struct {
 	Client     *http.Client
 	LineNumber string
 	Priority   int
