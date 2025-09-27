@@ -56,16 +56,18 @@ func Init(cfg *config.Config) (*App, error) {
 	// notifications (providers + schedulers)
 	allServices := make([]notifications.NotificationInterface, 0, 2)
 
+	// Start cache receptors
+	cr, err := schedulers.StartCacheReceptors(
+		logger,
+		repos.Postgres,
+		cfg.Scheduler.MobileScheduler.StartAt,
+		cfg.Scheduler.MobileScheduler.Interval,
+		cfg.Scheduler.MobileScheduler.Workers,
+		cfg.Scheduler.MobileScheduler.QueueSize,
+		cfg.Scheduler.MobileScheduler.CacheCapacity,
+	)
+
 	if cfg.Notifications.Smsir.Enabled {
-		cr, err := schedulers.StartCacheReceptors(
-			logger,
-			repos.Postgres,
-			cfg.Scheduler.MobileScheduler.StartAt,
-			cfg.Scheduler.MobileScheduler.Interval,
-			cfg.Scheduler.MobileScheduler.Workers,
-			cfg.Scheduler.MobileScheduler.QueueSize,
-			cfg.Scheduler.MobileScheduler.CacheCapacity,
-		)
 		if err != nil {
 			logger.Errorw("cache receptors start failed", "error", err)
 		}
@@ -94,6 +96,7 @@ func Init(cfg *config.Config) (*App, error) {
 			cfg.Notifications.Kavenegar.Priority,
 			cfg.Notifications.Kavenegar.Sender,
 			logger,
+			cr,
 		)
 		allServices = append(allServices, kv)
 		if v, err := kv.Verify(); err != nil {
