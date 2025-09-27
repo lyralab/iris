@@ -80,11 +80,6 @@ func (s *Scheduler) worker(id int) {
 }
 
 func (s *Scheduler) handleAlert(al alerts.Alert) error {
-	alertID, err := s.repo.GetUnsentAlertID(al)
-	if err != nil {
-		return err
-	}
-
 	msg := notifications.Message{
 		Subject:   al.Name,
 		Message:   al.Description,
@@ -101,7 +96,7 @@ func (s *Scheduler) handleAlert(al alerts.Alert) error {
 			"provider", provider.GetName(), "error", err)
 		return err
 	}
-	return s.repo.MarkAlertAsSent(alertID)
+	return s.repo.MarkAlertAsSent(al.Id)
 }
 
 func (s *Scheduler) getProvider(flag string, _ int) (notifications.NotificationInterface, error) {
