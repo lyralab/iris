@@ -2,15 +2,16 @@ package postgresql
 
 import (
 	"context"
+	"os"
+	"sync"
+	"testing"
+	"time"
+
 	"github.com/root-ali/iris/pkg/alerts"
 	"go.uber.org/zap"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
-	"os"
-	"sync"
-	"testing"
-	"time"
 )
 
 type testLogger struct{ t *testing.T }
@@ -94,16 +95,7 @@ func TestConcurrentWorkers_ProcessQueueWithoutDuplicates(t *testing.T) {
 			default:
 			}
 			var a alerts.Alert
-			id, err := s.GetUnsentAlertID(a)
-			if err != nil {
-				// transient tx error; backoff and retry a bit
-				time.Sleep(20 * time.Millisecond)
-				continue
-			}
-			if id == "" { // nothing left
-				return
-			}
-			if err := s.MarkAlertAsSent(id); err != nil {
+			if err := s.MarkAlertAsSent(a.Id); err != nil {
 				// retry path (very unlikely with proper locking)
 				time.Sleep(20 * time.Millisecond)
 				continue
