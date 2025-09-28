@@ -29,13 +29,13 @@ type Notifications struct {
 		ApiKey     string `env:"SMSIR_API_TOKEN"`
 		LineNumber string `env:"SMSIR_LINE_NUMBER" envDefault:"30007732911486"`
 		Enabled    bool   `env:"SMSIR_ENABLED" envDefault:"false"`
-		Priority   int    `env:"SMSIR_PRIORITY" envDefault:"1"`
+		Priority   int    `env:"SMSIR_PRIORITY" envDefault:"2"`
 	}
 	Kavenegar struct {
 		ApiToken string `env:"KAVENEGAR_API_TOKEN"`
 		Sender   string `env:"KAVENEGAR_SENDER" envDefault:""`
 		Enabled  bool   `env:"KAVENEGAR_ENABLED" envDefault:"false"`
-		Priority int    `env:"KAVENEGAR_PRIORITY" envDefault:"2"`
+		Priority int    `env:"KAVENEGAR_PRIORITY" envDefault:"1"`
 	}
 	Email struct {
 		Host     string `env:"EMAIL_HOST"`

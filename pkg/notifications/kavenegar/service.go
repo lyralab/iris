@@ -34,6 +34,12 @@ func (k *KavenegarService) Status(messageID string) (notifications.MessageStatus
 	for _, s := range status {
 		if s.Status == 10 {
 			messageStatus = notifications.TypeMessageStatusDelivered
+		} else if s.Status == 11 {
+			messageStatus = notifications.TypeMessageStatusUndelivered
+		} else if s.Status == 6 {
+			messageStatus = notifications.TypeMessageStatusFailed
+		} else if s.Status == 4 || s.Status == 5 {
+			messageStatus = notifications.TypeMessageStatusSent
 		}
 
 	}
