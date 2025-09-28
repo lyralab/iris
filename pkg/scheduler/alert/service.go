@@ -4,6 +4,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/avast/retry-go"
 	"github.com/root-ali/iris/pkg/alerts"
 	"github.com/root-ali/iris/pkg/notifications"
 )
@@ -90,10 +91,47 @@ func (s *Scheduler) handleAlert(al alerts.Alert) error {
 		s.logger.Errorw("Failed to get provider", "error", err)
 		return err
 	}
-	_, err = provider.Send(msg)
+	// Retry attempts
+	retry.DefaultAttempts = 3
+	// Retry Delay
+	retry.DefaultDelay = 2 * time.Second
+	err = retry.Do(
+		func() error {
+			mesgIDs, err := provider.Send(msg)
+			for _, mesgID := range mesgIDs {
+				status, err := provider.Status(mesgID)
+
+				if err != nil {
+					s.logger.Errorw("Failed to get message status", "error", err)
+					return err
+				}
+
+				if status == notifications.TypeMessageStatusFailed {
+					s.logger.Errorw("Message status is failed", "status", status)
+					return errors.New("message status is failed")
+				} else if status == notifications.TypeMessageStatusUndelivered {
+					s.logger.Errorw("Message status is undelivered", "status", status)
+					return errors.New("message status is undelivered")
+				} else if status == notifications.TypeMessageStatusDelivered {
+					s.logger.Infow("Message status is delivered", "status", status)
+					return nil
+				} else if status == notifications.TypeMessageStatusSent {
+					s.logger.Infow("Message status is sent", "status", status)
+					return nil
+				}
+			}
+
+			if err != nil {
+				s.logger.Errorw("Failed to send alert via provider",
+					"provider", provider.GetName(), "error", err)
+				return err
+			}
+			return nil
+		},
+	)
 	if err != nil {
-		s.logger.Errorw("Failed to send alert via provider",
-			"provider", provider.GetName(), "error", err)
+		s.logger.Errorw("Retry got limited with provider: ", "provider",
+			provider.GetName(), "error", err)
 		return err
 	}
 	return s.repo.MarkAlertAsSent(al.Id)
