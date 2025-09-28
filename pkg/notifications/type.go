@@ -62,15 +62,17 @@ type Message struct {
 type MessageStatusType int
 
 const (
-	TypeMessageStatusSent      MessageStatusType = 1
-	TypeMessageStatusFailed    MessageStatusType = 0
-	TypeMessageStatusDelivered MessageStatusType = 10
+	TypeMessageStatusSent        MessageStatusType = 1
+	TypeMessageStatusFailed      MessageStatusType = 6
+	TypeMessageStatusDelivered   MessageStatusType = 10
+	TypeMessageStatusUndelivered MessageStatusType = 11
 )
 
 var MessageStatusMap = map[MessageStatusType]string{
-	TypeMessageStatusSent:      "Sent",
-	TypeMessageStatusFailed:    "Failed",
-	TypeMessageStatusDelivered: "Delivered",
+	TypeMessageStatusSent:        "Sent",
+	TypeMessageStatusFailed:      "Failed",
+	TypeMessageStatusDelivered:   "Delivered",
+	TypeMessageStatusUndelivered: "Undelivered",
 }
 
 type ProviderService struct {
