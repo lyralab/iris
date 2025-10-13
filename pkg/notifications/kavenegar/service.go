@@ -5,18 +5,16 @@ import (
 
 	kn "github.com/kavenegar/kavenegar-go"
 	"github.com/root-ali/iris/pkg/notifications"
-	"github.com/root-ali/iris/pkg/scheduler/cache_receptors"
 	"go.uber.org/zap"
 )
 
-func NewKavenegarService(apiToken string, p int, sender string, logger *zap.SugaredLogger, cache cache_receptors.CacheService) *KavenegarService {
+func NewKavenegarService(apiToken string, p int, sender string, logger *zap.SugaredLogger) *KavenegarService {
 	api := kn.New(apiToken)
 	return &KavenegarService{
 		API:      api,
 		Sender:   sender,
 		Priority: p,
 		Logger:   logger,
-		cache:    cache,
 	}
 }
 
@@ -47,15 +45,8 @@ func (k *KavenegarService) Status(messageID string) (notifications.MessageStatus
 }
 
 func (k *KavenegarService) kavenegarSend(sender string, messages notifications.Message) ([]string, error) {
-	var sendGroupNumbers []string
-	for _, group := range messages.Receptors {
-		nums, err := k.cache.GetNumbers(group)
-		if err != nil {
-			return nil, err
-		}
-		sendGroupNumbers = append(sendGroupNumbers, nums...)
-	}
-	resp, err := k.API.Message.Send("", sendGroupNumbers, messages.Message, nil)
+
+	resp, err := k.API.Message.Send("", messages.Receptors, messages.Message, nil)
 	if err != nil {
 		return nil, err
 	}
