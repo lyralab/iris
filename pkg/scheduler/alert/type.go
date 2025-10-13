@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/root-ali/iris/pkg/alerts"
+	"github.com/root-ali/iris/pkg/cache"
 	"github.com/root-ali/iris/pkg/notifications"
 	"go.uber.org/zap"
 )
@@ -16,12 +17,17 @@ type SchedulerConfig struct {
 	QueueSize int
 }
 
+type ReceptorInterface interface {
+	GetNumbers(group string) ([]string, error)
+}
+
 type Scheduler struct {
-	// deps
-	smsProvider notifications.NotificationInterface
-	provider    notifications.ProviderStatusInterface
-	repo        alerts.AlertRepository
-	logger      *zap.SugaredLogger
+	// dependencies
+	cache        cache.Interface[string, []string]
+	receptorRepo ReceptorInterface
+	provider     notifications.ProviderStatusInterface
+	repo         alerts.AlertRepository
+	logger       *zap.SugaredLogger
 
 	// config
 	cfg SchedulerConfig
@@ -36,8 +42,9 @@ type Scheduler struct {
 }
 
 func NewScheduler(
+	c cache.Interface[string, []string],
+	receptorRepo ReceptorInterface,
 	repo alerts.AlertRepository,
-	smsProvider notifications.NotificationInterface,
 	provider notifications.ProviderStatusInterface,
 	logger *zap.SugaredLogger,
 	cfg SchedulerConfig,
@@ -54,13 +61,14 @@ func NewScheduler(
 
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Scheduler{
-		repo:        repo,
-		smsProvider: smsProvider,
-		provider:    provider,
-		logger:      logger,
-		cfg:         cfg,
-		ctx:         ctx,
-		cancel:      cancel,
-		queue:       make(chan alerts.Alert, cfg.QueueSize),
+		cache:        c,
+		receptorRepo: receptorRepo,
+		repo:         repo,
+		provider:     provider,
+		logger:       logger,
+		cfg:          cfg,
+		ctx:          ctx,
+		cancel:       cancel,
+		queue:        make(chan alerts.Alert, cfg.QueueSize),
 	}
 }

@@ -9,8 +9,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/root-ali/iris/pkg/scheduler/cache_receptors"
-
 	"github.com/root-ali/iris/pkg/notifications"
 	"go.uber.org/zap"
 )
@@ -19,24 +17,15 @@ var (
 	Host = "https://api.sms.ir"
 )
 
-func NewSmsirService(apikey string, lineNumber string, p int, logger *zap.SugaredLogger,
-	cacheService cache_receptors.CacheService) *SmsirService {
+func NewSmsirService(apikey string, lineNumber string, p int, logger *zap.SugaredLogger) *SmsirService {
 	client := createAPIHandler(apikey)
-	return &SmsirService{cache: cacheService, Client: client, Priority: p, LineNumber: lineNumber, Logger: logger}
+	return &SmsirService{Client: client, Priority: p, LineNumber: lineNumber, Logger: logger}
 }
 
 func (s *SmsirService) Send(message notifications.Message) ([]string, error) {
-	var sendGroupNumbers []string
-	for _, group := range message.Receptors {
-		nums, err := s.cache.GetNumbers(group)
-		if err != nil {
-			return nil, err
-		}
-		sendGroupNumbers = append(sendGroupNumbers, nums...)
-	}
 	lineNumber, _ := strconv.Atoi(s.LineNumber)
 	requestBody := SendSMSRequestBody{
-		Mobiles:     sendGroupNumbers,
+		Mobiles:     message.Receptors,
 		MessageText: message.Message,
 		LineNumber:  lineNumber,
 	}
