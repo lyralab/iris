@@ -48,13 +48,11 @@ func (s *CacheReceptor) Start() error {
 	s.ctx, s.cancel = context.WithCancel(context.Background())
 	s.taskCh = make(chan struct{}, s.conf.QueueSize)
 
-	// Start workers.
 	for i := 0; i < s.conf.Workers; i++ {
 		s.wg.Add(1)
 		go s.worker(i)
 	}
 
-	// Start scheduling loop.
 	go s.run()
 
 	return nil
@@ -75,6 +73,71 @@ func (s *CacheReceptor) Stop() error {
 	}
 	s.wg.Wait()
 	return nil
+}
+
+func (s *CacheReceptor) worker(id int) {
+	defer s.wg.Done()
+	for {
+		select {
+		case <-s.ctx.Done():
+			return
+		case _, ok := <-s.taskCh:
+			if !ok {
+				return
+			}
+			s.Logger.Infow("Starting worker job", "id", id)
+			s.safeRunJob()
+		}
+	}
+}
+
+func (s *CacheReceptor) run() {
+	if s.conf.StartAt.IsZero() {
+		s.enqueueCache()
+	} else {
+		if d := time.Until(s.conf.StartAt); d > 0 {
+			timer := time.NewTimer(d)
+			select {
+			case <-timer.C:
+			case <-s.ctx.Done():
+				timer.Stop()
+				return
+			}
+		}
+		s.enqueueCache()
+	}
+
+	ticker := time.NewTicker(s.conf.Interval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-s.ctx.Done():
+			return
+		case <-ticker.C:
+			s.enqueueCache()
+		}
+	}
+}
+
+func (s *CacheReceptor) enqueueCache() {
+	for {
+		select {
+		case s.taskCh <- struct{}{}:
+			return
+		case <-s.ctx.Done():
+			return
+		}
+	}
+}
+
+func (s *CacheReceptor) safeRunJob() {
+	defer func() {
+		if r := recover(); r != nil {
+			_ = fmt.Sprintf("panic in job: %v", r)
+		}
+	}()
+	s.setMobilesOnCache()
 }
 
 func (s *CacheReceptor) setMobilesOnCache() {
@@ -120,69 +183,4 @@ func (s *CacheReceptor) GetNumbers(name string) ([]string, error) {
 		return g[0].Mobiles, nil
 	}
 	return mobiles, nil
-}
-
-func (s *CacheReceptor) worker(id int) {
-	defer s.wg.Done()
-	for {
-		select {
-		case <-s.ctx.Done():
-			return
-		case _, ok := <-s.taskCh:
-			if !ok {
-				return
-			}
-			s.safeRunJob()
-		}
-	}
-}
-
-func (s *CacheReceptor) safeRunJob() {
-	defer func() {
-		if r := recover(); r != nil {
-			_ = fmt.Sprintf("panic in job: %v", r)
-		}
-	}()
-	s.setMobilesOnCache()
-}
-
-func (s *CacheReceptor) run() {
-	// Initial start handling
-	if s.conf.StartAt.IsZero() {
-		s.enqueueCache()
-	} else {
-		if d := time.Until(s.conf.StartAt); d > 0 {
-			timer := time.NewTimer(d)
-			select {
-			case <-timer.C:
-			case <-s.ctx.Done():
-				timer.Stop()
-				return
-			}
-		}
-		s.enqueueCache()
-	}
-
-	ticker := time.NewTicker(s.conf.Interval)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-s.ctx.Done():
-			return
-		case <-ticker.C:
-			s.enqueueCache()
-		}
-	}
-}
-
-func (s *CacheReceptor) enqueueCache() {
-	for {
-		select {
-		case s.taskCh <- struct{}{}:
-			return
-		case <-s.ctx.Done():
-			return
-		}
-	}
 }
