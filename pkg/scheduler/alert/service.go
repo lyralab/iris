@@ -81,11 +81,24 @@ func (s *Scheduler) worker(id int) {
 }
 
 func (s *Scheduler) handleAlert(al alerts.Alert) error {
+	var receptors []string
+
+	for _, r := range al.Receptor {
+		cached, err := s.receptorRepo.GetNumbers(r)
+		if err != nil {
+			s.logger.Errorw("Failed to get cached numbers", "receptor", r, "error", err)
+			return err
+		}
+		receptors = append(receptors, cached...)
+		s.logger.Info("Successfully get cached numbers", "receptor", r)
+	}
+
 	msg := notifications.Message{
 		Subject:   al.Name,
 		Message:   al.Description,
-		Receptors: []string{al.Receptor},
+		Receptors: receptors,
 	}
+
 	provider, err := s.getProvider(al.Method, 0)
 	if err != nil {
 		s.logger.Errorw("Failed to get provider", "error", err)

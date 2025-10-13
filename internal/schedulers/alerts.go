@@ -3,6 +3,7 @@ package schedulers
 import (
 	"time"
 
+	"github.com/root-ali/iris/pkg/cache"
 	"github.com/root-ali/iris/pkg/notifications"
 	"github.com/root-ali/iris/pkg/scheduler/alert"
 	"github.com/root-ali/iris/pkg/storage/postgresql"
@@ -12,7 +13,8 @@ import (
 func StartAlertScheduler(
 	logger *zap.SugaredLogger,
 	repos *postgresql.Storage,
-	sms notifications.NotificationInterface,
+	receptor alert.ReceptorInterface,
+	cache cache.Interface[string, []string],
 	provider notifications.ProviderStatusInterface,
 	interval time.Duration,
 	workers, queue int,
@@ -22,6 +24,6 @@ func StartAlertScheduler(
 		Workers:   workers,
 		QueueSize: queue,
 	}
-	a := alert.NewScheduler(repos, sms, provider, logger, cfg)
+	a := alert.NewScheduler(cache, receptor, repos, provider, logger, cfg)
 	return a.Start()
 }

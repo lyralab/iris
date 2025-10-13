@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS alerts (
     ends_at timestamp,
     status VARCHAR(10),
     method VARCHAR(10),
-    receptor VARCHAR(100),
+    receptor VARCHAR(20)[],
     send_notif BOOLEAN DEFAULT FALSE,
     silenced INT DEFAULT 0
 );

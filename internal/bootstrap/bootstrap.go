@@ -76,7 +76,6 @@ func Init(cfg *config.Config) (*App, error) {
 			cfg.Notifications.Smsir.LineNumber,
 			cfg.Notifications.Smsir.Priority,
 			logger,
-			cr,
 		)
 		allServices = append(allServices, smsirSvc)
 		if v, err := smsirSvc.Verify(); err != nil {
@@ -96,7 +95,6 @@ func Init(cfg *config.Config) (*App, error) {
 			cfg.Notifications.Kavenegar.Priority,
 			cfg.Notifications.Kavenegar.Sender,
 			logger,
-			cr,
 		)
 		allServices = append(allServices, kv)
 		if v, err := kv.Verify(); err != nil {
@@ -128,8 +126,11 @@ func Init(cfg *config.Config) (*App, error) {
 			logger.Infow("provider added", "provider", p.GetName())
 		}
 	}
-	err = schedulers.StartAlertScheduler(logger, repos.Postgres, allServices[0], ps, cfg.Scheduler.AlertScheduler.Interval,
+
+	alertCache := cache.New[string, []string](logger, cache.WithCapacity(3))
+	err = schedulers.StartAlertScheduler(logger, repos.Postgres, cr, alertCache, ps, cfg.Scheduler.AlertScheduler.Interval,
 		cfg.Scheduler.AlertScheduler.Workers, cfg.Scheduler.AlertScheduler.QueueSize)
+
 	// HTTP router (and default data bootstraps like roles/admin)
 	router := server.RegisterRoutes(server.Deps{
 		Logger:          logger,
