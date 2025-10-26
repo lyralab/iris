@@ -25,10 +25,12 @@ func (k *KavenegarService) Send(message notifications.Message) ([]string, error)
 func (k *KavenegarService) Status(messageID string) (notifications.MessageStatusType, error) {
 	messageIDs := []string{messageID}
 	var messageStatus notifications.MessageStatusType
+
 	status, err := k.API.Message.Status(messageIDs)
 	if err != nil {
 		return messageStatus, nil
 	}
+	k.Logger.Infow("Kavenegar message status response", "status", status, "messageID", messageID)
 	for _, s := range status {
 		if s.Status == 10 {
 			messageStatus = notifications.TypeMessageStatusDelivered
@@ -39,8 +41,10 @@ func (k *KavenegarService) Status(messageID string) (notifications.MessageStatus
 		} else if s.Status == 4 || s.Status == 5 {
 			messageStatus = notifications.TypeMessageStatusSent
 		}
-
 	}
+	k.Logger.Infow("Kavenegar mapped message status",
+		"mappedStatus", messageStatus,
+		"messageID", messageID)
 	return messageStatus, nil
 }
 

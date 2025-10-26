@@ -34,7 +34,7 @@ type Notifications struct {
 	Kavenegar struct {
 		ApiToken string `env:"KAVENEGAR_API_TOKEN"`
 		Sender   string `env:"KAVENEGAR_SENDER" envDefault:""`
-		Enabled  bool   `env:"KAVENEGAR_ENABLED" envDefault:"false"`
+		Enabled  bool   `env:"KAVENEGAR_ENABLED" envDefault:"true"`
 		Priority int    `env:"KAVENEGAR_PRIORITY" envDefault:"1"`
 	}
 	Email struct {
@@ -49,16 +49,23 @@ type Notifications struct {
 
 type Scheduler struct {
 	MobileScheduler struct {
-		StartAt       time.Duration `env:"MOBILE_SCHEDULER_START_AT" envDefault:"200s"`
+		StartAt       time.Duration `env:"MOBILE_SCHEDULER_START_AT" envDefault:"1s"`
 		Interval      time.Duration `env:"MOBILE_SCHEDULER_INTERVAL" envDefault:"600s"`
 		Workers       int           `env:"MOBILE_SCHEDULER_WORKERS" envDefault:"1"`
 		QueueSize     int           `env:"MOBILE_SCHEDULER_QUEUE_SIZE" envDefault:"1"`
-		CacheCapacity int           `env:"MOBILE_SCHEDULER_CACHE_CAPACITY" envDefault:"1000"`
+		CacheCapacity int           `env:"MOBILE_SCHEDULER_CACHE_CAPACITY" envDefault:"1"`
 	}
 	AlertScheduler struct {
+		StartAt   time.Duration `env:"ALERT_SCHEDULER_START_AT" envDefault:"2s"`
 		Interval  time.Duration `env:"ALERT_SCHEDULER_INTERVAL" envDefault:"10s"`
 		Workers   int           `env:"ALERT_SCHEDULER_WORKERS" envDefault:"1"`
 		QueueSize int           `env:"ALERT_SCHEDULER_QUEUE_SIZE" envDefault:"10"`
+	}
+	MessageStatus struct {
+		StartAt   time.Duration `env:"MESSAGE_STATUS_START_AT" envDefault:"10s"`
+		Interval  time.Duration `env:"MESSAGE_STATUS_INTERVAL" envDefault:"10s"`
+		Workers   int           `env:"MESSAGE_STATUS_WORKERS" envDefault:"10"`
+		QueueSize int           `env:"MESSAGE_STATUS_QUEUE_SIZE" envDefault:"100"`
 	}
 }
 

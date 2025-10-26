@@ -16,6 +16,7 @@ func StartAlertScheduler(
 	receptor alert.ReceptorInterface,
 	cache cache.Interface[string, []string],
 	provider notifications.ProviderStatusInterface,
+	message alert.MessageInterface,
 	interval time.Duration,
 	workers, queue int,
 ) error {
@@ -24,6 +25,7 @@ func StartAlertScheduler(
 		Workers:   workers,
 		QueueSize: queue,
 	}
-	a := alert.NewScheduler(cache, receptor, repos, provider, logger, cfg)
+	a := alert.NewScheduler(cache, receptor, repos, provider, message, logger, cfg)
 	return a.Start()
+	//return nil
 }

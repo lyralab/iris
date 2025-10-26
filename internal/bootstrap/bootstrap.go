@@ -2,6 +2,7 @@ package bootstrap
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/root-ali/iris/internal/config"
@@ -10,6 +11,8 @@ import (
 	"github.com/root-ali/iris/internal/server"
 	"github.com/root-ali/iris/internal/storage"
 	"github.com/root-ali/iris/pkg/cache"
+	"github.com/root-ali/iris/pkg/message"
+	"github.com/root-ali/iris/pkg/scheduler/message_status"
 
 	"github.com/root-ali/iris/pkg/notifications"
 	"github.com/root-ali/iris/pkg/notifications/kavenegar"
@@ -106,13 +109,13 @@ func Init(cfg *config.Config) (*App, error) {
 
 	// provider registry
 	providerCache := cache.New[string, *[]notifications.Providers](logger, cache.WithCapacity(3))
-	ps := notifications.NewProvidersService(repos.Postgres, allServices, providerCache, logger)
+	providerService := notifications.NewProvidersService(repos.Postgres, allServices, providerCache, logger)
 	for _, p := range allServices {
 		id, err := util.NewUUIDv7()
 		if err != nil {
 			return nil, err
 		}
-		if err := ps.AddProvider(&notifications.Providers{
+		if err := providerService.AddProvider(&notifications.Providers{
 			ID:          id,
 			Name:        p.GetName(),
 			Description: fmt.Sprintf("%s provider", p.GetName()),
@@ -127,9 +130,37 @@ func Init(cfg *config.Config) (*App, error) {
 		}
 	}
 
+	messageService := message.NewService(repos.Postgres, logger)
+
 	alertCache := cache.New[string, []string](logger, cache.WithCapacity(3))
-	err = schedulers.StartAlertScheduler(logger, repos.Postgres, cr, alertCache, ps, cfg.Scheduler.AlertScheduler.Interval,
-		cfg.Scheduler.AlertScheduler.Workers, cfg.Scheduler.AlertScheduler.QueueSize)
+	err = schedulers.StartAlertScheduler(logger,
+		repos.Postgres,
+		cr,
+		alertCache,
+		providerService,
+		messageService,
+		cfg.Scheduler.AlertScheduler.Interval,
+		cfg.Scheduler.AlertScheduler.Workers,
+		cfg.Scheduler.AlertScheduler.QueueSize)
+
+	messageStatusConfig := message_status.Config{
+		StartAt:   time.Now().Add(10 * time.Second),
+		Interval:  10 * time.Second,
+		Workers:   10,
+		QueueSize: 100,
+	}
+	messageStatusScheduler, err := message_status.NewMessageStatusMessageService(
+		messageService,
+		providerService,
+		messageStatusConfig,
+		logger)
+	if err != nil {
+		return nil, fmt.Errorf("message status scheduler init: %w", err)
+	}
+	err = messageStatusScheduler.Start()
+	if err != nil {
+		return nil, fmt.Errorf("message status scheduler start: %w", err)
+	}
 
 	// HTTP router (and default data bootstraps like roles/admin)
 	router := server.RegisterRoutes(server.Deps{
@@ -137,7 +168,7 @@ func Init(cfg *config.Config) (*App, error) {
 		Repos:           repos.Postgres,
 		JWTSecret:       []byte(cfg.JwtSecret),
 		SignupEnabled:   cfg.SignupEnabled,
-		ProviderService: ps,
+		ProviderService: providerService,
 		AdminPass:       cfg.HTTP.AdminPass,
 		GinMode:         cfg.Go.Mode, // reuse
 	})
@@ -145,7 +176,7 @@ func Init(cfg *config.Config) (*App, error) {
 	return &App{
 		Logger:          logger,
 		Repos:           repos,
-		ProviderService: ps,
+		ProviderService: providerService,
 		Services:        allServices,
 		Router:          router,
 	}, nil
