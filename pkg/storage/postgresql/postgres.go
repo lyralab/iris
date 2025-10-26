@@ -67,3 +67,12 @@ func NewZapWriter(sugar *zap.SugaredLogger) logger.Writer {
 func (w *zapWriter) Printf(message string, data ...interface{}) {
 	w.sugar.Debugf(message, data...)
 }
+
+func (s *Storage) Health() error {
+	err := s.db.Raw("select 1").Error
+	if err != nil {
+		s.logger.Error("Error in getting connection from database", err)
+		return err
+	}
+	return nil
+}

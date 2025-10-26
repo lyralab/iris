@@ -1,7 +1,10 @@
 package postgresql
 
 import (
+	"context"
 	"errors"
+	"time"
+
 	"github.com/root-ali/iris/pkg/alerts"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -93,24 +96,25 @@ func (s *Storage) AlertsBySeverity() ([]*alerts.AlertsBySeverity, error) {
 	return als, nil
 }
 
-func (s *Storage) Health() error {
-	err := s.db.Raw("select 1").Error
-	if err != nil {
-		s.logger.Error("Error in getting connection from database", err)
-		return err
-	}
-	return nil
-}
-
 func (s *Storage) GetUnsentAlerts() ([]alerts.Alert, error) {
-	var results []alerts.Alert
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 
-	if err := s.db.Where("send_notif = ?", false).
-		Limit(3). // Limit to 10 rows
-		Find(&results).Error; err != nil {
-		s.logger.Errorf("failed to fetch unsent alerts: %v", err)
-		return nil, err
+	als := make([]alerts.Alert, 0)
+
+	result := s.db.Table("alerts").
+		Where("send_notif = ?", false).
+		WithContext(ctx).
+		Find(&als)
+
+	if result.Error != nil {
+		s.logger.Error("Error fetching unsent alerts from database:", result.Error)
+		return nil, result.Error
 	}
+
+	s.logger.Infof("Fetched %d unsent alerts", len(als))
+	results := make([]alerts.Alert, len(als))
+	copy(results, als)
 
 	return results, nil
 }

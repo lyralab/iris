@@ -4,8 +4,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/avast/retry-go"
 	"github.com/root-ali/iris/pkg/alerts"
+	"github.com/root-ali/iris/pkg/message"
 	"github.com/root-ali/iris/pkg/notifications"
 )
 
@@ -81,72 +81,81 @@ func (s *Scheduler) worker(id int) {
 }
 
 func (s *Scheduler) handleAlert(al alerts.Alert) error {
+	// Prepare receptors
 	var receptors []string
 
-	for _, r := range al.Receptor {
-		cached, err := s.receptorRepo.GetNumbers(r)
-		if err != nil {
-			s.logger.Errorw("Failed to get cached numbers", "receptor", r, "error", err)
-			return err
-		}
-		receptors = append(receptors, cached...)
-		s.logger.Info("Successfully get cached numbers", "receptor", r)
-	}
-
-	msg := notifications.Message{
-		Subject:   al.Name,
-		Message:   al.Description,
-		Receptors: receptors,
-	}
+	receptorIds := make(map[string]string)
 
 	provider, err := s.getProvider(al.Method, 0)
 	if err != nil {
 		s.logger.Errorw("Failed to get provider", "error", err)
 		return err
 	}
-	// Retry attempts
-	retry.DefaultAttempts = 3
-	// Retry Delay
-	retry.DefaultDelay = 2 * time.Second
-	err = retry.Do(
-		func() error {
-			mesgIDs, err := provider.Send(msg)
-			for _, mesgID := range mesgIDs {
-				status, err := provider.Status(mesgID)
 
-				if err != nil {
-					s.logger.Errorw("Failed to get message status", "error", err)
-					return err
-				}
+	for _, r := range al.Receptor {
+		cached, err := s.receptorRepo.GetNumbers(r)
+		if err != nil {
+			s.logger.Errorw("Failed to get receptors from group", "group", r, "error", err)
+			return err
+		}
+		for k, v := range cached {
+			receptorIds[k] = v
+			receptors = append(receptors, v)
+		}
+	}
 
-				if status == notifications.TypeMessageStatusFailed {
-					s.logger.Errorw("Message status is failed", "status", status)
-					return errors.New("message status is failed")
-				} else if status == notifications.TypeMessageStatusUndelivered {
-					s.logger.Errorw("Message status is undelivered", "status", status)
-					return errors.New("message status is undelivered")
-				} else if status == notifications.TypeMessageStatusDelivered {
-					s.logger.Infow("Message status is delivered", "status", status)
-					return nil
-				} else if status == notifications.TypeMessageStatusSent {
-					s.logger.Infow("Message status is sent", "status", status)
-					return nil
-				}
-			}
+	// Prepare message
+	msg := notifications.Message{
+		Subject:   al.Name,
+		Message:   al.Description,
+		Receptors: receptors,
+	}
 
+	// Send notification
+	msgIds, err := provider.Send(msg)
+	s.logger.Infow("Notification sent", "messageIDs", msgIds, "error", err)
+	if err != nil {
+		s.logger.Errorw("Failed to send notification", "error", err)
+		for r, v := range receptorIds {
+
+			// Save Message
+			s.logger.Info("Save failed message to repository", "receptor", v)
+			failedMsg := message.NewMessage("",
+				al.Description,
+				v, provider.GetName(),
+				r,
+				r,
+				err.Error(),
+				[]string{provider.GetName()})
+			err := s.messageRepo.Add(failedMsg)
 			if err != nil {
-				s.logger.Errorw("Failed to send alert via provider",
-					"provider", provider.GetName(), "error", err)
+				s.logger.Errorw("Failed to save failed message", "receptor", v, "error", err)
 				return err
 			}
-			return nil
-		},
-	)
-	if err != nil {
-		s.logger.Errorw("Retry got limited with provider: ", "provider",
-			provider.GetName(), "error", err)
+		}
 		return err
 	}
+	for _, id := range msgIds {
+		for r, v := range receptorIds {
+
+			// Save Message
+			s.logger.Info("Save success message to repository", "messageID", id, "receptor", v)
+			sentMsg := message.NewMessage(id,
+				al.Description,
+				v, provider.GetName(),
+				r,
+				"",
+				"Sent",
+				[]string{provider.GetName()})
+			err := s.messageRepo.Add(sentMsg)
+			if err != nil {
+				s.logger.Errorw("Failed to save sent message", "receptor", v, "error", err)
+				return err
+			}
+		}
+	}
+
+	// Mark alert as sent
 	return s.repo.MarkAlertAsSent(al.Id)
 }
 

@@ -17,12 +17,12 @@ var (
 	Host = "https://api.sms.ir"
 )
 
-func NewSmsirService(apikey string, lineNumber string, p int, logger *zap.SugaredLogger) *SmsirService {
+func NewSmsirService(apikey string, lineNumber string, p int, logger *zap.SugaredLogger) *Service {
 	client := createAPIHandler(apikey)
-	return &SmsirService{Client: client, Priority: p, LineNumber: lineNumber, Logger: logger}
+	return &Service{Client: client, Priority: p, LineNumber: lineNumber, Logger: logger}
 }
 
-func (s *SmsirService) Send(message notifications.Message) ([]string, error) {
+func (s *Service) Send(message notifications.Message) ([]string, error) {
 	lineNumber, _ := strconv.Atoi(s.LineNumber)
 	requestBody := SendSMSRequestBody{
 		Mobiles:     message.Receptors,
@@ -56,12 +56,89 @@ func (s *SmsirService) Send(message notifications.Message) ([]string, error) {
 		)
 		return nil, fmt.Errorf("http status code %d", resp.StatusCode)
 	}
-	s.Logger.Infow("Smsir returned 200 status code", "status", resp.StatusCode)
-	return nil, nil
+
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+
+		}
+	}(resp.Body)
+
+	bodyData, err := io.ReadAll(resp.Body)
+	if err != nil {
+		s.Logger.Errorw("Cannot read response body", "error", err)
+		return nil, err
+	}
+	var rsp SendSmsResponse
+	err = json.Unmarshal(bodyData, &rsp)
+	s.Logger.Infow("Smsir returned response", " body", string(bodyData))
+	s.Logger.Infow("Smsir response status", "status",
+		rsp.Status, "message", rsp.Message, "data", rsp.Data)
+	if err != nil {
+		s.Logger.Errorw("Cannot unmarshal response body", "error", rsp)
+		return nil, err
+	}
+	var messageIDs []string
+	for _, id := range rsp.Data.MessageID {
+		messageIDs = append(messageIDs, strconv.Itoa(id))
+	}
+
+	s.Logger.Infow("Smsir service sent message successfully", "status", resp.StatusCode)
+	return messageIDs, nil
 }
 
-func (s *SmsirService) Status(string) (notifications.MessageStatusType, error) {
-	var messageStatus notifications.MessageStatusType
+func (s *Service) Status(messageId string) (notifications.MessageStatusType, error) {
+	messageStatus := notifications.MessageStatusType(1)
+	req, err := http.NewRequest("GET", Host+"/v1/send/"+messageId, nil)
+	if err != nil {
+		s.Logger.Errorw("Cannot build request", "error", err)
+		messageStatus = notifications.MessageStatusType(-1)
+		return messageStatus, err
+	}
+
+	resp, err := s.Client.Do(req)
+	if err != nil {
+		s.Logger.Errorw("Cannot send request", "error", err)
+		messageStatus = notifications.MessageStatusType(-1)
+		return messageStatus, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		messageStatus = notifications.MessageStatusType(-1)
+		return messageStatus, fmt.Errorf("http status code %d", resp.StatusCode)
+	}
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			s.Logger.Errorw("Cannot read response body", "error", err)
+			return
+		}
+	}(resp.Body)
+	bodyData, err := io.ReadAll(resp.Body)
+	if err != nil {
+		s.Logger.Errorw("Cannot read response body", "error", err)
+		messageStatus = notifications.MessageStatusType(-1)
+		return messageStatus, err
+	}
+
+	var rsp GetStatusResponse
+	err = json.Unmarshal(bodyData, &rsp)
+	if err != nil {
+		s.Logger.Errorw("Cannot unmarshal response body", "error", err)
+		messageStatus = notifications.MessageStatusType(-1)
+		return messageStatus, err
+	}
+
+	if rsp.Status != 1 {
+		messageStatus = notifications.MessageStatusType(-1)
+		return messageStatus, fmt.Errorf("http status code %d", rsp.Status)
+	}
+
+	if rsp.Data.DeliveryStatus != 1 {
+		messageStatus = notifications.MessageStatusType(6)
+		return messageStatus, fmt.Errorf("http status code %d", rsp.Data.DeliveryStatus)
+	}
+	messageStatus = notifications.TypeMessageStatusDelivered
 
 	return messageStatus, nil
 }
@@ -82,19 +159,19 @@ func createAPIHandler(apikey string) *http.Client {
 	return client
 }
 
-func (s *SmsirService) GetName() string {
+func (s *Service) GetName() string {
 	return "Smsir"
 }
 
-func (s *SmsirService) GetFlag() string {
+func (s *Service) GetFlag() string {
 	return "sms"
 }
 
-func (s *SmsirService) GetPriority() int {
+func (s *Service) GetPriority() int {
 	return s.Priority
 }
 
-func (s *SmsirService) Verify() (string, error) {
+func (s *Service) Verify() (string, error) {
 	req, _ := http.NewRequest("GET", Host+"/v1/credit", nil)
 	resp, err := s.Client.Do(req)
 	if err != nil {

@@ -6,7 +6,7 @@ import (
 	"go.uber.org/zap"
 )
 
-type SmsirService struct {
+type Service struct {
 	Client     *http.Client
 	LineNumber string
 	Priority   int
@@ -30,8 +30,21 @@ type VerifyResponseBody struct {
 	Data    float64 `json:"data"`
 }
 
-type SendSmsResponseBody struct {
+type SendSmsResponse struct {
 	Status  int    `json:"status"`
 	Message string `json:"message"`
-	Data    []int  `json:"data"`
+	Data    struct {
+		PackId    string `json:"packId"`
+		MessageID []int  `json:"messageIds"`
+	} `json:"data"`
+	Cost float64 `json:"cost"`
+}
+
+type GetStatusResponse struct {
+	Status int `json:"status"`
+	Data   struct {
+		MessageId      int `json:"messageId"`
+		Mobile         int `json:"mobile"`
+		DeliveryStatus int `json:"deliveryState"`
+	} `json:"data"`
 }
