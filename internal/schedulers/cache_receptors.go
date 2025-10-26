@@ -16,9 +16,10 @@ func StartCacheReceptors(
 	interval time.Duration,
 	workers, queueSize, cacheCapacity int,
 ) (*cache_receptors.CacheReceptor, error) {
-	c := cache.New[string, []string](logger, cache.WithCapacity(cacheCapacity))
+	logger.Debug("Starting cache receptor service...")
+	c := cache.New[string, map[string]string](logger, cache.WithCapacity(cacheCapacity))
 	cfg := cache_receptors.Config{
-		StartAt:   time.Now().Add(startAtSeconds * time.Second),
+		StartAt:   time.Now().Add(startAtSeconds),
 		Interval:  interval,
 		Workers:   workers,
 		QueueSize: queueSize,

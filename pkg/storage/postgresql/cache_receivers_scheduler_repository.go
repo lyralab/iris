@@ -2,6 +2,7 @@ package postgresql
 
 import (
 	"database/sql"
+
 	"github.com/root-ali/iris/pkg/scheduler/cache_receptors"
 )
 import _ "github.com/lib/pq"
@@ -14,10 +15,8 @@ func (s *Storage) GetGroupsNumbers(group ...string) ([]cache_receptors.GroupWith
     SELECT
         g.id   AS group_id,
         g.name AS group_name,
-        COALESCE(
-                array_remove(array_agg(DISTINCT u.mobile), NULL),
-                ARRAY[]::varchar[]
-        ) AS mobiles
+        u.id AS user_id ,
+        u.mobile AS mobiles
     FROM groups g
              LEFT JOIN user_groups ug
                        ON ug.group_id = g.id
@@ -28,15 +27,10 @@ func (s *Storage) GetGroupsNumbers(group ...string) ([]cache_receptors.GroupWith
     WHERE g.deleted_at IS NULL
     `
 
-	// If group is not empty, add the condition for group names.
 	if len(group) > 0 {
 		query += `AND g.name IN (?) `
 	}
 
-	query += `GROUP BY g.id, g.name
-			ORDER BY g.name;`
-
-	// If group is provided, pass it as an argument to the query; otherwise, don't pass any argument.
 	var rows *sql.Rows
 	if len(group) > 0 {
 		rows, err = s.db.Raw(query, group).Rows()
@@ -47,12 +41,16 @@ func (s *Storage) GetGroupsNumbers(group ...string) ([]cache_receptors.GroupWith
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func(rows *sql.Rows) {
+		err := rows.Close()
+		if err != nil {
 
-	// Read rows and scan data.
+		}
+	}(rows)
+
 	for rows.Next() {
 		var g cache_receptors.GroupWithMobiles
-		err := rows.Scan(&g.GroupID, &g.GroupName, &g.Mobiles)
+		err := rows.Scan(&g.GroupID, &g.GroupName, &g.UserId, &g.Mobile)
 		if err != nil {
 			return nil, err
 		}

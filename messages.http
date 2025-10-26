@@ -1,4 +1,4 @@
-POST http://{{HTTP_HOST}}:{{HTTP_PORT}}/v0/messages/grafana
+EPOST http://{{HTTP_HOST}}:{{HTTP_PORT}}/v0/messages/grafana
 Authorization: Basic admin:{{ADMIN_PASS}}
 
 {
@@ -87,7 +87,7 @@ Authorization: Basic admin admin
       "labels": {
         "alertName": "another",
         "method": "sms",
-        "receptor": "admins",
+        "receptor": "admin",
         "severity": "critical"
       },
       "annotations": {
@@ -103,7 +103,7 @@ Authorization: Basic admin admin
       "labels": {
         "alertName": "testingaaaaaaa2",
         "method" : "call",
-        "receptor": "admins",
+        "receptor": "admin",
         "severity": "warning"
       },
       "annotations": {
@@ -119,7 +119,7 @@ Authorization: Basic admin admin
       "labels": {
         "alertName": "arp",
         "method" : "call",
-        "receptor": "admins",
+        "receptor": "admin",
         "severity": "warning"
       },
       "annotations": {

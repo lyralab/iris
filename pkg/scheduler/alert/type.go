@@ -7,6 +7,7 @@ import (
 
 	"github.com/root-ali/iris/pkg/alerts"
 	"github.com/root-ali/iris/pkg/cache"
+	"github.com/root-ali/iris/pkg/message"
 	"github.com/root-ali/iris/pkg/notifications"
 	"go.uber.org/zap"
 )
@@ -18,13 +19,18 @@ type SchedulerConfig struct {
 }
 
 type ReceptorInterface interface {
-	GetNumbers(group string) ([]string, error)
+	GetNumbers(group string) (map[string]string, error)
+}
+
+type MessageInterface interface {
+	Add(msg *message.Message) error
 }
 
 type Scheduler struct {
 	// dependencies
 	cache        cache.Interface[string, []string]
 	receptorRepo ReceptorInterface
+	messageRepo  MessageInterface
 	provider     notifications.ProviderStatusInterface
 	repo         alerts.AlertRepository
 	logger       *zap.SugaredLogger
@@ -46,6 +52,7 @@ func NewScheduler(
 	receptorRepo ReceptorInterface,
 	repo alerts.AlertRepository,
 	provider notifications.ProviderStatusInterface,
+	messageRepo MessageInterface,
 	logger *zap.SugaredLogger,
 	cfg SchedulerConfig,
 ) *Scheduler {
@@ -65,6 +72,7 @@ func NewScheduler(
 		receptorRepo: receptorRepo,
 		repo:         repo,
 		provider:     provider,
+		messageRepo:  messageRepo,
 		logger:       logger,
 		cfg:          cfg,
 		ctx:          ctx,

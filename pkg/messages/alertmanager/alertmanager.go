@@ -1,6 +1,10 @@
 package alertmanager
 
-import "time"
+import (
+	"time"
+
+	"github.com/lib/pq"
+)
 
 type AlertManager struct {
 	Version          string     `json:"version"`
@@ -26,10 +30,10 @@ type Alert struct {
 }
 
 type Labels struct {
-	Severity  string `json:"severity"`
-	AlertName string `json:"alertName"`
-	Method    string `json:"method"`
-	Receptor  string `json:"receptor"`
+	Severity  string         `json:"severity"`
+	AlertName string         `json:"alertName"`
+	Method    string         `json:"method"`
+	Receptor  pq.StringArray `json:"receptor"`
 }
 
 type Annotation struct {

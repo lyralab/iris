@@ -5,7 +5,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/lib/pq"
 	"go.uber.org/zap"
 
 	"github.com/root-ali/iris/pkg/cache"
@@ -19,12 +18,12 @@ type Repository interface {
 }
 
 type CacheService interface {
-	GetNumbers(group string) ([]string, error)
+	GetNumbers(group string) (map[string]string, error)
 }
 
 type CacheReceptor struct {
 	Repository Repository
-	Cache      cache.Interface[string, []string]
+	Cache      cache.Interface[string, map[string]string]
 
 	conf   Config
 	ctx    context.Context
@@ -40,9 +39,10 @@ type CacheReceptor struct {
 }
 
 type GroupWithMobiles struct {
-	GroupID   string         `gorm:"column:group_id"`
-	GroupName string         `gorm:"column:group_name"`
-	Mobiles   pq.StringArray `gorm:"column:mobiles,type:varchar[]"`
+	GroupID   string `gorm:"column:group_id"`
+	GroupName string `gorm:"column:group_name"`
+	UserId    string `gorm:"column:user_id"`
+	Mobile    string `gorm:"column:mobiles,type:varchar"`
 }
 
 type Config struct {
