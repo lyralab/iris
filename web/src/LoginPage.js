@@ -45,11 +45,14 @@ const LoginPage = () => {
                 const data = await response.json();
                 setCaptchaId(data.captcha_id);
                 setCaptchaImage(data.captcha_image);
+                setError(''); // Clear any previous captcha errors
             } else {
                 console.error('Failed to fetch captcha');
+                setError('Failed to load captcha. Please refresh the page.');
             }
         } catch (err) {
             console.error('Error fetching captcha:', err);
+            setError('Failed to load captcha. Please refresh the page.');
         }
     };
 
@@ -57,6 +60,19 @@ const LoginPage = () => {
         event.preventDefault();
         setError('');
         setLoading(true);
+
+        // Validate captcha is loaded
+        if (!captchaId || !captchaImage) {
+            setError('Captcha not loaded. Please refresh the page.');
+            setLoading(false);
+            return;
+        }
+
+        if (!captchaAnswer) {
+            setError('Please enter the captcha.');
+            setLoading(false);
+            return;
+        }
 
         try {
             const response = await fetch(`${config.api.signin}?captcha_id=${captchaId}`, {
@@ -142,7 +158,7 @@ const LoginPage = () => {
                         disabled={loading}
                     />
                 </div>
-                {captchaImage && (
+                {captchaImage ? (
                     <div className="form-group">
                         <label>Captcha:</label>
                         <img 
@@ -159,8 +175,12 @@ const LoginPage = () => {
                             disabled={loading}
                         />
                     </div>
+                ) : (
+                    <div className="form-group">
+                        <label>Loading captcha...</label>
+                    </div>
                 )}
-                <button type="submit" disabled={loading}>
+                <button type="submit" disabled={loading || !captchaImage}>
                     {loading ? 'Logging in...' : 'Login'}
                 </button>
             </form>
