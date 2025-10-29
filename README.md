@@ -129,7 +129,7 @@ KAVENEGAR_PRIORITY=1  # Lower number = higher priority
 #### Smsir (SMS Provider)
 ```bash
 SMSIR_API_TOKEN=your-smsir-api-token
-SMSIR_LINE_NUMBER=30007732911486
+SMSIR_LINE_NUMBER=your-smsir-line-number
 SMSIR_ENABLED=false
 SMSIR_PRIORITY=2
 ```
@@ -315,7 +315,7 @@ Content-Type: application/json
       "labels": {
         "alertname": "High memory usage",
         "team": "backend",
-        "receptor": "09123456789",
+        "receptor": "+1-555-0100",
         "method": "sms"
       },
       "annotations": {
@@ -387,7 +387,7 @@ Example Grafana alert configuration:
 {
   "labels": {
     "alertname": "HighMemoryUsage",
-    "receptor": "09123456789",
+    "receptor": "+1-555-0100",
     "method": "sms",
     "severity": "critical"
   },
