@@ -69,3 +69,15 @@
 .login-page button[type="submit"]:hover {
     background-color: #0056b3;
 }
+
+.login-page button[type="submit"]:disabled {
+    background-color: #6c757d;
+    cursor: not-allowed;
+}
+
+.captcha-image {
+    margin: 10px 0;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    max-width: 100%;
+}
