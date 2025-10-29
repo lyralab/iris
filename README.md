@@ -400,31 +400,74 @@ Example Grafana alert configuration:
 
 ## Web Interface
 
-The web dashboard provides:
+The web dashboard provides a comprehensive admin interface for managing the Iris Alert System:
 
-- **Dashboard**: Overview of firing and resolved alerts
-- **Alert List**: Paginated list of all alerts
-- **Alert Details**: Detailed view of individual alerts
-- **User Authentication**: Sign in to access the dashboard
+### Features
+
+- **Admin Authentication**: Secure JWT-based authentication with captcha verification (admin users only)
+- **Alert Dashboard**: Overview of firing and resolved alerts with severity breakdown
+- **User Management**: Create, edit, verify, and manage system users
+- **Group Management**: Create groups, view members, and manage group assignments
+- **Role-Based Access Control**: All features restricted to admin users only
+
+### Pages
+
+1. **Login** (`/`): Admin-only authentication with captcha
+2. **Alerts** (`/alerts`): Alert summary, firing issues, and resolved issues
+3. **Users** (`/users`): User management interface
+4. **Groups** (`/groups`): Group management and user assignment
 
 ### Configuration
 
-Update `web/src/config.js` to point to your API server:
+The frontend is configured to connect to the backend API in `web/src/config.js`. Update the `base_url` to point to your API server:
 
 ```javascript
 const base_url = 'http://127.0.0.1:9090';
-
-const config = {
-    api: {
-        alertSummary: base_url + '/v0/alerts/firingCount',
-        firingIssues: base_url + '/v0/alerts/?page=1&pagination=10&status=firing',
-        resolvedIssues: base_url + '/v0/alerts/?page=1&pagination=10&status=resolved',
-        signin: base_url + '/v1/users/signin',
-    },
-};
-
-export default config;
 ```
+
+### Access Control
+
+- Only users with the `admin` role can access the web interface
+- All pages except login require valid JWT authentication
+- JWT tokens are stored in browser localStorage
+- Tokens include user role information for authorization
+
+### Using the Web Interface
+
+#### First Time Setup
+
+1. Start the backend server (ensure database migrations have run)
+2. The default admin user is created automatically:
+   - Username: `admin`
+   - Password: As configured in `ADMIN_PASS` environment variable
+3. Build and serve the frontend (see Running the Application section above)
+4. Navigate to `http://localhost:3000`
+5. Login with admin credentials and complete the captcha
+
+#### Managing Users
+
+1. Navigate to **Users** page from the navigation bar
+2. Click **Create User** to add a new user
+3. Fill in user details (username, name, email, password)
+4. New users are created in `pending` status
+5. Click **Verify** to activate pending users
+6. Click **Edit** to modify user information
+
+#### Managing Groups
+
+1. Navigate to **Groups** page from the navigation bar
+2. Click **Create Group** to add a new group
+3. Enter group name and optional description
+4. Click **View Members** on any group to see and manage members
+5. Click **Add User** within the members view to assign users to the group
+6. Select a user from the dropdown and submit
+
+#### Viewing Alerts
+
+1. Navigate to **Alerts** page to see the alert dashboard
+2. View alert summary by severity (Critical, High, Medium, Low, Warning, Page)
+3. See top 10 firing issues with filter by severity
+4. View latest resolved issues with duration information
 
 ## Database Schema
 
