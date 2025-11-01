@@ -2,11 +2,12 @@ package middlewares
 
 import (
 	"errors"
+	"strings"
+
 	"github.com/gin-gonic/gin"
 	"github.com/root-ali/iris/pkg/auth"
-	iris_error "github.com/root-ali/iris/pkg/errors"
+	iriserror "github.com/root-ali/iris/pkg/errors"
 	"go.uber.org/zap"
-	"strings"
 )
 
 func BasicAuth(username, password string) gin.HandlerFunc {
@@ -18,9 +19,8 @@ func ValidateJWTToken(aths auth.AuthServiceInterface, role string, logger *zap.S
 		authHeader := c.Request.Header.Get("Authorization")
 		jwtToken := strings.TrimPrefix(authHeader, "Bearer ")
 		logger.Infow("token is ", "token", jwtToken)
-		//jwtToken, err := c.Cookie("jwt")
 		extractedUsername, extractedRole, err := aths.ValidateToken(jwtToken)
-		if errors.Is(err, iris_error.ErrTokenExpired) {
+		if errors.Is(err, iriserror.ErrTokenExpired) {
 			logger.Error("Token expired")
 			c.AbortWithStatusJSON(401, gin.H{
 				"status":  "unauthorized",

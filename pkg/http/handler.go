@@ -121,10 +121,10 @@ func (ht *HttpHandler) Handler() *gin.Engine {
 		rest.GetUserInfoHandler(ht.US, ht.Logger),
 	)
 	// TODO: implement GetUserByID and GetUserByEmail handlers
-	// userRouter.GET("/:id",
-	// 	middlewares.ValidateJWTToken(ht.ATHS, "admin,viewer", ht.Logger),
-	// 	rest.GetUserByIDHandler(ht.US, ht.Logger),
-	// )
+	userRouter.GET("/:user_id",
+		middlewares.ValidateJWTToken(ht.ATHS, "admin,viewer", ht.Logger),
+		rest.GetUserByIDHandler(ht.US, ht.Logger),
+	)
 	// userRouter.GET("/email/:email",
 	// 	middlewares.ValidateJWTToken(ht.ATHS, "admin,viewer", ht.Logger),
 	// 	rest.GetUserByEmailHandler(ht.US, ht.Logger),
@@ -156,8 +156,7 @@ func (ht *HttpHandler) Handler() *gin.Engine {
 		rest.AddUserToGroupHandler(ht.GR, ht.Logger))
 	groupRouter.GET("/:group_id/users",
 		middlewares.ValidateJWTToken(ht.ATHS, "admin", ht.Logger),
-		middlewares.CheckContentTypeHeader("application/json", ht.Logger),
-		rest.GetUsersInGroupHandler(ht.GR, ht.Logger),
+		rest.GetUsersInGroupHandler(ht.GR, ht.US, ht.Logger),
 	)
 
 	providerRouter := router.Group("v0/providers")
@@ -169,6 +168,13 @@ func (ht *HttpHandler) Handler() *gin.Engine {
 		middlewares.CheckContentTypeHeader("application/json", ht.Logger),
 		rest.ModifyProviderHandler(ht.PS))
 
+	// Serve static files from web/build
 	router.Use(static.Serve("/", static.LocalFile("./web/build", true)))
+
+	// Catch-all route to serve index.html for React Router (must be last)
+	router.NoRoute(func(c *gin.Context) {
+		c.File("./web/build/index.html")
+	})
+
 	return router
 }

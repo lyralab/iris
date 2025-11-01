@@ -95,6 +95,7 @@ import config from './config';
 
 const AlertSummary = () => {
     const [alerts, setAlerts] = useState({critical: 0, high: 0, medium: 0, low: 0, page: 0, warning: 0});
+    const [topAlerts, setTopAlerts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
@@ -107,25 +108,51 @@ const AlertSummary = () => {
                 // Get the JWT token from the cookie
                 const token = getCookie('jwt');
 
-                const response = await fetch(config.api.alertSummary, {
+                // Fetch alert summary counts
+                const summaryResponse = await fetch(config.api.alertSummary, {
                     headers: {
-                        Authorization: `Bearer ${token}`, // Use Bearer token
+                        Authorization: `Bearer ${token}`,
                         'Content-Type': 'application/json',
                     },
                 });
 
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+                if (!summaryResponse.ok) {
+                    throw new Error(`HTTP error! status: ${summaryResponse.status}`);
                 }
 
-                const data = await response.json();
+                const summaryData = await summaryResponse.json();
 
                 const mappedData = {};
-                data.severites.forEach(item => {
+                summaryData.severites.forEach(item => {
                     mappedData[item.severity] = item.count;
                 });
 
                 setAlerts(mappedData);
+
+                // Fetch top newest critical and warning alerts
+                const alertsResponse = await fetch(
+                    `${config.api.alerts}?status=firing&limit=10&page=1`,
+                    {
+                        headers: {
+                            Authorization: `Bearer ${token}`,
+                            'Content-Type': 'application/json',
+                        },
+                    }
+                );
+
+                if (alertsResponse.ok) {
+                    const alertsData = await alertsResponse.json();
+                    if (alertsData.alerts && Array.isArray(alertsData.alerts)) {
+                        // Filter for critical and warning severity, sort by created_at desc, take top 5
+                        const filteredAlerts = alertsData.alerts
+                            .filter(alert =>
+                                alert.severity === 'critical' || alert.severity === 'warning'
+                            )
+                            .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+                            .slice(0, 5);
+                        setTopAlerts(filteredAlerts);
+                    }
+                }
             } catch (e) {
                 setError(e.message);
             } finally {
@@ -187,6 +214,28 @@ const AlertSummary = () => {
                     <div className="label">Page</div>
                 </div>
             </div>
+
+            {topAlerts.length > 0 && (
+                <div className="top-alerts-section">
+                    <h3>Latest Critical & Warning Alerts</h3>
+                    <div className="top-alerts-list">
+                        {topAlerts.map((alert, index) => (
+                            <div key={alert.id || index} className={`alert-item ${alert.severity}`}>
+                                <div className="alert-header">
+                                    <span className={`severity-badge ${alert.severity}`}>
+                                        {alert.severity === 'critical' ? '🔥' : '⚠️'} {alert.severity.toUpperCase()}
+                                    </span>
+                                    <span className="alert-time">
+                                        {new Date(alert.created_at).toLocaleString()}
+                                    </span>
+                                </div>
+                                <div className="alert-name">{alert.name}</div>
+                                <div className="alert-description">{alert.description}</div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

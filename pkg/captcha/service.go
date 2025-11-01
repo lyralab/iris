@@ -20,7 +20,7 @@ type CaptchaService struct {
 
 func NewCaptchaService(logger *zap.SugaredLogger) *CaptchaService {
 	store := base64Captcha.NewMemoryStore(100, 10*time.Minute)
-	driver := base64Captcha.NewDriverDigit(100, 240, 2, 0.2, 80)
+	driver := base64Captcha.NewDriverDigit(100, 240, 8, 0.8, 251)
 	captcha := base64Captcha.NewCaptcha(driver, store)
 	service := &CaptchaService{
 		Captcha: captcha,

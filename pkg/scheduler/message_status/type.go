@@ -45,7 +45,7 @@ type Service struct {
 }
 
 type Config struct {
-	StartAt   time.Time
+	StartAt   time.Duration
 	Interval  time.Duration
 	Workers   int
 	QueueSize int

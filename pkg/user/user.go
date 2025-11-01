@@ -208,3 +208,14 @@ func (us *userServiceImpl) GetByUserName(name string) (*User, error) {
 	}
 	return user, nil
 }
+
+func (us *userServiceImpl) GetByUserId(id string) (*User, error) {
+	if id == "" {
+		return nil, errors.New("user id is required")
+	}
+	user, err := us.repo.GetUserByID(id)
+	if err != nil {
+		return nil, err
+	}
+	return user, nil
+}

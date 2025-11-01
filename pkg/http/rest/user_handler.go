@@ -418,6 +418,27 @@ func GetUserInfoHandler(us user.UserInterfaceService, logger *zap.SugaredLogger)
 		c.JSON(200, gin.H{"status": "OK", "user": userResponse, "user_id": u.ID})
 	}
 }
+
+func GetUserByIDHandler(us user.UserInterfaceService, logger *zap.SugaredLogger) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userID := c.Param("user_id")
+		u, err := us.GetByUserId(userID)
+		if err != nil {
+			logger.Errorw("cannot get user", "error", err)
+			c.AbortWithStatusJSON(500, gin.H{"status": "error", "error": err})
+			return
+		}
+		userResponse := map[string]string{
+			"username":  u.UserName,
+			"firstName": u.FirstName,
+			"lastName":  u.LastName,
+			"email":     u.Email,
+			"mobile":    u.Mobile,
+		}
+		c.JSON(200, gin.H{"status": "OK", "user": userResponse, "user_id": u.ID})
+	}
+}
+
 func (ub *UserSignupBody) toUser() *user.User {
 	return &user.User{
 		UserName:  ub.UserName,

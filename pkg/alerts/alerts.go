@@ -15,8 +15,8 @@ type Alert struct {
 	StartsAt    time.Time      `json:"starts_at" gorm:"column:starts_at"`
 	EndsAt      time.Time      `json:"ends_at" gorm:"column:ends_at"`
 	Status      string         `json:"status" gorm:"column:status"`
-	Method      string         `json:"method" gorm:"column:method"`
-	Receptor    pq.StringArray `json:"receptor" gorm:"column:receptor;type:text[]"`
+	Method      string         `json:"-" gorm:"column:method"`
+	Receptor    pq.StringArray `json:"-" gorm:"column:receptor;type:text[]"`
 	CreatedAt   time.Time      `json:"created_at" gorm:"column:created_at"`
 	UpdatedAt   time.Time      `json:"updated_at" gorm:"column:updated_at"`
 	gorm.DeletedAt
