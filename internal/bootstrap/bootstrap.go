@@ -59,12 +59,18 @@ func Init(cfg *config.Config) (*App, error) {
 	// notifications (providers + schedulers)
 	allServices := make([]notifications.NotificationInterface, 0, 2)
 
+	cacheReceptorsSchedulerStartAt, err := time.ParseDuration(cfg.Scheduler.MobileScheduler.StartAt)
+	cacheReceptorsSchedulerInterval, err := time.ParseDuration(cfg.Scheduler.MobileScheduler.Interval)
+	if err != nil {
+		return nil, fmt.Errorf("incorrect cache receptors scheduler config: %w", err)
+	}
+
 	// Start cache receptors
 	cr, err := schedulers.StartCacheReceptors(
 		logger,
 		repos.Postgres,
-		cfg.Scheduler.MobileScheduler.StartAt,
-		cfg.Scheduler.MobileScheduler.Interval,
+		cacheReceptorsSchedulerStartAt,
+		cacheReceptorsSchedulerInterval,
 		cfg.Scheduler.MobileScheduler.Workers,
 		cfg.Scheduler.MobileScheduler.QueueSize,
 		cfg.Scheduler.MobileScheduler.CacheCapacity,
@@ -131,7 +137,10 @@ func Init(cfg *config.Config) (*App, error) {
 	}
 
 	messageService := message.NewService(repos.Postgres, logger)
-
+	alertSchedulerInterval, err := time.ParseDuration(cfg.Scheduler.AlertScheduler.Interval)
+	if err != nil {
+		return nil, fmt.Errorf("incorrect alert scheduler config: %w", err)
+	}
 	alertCache := cache.New[string, []string](logger, cache.WithCapacity(3))
 	err = schedulers.StartAlertScheduler(logger,
 		repos.Postgres,
@@ -139,13 +148,18 @@ func Init(cfg *config.Config) (*App, error) {
 		alertCache,
 		providerService,
 		messageService,
-		cfg.Scheduler.AlertScheduler.Interval,
+		alertSchedulerInterval,
 		cfg.Scheduler.AlertScheduler.Workers,
 		cfg.Scheduler.AlertScheduler.QueueSize)
 
+	messageStatusSchedulerStartAt, err := time.ParseDuration(cfg.Scheduler.MessageStatus.StartAt)
+	messageStatusSchedulerInterval, err := time.ParseDuration(cfg.Scheduler.MessageStatus.Interval)
+	if err != nil {
+		return nil, fmt.Errorf("incorrect message status scheduler config: %w", err)
+	}
 	messageStatusConfig := message_status.Config{
-		StartAt:   time.Now().Add(10 * time.Second),
-		Interval:  10 * time.Second,
+		StartAt:   messageStatusSchedulerStartAt,
+		Interval:  messageStatusSchedulerInterval,
 		Workers:   10,
 		QueueSize: 100,
 	}

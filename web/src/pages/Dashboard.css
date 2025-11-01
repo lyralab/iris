@@ -1,0 +1,380 @@
+.dashboard {
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.dashboard h1 {
+    color: #2c3e50;
+    margin-bottom: 2rem;
+}
+
+.alert-config {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.alert-config label {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.alert-limit-dropdown {
+    padding: 0.4rem 0.8rem;
+    border: 2px solid #ddd;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #2c3e50;
+    background-color: white;
+    cursor: pointer;
+    transition: all 0.3s;
+    min-width: 70px;
+}
+
+.alert-limit-dropdown:hover {
+    border-color: #3498db;
+}
+
+.alert-limit-dropdown:focus {
+    outline: none;
+    border-color: #3498db;
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.section-header h2 {
+    margin: 0;
+    color: #2c3e50;
+    border: none;
+    padding: 0;
+}
+
+.stats-grid {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+}
+
+.stat-card {
+    background: white;
+    padding: 1rem 1.25rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s;
+    display: flex;
+    flex-direction: column;
+    min-width: 160px;
+    max-width: 200px;
+}
+
+.stat-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.stat-label {
+    font-size: 0.85rem;
+    color: #7f8c8d;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+}
+
+.stat-card > div:last-child {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.stat-value {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #3498db;
+    order: 1;
+}
+
+.stat-icon {
+    font-size: 2rem;
+    order: 2;
+}
+
+.alert-summary {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.alert-summary h2 {
+    color: #2c3e50;
+    margin-bottom: 1.5rem;
+    border-bottom: 2px solid #ecf0f1;
+    padding-bottom: 0.5rem;
+}
+
+.summary-items {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.summary-item {
+    padding: 0.6rem 0.75rem;
+    text-align: center;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s;
+    min-width: 90px;
+    max-width: 110px;
+    flex: 0 1 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.summary-item:hover {
+    transform: translateY(-2px);
+}
+
+.item-top {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+}
+
+.summary-item .icon {
+    font-size: 1.2rem;
+    line-height: 1;
+}
+
+.summary-item .count {
+    font-size: 1.4rem;
+    font-weight: bold;
+    line-height: 1;
+}
+
+.summary-item .label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    line-height: 1;
+}
+
+.summary-item.critical {
+    background-color: #ffcccc;
+    color: #cc0000;
+}
+
+.summary-item.high {
+    background-color: #ffe6cc;
+    color: #cc6600;
+}
+
+.summary-item.medium {
+    background-color: #fff2cc;
+    color: #cc9900;
+}
+
+.summary-item.warning {
+    background-color: #fff9cc;
+    color: #b8860b;
+}
+
+.summary-item.low {
+    background-color: #e6f9e6;
+    color: #339933;
+}
+
+.summary-item.page {
+    background-color: #e6f2ff;
+    color: #0066cc;
+}
+
+.loading {
+    text-align: center;
+    padding: 3rem;
+    font-size: 1.2rem;
+    color: #7f8c8d;
+}
+
+.error-message {
+    background-color: #f8d7da;
+    color: #721c24;
+    padding: 1rem;
+    border-radius: 4px;
+    border: 1px solid #f5c6cb;
+}
+
+/* Top Alerts Section */
+.top-alerts-section {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-top: 2rem;
+}
+
+/* Resolved Alerts Section */
+.resolved-alerts-section {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-top: 2rem;
+}
+
+.alerts-table-container {
+    overflow-x: auto;
+}
+
+.alerts-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+}
+
+.alerts-table thead {
+    background-color: #34495e;
+    color: white;
+}
+
+.alerts-table th {
+    padding: 1rem;
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.alerts-table td {
+    padding: 1rem;
+    border-bottom: 1px solid #ecf0f1;
+}
+
+.alerts-table tbody tr {
+    transition: background-color 0.2s;
+}
+
+.alerts-table tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+.alert-name {
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.alert-description {
+    color: #7f8c8d;
+    max-width: 300px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.severity-badge {
+    display: inline-block;
+    padding: 0.4rem 0.8rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.severity-badge.severity-critical {
+    background-color: #ffcccc;
+    color: #cc0000;
+}
+
+.severity-badge.severity-high {
+    background-color: #ffe6cc;
+    color: #cc6600;
+}
+
+.severity-badge.severity-medium {
+    background-color: #fff2cc;
+    color: #cc9900;
+}
+
+.severity-badge.severity-warning {
+    background-color: #fff9cc;
+    color: #b8860b;
+}
+
+.severity-badge.severity-low {
+    background-color: #e6f9e6;
+    color: #339933;
+}
+
+.severity-badge.severity-page {
+    background-color: #e6f2ff;
+    color: #0066cc;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 0.4rem 0.8rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.status-badge.firing {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+.status-badge.resolved {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+@media (max-width: 768px) {
+    .section-header {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: flex-start;
+    }
+
+    .alert-config {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .summary-items {
+        justify-content: center;
+    }
+
+    .alerts-table {
+        font-size: 0.85rem;
+    }
+
+    .alerts-table th,
+    .alerts-table td {
+        padding: 0.75rem 0.5rem;
+    }
+
+    .alert-description {
+        max-width: 150px;
+    }
+}
+
+@media (max-width: 480px) {
+    .summary-items {
+        flex-direction: column;
+    }
+
+    .summary-item {
+        width: 100%;
+    }
+}
