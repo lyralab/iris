@@ -87,10 +87,10 @@ func (s *Service) Stop() error {
 }
 
 func (s *Service) run() {
-	if s.config.StartAt.IsZero() {
+	if s.config.StartAt <= 0 {
 		s.enqueueCache()
 	} else {
-		if d := time.Until(s.config.StartAt); d > 0 {
+		if d := time.Until(time.Now().Add(s.config.StartAt)); d > 0 {
 			timer := time.NewTimer(d)
 			select {
 			case <-timer.C:

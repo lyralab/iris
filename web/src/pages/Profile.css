@@ -1,0 +1,222 @@
+.profile-page {
+    display: flex;
+    justify-content: flex-start;
+    padding: 2rem;
+    min-height: calc(100vh - 80px);
+}
+
+.profile-container {
+    width: 100%;
+    max-width: 1200px;
+}
+
+.profile-card {
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+    display: flex;
+    overflow: hidden;
+    min-height: 400px;
+}
+
+.profile-left {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 2.5rem 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    min-width: 280px;
+    color: white;
+}
+
+.profile-avatar {
+    width: 120px;
+    height: 120px;
+    background: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+}
+
+.avatar-icon {
+    font-size: 4rem;
+}
+
+.profile-user-info {
+    text-align: center;
+    width: 100%;
+}
+
+.profile-user-info h1 {
+    margin: 0 0 1rem 0;
+    font-size: 1.8rem;
+    font-weight: 600;
+    color: white;
+    word-wrap: break-word;
+}
+
+.profile-right {
+    flex: 1;
+    padding: 2.5rem 2rem;
+    display: flex;
+    gap: 2rem;
+    justify-content: space-between;
+}
+
+.profile-section {
+    flex: 1;
+    min-width: 0;
+}
+
+.profile-section h3 {
+    color: #2c3e50;
+    margin: 0 0 1.5rem 0;
+    font-size: 1rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid #ecf0f1;
+    padding-bottom: 0.75rem;
+}
+
+.info-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.info-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.info-row label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #7f8c8d;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.info-row span {
+    font-size: 1rem;
+    color: #2c3e50;
+    font-weight: 500;
+    padding: 0.75rem;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    word-wrap: break-word;
+    transition: background-color 0.3s;
+}
+
+.info-row span:hover {
+    background-color: #e9ecef;
+}
+
+.role-badge {
+    display: inline-block;
+    padding: 0.4rem 1rem !important;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    color: white !important;
+    border-radius: 20px !important;
+    font-weight: 600;
+    font-size: 0.85rem !important;
+    text-transform: capitalize;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 0.4rem 1rem;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-align: center;
+}
+
+.status-badge.status-active {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.status-badge.status-new {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+.status-badge.status-disable {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+.status-badge.status-unknown {
+    background-color: #e2e3e5;
+    color: #383d41;
+}
+
+.loading {
+    text-align: center;
+    padding: 3rem;
+    font-size: 1.2rem;
+    color: #7f8c8d;
+}
+
+.error-message {
+    background-color: #f8d7da;
+    color: #721c24;
+    padding: 1.5rem;
+    border-radius: 8px;
+    border: 1px solid #f5c6cb;
+    text-align: center;
+    font-size: 1.1rem;
+    max-width: 500px;
+    margin: 2rem auto;
+}
+
+@media (max-width: 768px) {
+    .profile-page {
+        justify-content: center;
+        padding: 1rem;
+    }
+
+    .profile-container {
+        max-width: 100%;
+    }
+
+    .profile-card {
+        flex-direction: column;
+    }
+
+    .profile-left {
+        min-width: auto;
+        padding: 2rem 1rem;
+    }
+
+    .profile-avatar {
+        width: 100px;
+        height: 100px;
+    }
+
+    .avatar-icon {
+        font-size: 3rem;
+    }
+
+    .profile-user-info h1 {
+        font-size: 1.5rem;
+    }
+
+    .profile-right {
+        flex-direction: column;
+        gap: 2rem;
+        padding: 2rem 1.5rem;
+    }
+
+    .profile-section {
+        width: 100%;
+    }
+}
+

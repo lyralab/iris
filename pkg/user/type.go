@@ -56,4 +56,5 @@ type UserInterfaceService interface {
 	UpdateUser(*User) error
 	GetAllUsers() ([]*User, error)
 	GetByUserName(string) (*User, error)
+	GetByUserId(string) (*User, error)
 }

@@ -2,11 +2,24 @@ package rest
 
 import (
 	"fmt"
-	"github.com/gin-gonic/gin"
-	"github.com/root-ali/iris/pkg/alerts"
 	"net/http"
 	"strconv"
+
+	"github.com/gin-gonic/gin"
+	"github.com/root-ali/iris/pkg/alerts"
 )
+
+type AlertResponse struct {
+	Id          string `json:"id"`
+	Name        string `json:"name"`
+	Severity    string `json:"severity"`
+	Description string `json:"description"`
+	StartsAt    string `json:"starts_at"`
+	EndsAt      string `json:"ends_at"`
+	Status      string `json:"status"`
+	CreatedAt   string `json:"created_at"`
+	UpdatedAt   string `json:"updated_at"`
+}
 
 func GetAlerts(as alerts.AlertsService) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -37,7 +50,8 @@ func GetAlerts(as alerts.AlertsService) gin.HandlerFunc {
 				return
 			}
 		}
-		alerts, err := as.GetAlerts(status, severity, l, p)
+		als, err := as.GetAlerts(status, severity, l, p)
+		alertResponses := toAlertResponse(als)
 		if err != nil {
 			fmt.Println(err)
 			c.JSON(http.StatusInternalServerError, gin.H{
@@ -47,8 +61,8 @@ func GetAlerts(as alerts.AlertsService) gin.HandlerFunc {
 		} else {
 			c.JSON(http.StatusOK, gin.H{
 				"status": "OK",
-				"alerts": alerts,
-				"count":  len(alerts),
+				"alerts": alertResponses,
+				"count":  len(alertResponses),
 			})
 		}
 	}
@@ -70,4 +84,23 @@ func GetFiringAlertsBySeverity(as alerts.AlertsService) gin.HandlerFunc {
 			})
 		}
 	}
+}
+
+func toAlertResponse(alert []*alerts.Alert) []AlertResponse {
+	var alertResponses []AlertResponse
+	for _, a := range alert {
+		alertResponse := AlertResponse{
+			Id:          a.Id,
+			Name:        a.Name,
+			Severity:    a.Severity,
+			Description: a.Description,
+			StartsAt:    a.StartsAt.String(),
+			EndsAt:      a.EndsAt.String(),
+			Status:      a.Status,
+			CreatedAt:   a.CreatedAt.String(),
+			UpdatedAt:   a.UpdatedAt.String(),
+		}
+		alertResponses = append(alertResponses, alertResponse)
+	}
+	return alertResponses
 }

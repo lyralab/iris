@@ -1,8 +1,6 @@
 package config
 
 import (
-	"time"
-
 	"github.com/caarlos0/env/v10"
 )
 
@@ -49,23 +47,23 @@ type Notifications struct {
 
 type Scheduler struct {
 	MobileScheduler struct {
-		StartAt       time.Duration `env:"MOBILE_SCHEDULER_START_AT" envDefault:"1s"`
-		Interval      time.Duration `env:"MOBILE_SCHEDULER_INTERVAL" envDefault:"600s"`
-		Workers       int           `env:"MOBILE_SCHEDULER_WORKERS" envDefault:"1"`
-		QueueSize     int           `env:"MOBILE_SCHEDULER_QUEUE_SIZE" envDefault:"1"`
-		CacheCapacity int           `env:"MOBILE_SCHEDULER_CACHE_CAPACITY" envDefault:"1"`
+		StartAt       string `env:"MOBILE_SCHEDULER_START_AT" envDefault:"1s"`
+		Interval      string `env:"MOBILE_SCHEDULER_INTERVAL" envDefault:"600s"`
+		Workers       int    `env:"MOBILE_SCHEDULER_WORKERS" envDefault:"1"`
+		QueueSize     int    `env:"MOBILE_SCHEDULER_QUEUE_SIZE" envDefault:"1"`
+		CacheCapacity int    `env:"MOBILE_SCHEDULER_CACHE_CAPACITY" envDefault:"1"`
 	}
 	AlertScheduler struct {
-		StartAt   time.Duration `env:"ALERT_SCHEDULER_START_AT" envDefault:"2s"`
-		Interval  time.Duration `env:"ALERT_SCHEDULER_INTERVAL" envDefault:"10s"`
-		Workers   int           `env:"ALERT_SCHEDULER_WORKERS" envDefault:"1"`
-		QueueSize int           `env:"ALERT_SCHEDULER_QUEUE_SIZE" envDefault:"10"`
+		StartAt   string `env:"ALERT_SCHEDULER_START_AT" envDefault:"2s"`
+		Interval  string `env:"ALERT_SCHEDULER_INTERVAL" envDefault:"600s"`
+		Workers   int    `env:"ALERT_SCHEDULER_WORKERS" envDefault:"1"`
+		QueueSize int    `env:"ALERT_SCHEDULER_QUEUE_SIZE" envDefault:"10"`
 	}
 	MessageStatus struct {
-		StartAt   time.Duration `env:"MESSAGE_STATUS_START_AT" envDefault:"10s"`
-		Interval  time.Duration `env:"MESSAGE_STATUS_INTERVAL" envDefault:"10s"`
-		Workers   int           `env:"MESSAGE_STATUS_WORKERS" envDefault:"10"`
-		QueueSize int           `env:"MESSAGE_STATUS_QUEUE_SIZE" envDefault:"100"`
+		StartAt   string `env:"MESSAGE_STATUS_START_AT" envDefault:"10s"`
+		Interval  string `env:"MESSAGE_STATUS_INTERVAL" envDefault:"600s"`
+		Workers   int    `env:"MESSAGE_STATUS_WORKERS" envDefault:"10"`
+		QueueSize int    `env:"MESSAGE_STATUS_QUEUE_SIZE" envDefault:"100"`
 	}
 }
 
