@@ -2,11 +2,13 @@ package rest
 
 import (
 	"encoding/json"
-	"github.com/gin-gonic/gin"
-	"github.com/root-ali/iris/pkg/groups"
-	"go.uber.org/zap"
 	"io"
 	"net/http"
+
+	"github.com/gin-gonic/gin"
+	"github.com/root-ali/iris/pkg/groups"
+	"github.com/root-ali/iris/pkg/user"
+	"go.uber.org/zap"
 )
 
 type GroupsResponse struct {
@@ -150,7 +152,7 @@ func AddUserToGroupHandler(gr groups.GroupServiceInterface, logger *zap.SugaredL
 	}
 }
 
-func GetUsersInGroupHandler(gr groups.GroupServiceInterface, logger *zap.SugaredLogger) gin.HandlerFunc {
+func GetUsersInGroupHandler(gr groups.GroupServiceInterface, us user.UserInterfaceService, logger *zap.SugaredLogger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		groupId := c.Param("group_id")
 		logger.Infow("GetUsersInGroupHandler", "group_id", groupId)
@@ -161,7 +163,24 @@ func GetUsersInGroupHandler(gr groups.GroupServiceInterface, logger *zap.Sugared
 			c.AbortWithStatusJSON(400, gin.H{"error": "Failed to get users in group"})
 			return
 		}
-		c.JSON(200, gin.H{"users": userIDs, "status": "success"})
+
+		// Fetch full user details for each user ID
+		var users []map[string]interface{}
+		for _, userID := range userIDs {
+			u, err := us.GetByUserId(userID)
+			if err != nil {
+				logger.Warnw("Failed to get user details", "user_id", userID, "error", err)
+				continue // Skip this user if we can't fetch their details
+			}
+			users = append(users, map[string]interface{}{
+				"id":       u.ID,
+				"username": u.UserName,
+				"email":    u.Email,
+				"mobile":   u.Mobile,
+			})
+		}
+
+		c.JSON(200, gin.H{"users": users, "status": "success"})
 		return
 	}
 }
