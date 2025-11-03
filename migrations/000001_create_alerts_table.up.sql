@@ -1,5 +1,6 @@
 CREATE TABLE IF NOT EXISTS alerts (
     id VARCHAR(100) PRIMARY KEY,
+    fingerprint VARCHAR(30) NOT NULL,
 	name  VARCHAR(40) NOT NULL,
     severity VARCHAR(10) NOT NULL,
     description text,
@@ -9,7 +10,7 @@ CREATE TABLE IF NOT EXISTS alerts (
     method VARCHAR(10),
     receptor TEXT,
     send_notif BOOLEAN DEFAULT FALSE,
-    silenced INT DEFAULT 0,
+    silenced BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP NULL
@@ -34,3 +35,8 @@ EXECUTE FUNCTION set_updated_at();
 CREATE INDEX IF NOT EXISTS idx_alerts_send_notif_false
     ON alerts (id)
     WHERE send_notif = false;
+
+-- optional: index for fingerprint and id and firing status
+CREATE INDEX IF NOT EXISTS  idx_alerts_id_fingerprint_firing_status
+    ON alerts (id,fingerprint,status)
+    WHERE status = 'firing';

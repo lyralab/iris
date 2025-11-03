@@ -191,3 +191,22 @@ func (s *Storage) GetAlertById(id string) (*alerts.Alert, error) {
 
 	return alert, nil
 }
+
+func (s *Storage) GetAlertByFingerPrintAndStatus(fingerPrint, status string) (*alerts.Alert, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	var alert *alerts.Alert
+	result := s.db.Where("fingerprint = ?", fingerPrint).
+		Where("status = ?", status).
+		First(&alert).
+		WithContext(ctx)
+	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		s.logger.Warnw("Alert not found", "fingerprint", fingerPrint, "status", status)
+		return nil, result.Error
+	}
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	s.logger.Infof("Fetched alert %s for status %s", fingerPrint, status)
+	return alert, nil
+}
