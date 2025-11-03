@@ -2,8 +2,10 @@ package alerts
 
 import (
 	"errors"
+	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
@@ -16,6 +18,7 @@ type AlertRepository interface {
 	GetUnsentAlerts() ([]Alert, error)
 	MarkAlertAsSent(alertID string) error
 	GetUnsentAlertID(alert Alert) (string, error)
+	GetAlertByFingerPrintAndStatus(fingerPrint, status string) (*Alert, error)
 }
 
 type AlertsService interface {
@@ -36,16 +39,17 @@ func NewAlertService(l *zap.SugaredLogger, ai AlertRepository) AlertsService {
 	return &alertsService{l, ai}
 }
 
-func (as *alertsService) NewAlert(id, name, severity, description, status, method string,
+func (as *alertsService) NewAlert(fingerprint, name, severity, description, status, method string,
 	startsAt, endsAt time.Time,
 	receptor []string,
 ) (Alert, error) {
 	var als Alert
-	checkAlert, err := as.ar.GetAlertById(id)
+	checkAlert, err := as.ar.GetAlertByFingerPrintAndStatus(fingerprint, "firing")
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		als.Id = id
+		als.Id = uuid.New().String()
+		als.FingerPrint = fingerprint
 		als.Name = name
-		als.Severity = severity
+		als.Severity = strings.ToLower(strings.TrimSpace(severity))
 		als.Description = description
 		als.Status = status
 		als.Method = method
@@ -62,6 +66,7 @@ func (as *alertsService) NewAlert(id, name, severity, description, status, metho
 		return als, err
 	}
 	als.Id = checkAlert.Id
+	als.FingerPrint = checkAlert.FingerPrint
 	als.Name = checkAlert.Name
 	als.Severity = checkAlert.Severity
 	als.Description = checkAlert.Description

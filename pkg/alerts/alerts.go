@@ -9,6 +9,7 @@ import (
 
 type Alert struct {
 	Id          string         `json:"id" gorm:"column:id"`
+	FingerPrint string         `json:"fingerprint" gorm:"column:fingerprint"`
 	Name        string         `json:"name" gorm:"column:name"`
 	Severity    string         `json:"severity" gorm:"column:severity"`
 	Description string         `json:"description" gorm:"column:description"`
