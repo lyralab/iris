@@ -54,17 +54,18 @@ type Scheduler struct {
 		CacheCapacity int    `env:"MOBILE_SCHEDULER_CACHE_CAPACITY" envDefault:"1"`
 	}
 	AlertScheduler struct {
-		StartAt   string `env:"ALERT_SCHEDULER_START_AT" envDefault:"2s"`
-		Interval  string `env:"ALERT_SCHEDULER_INTERVAL" envDefault:"600s"`
+		StartAt   string `env:"ALERT_SCHEDULER_START_AT" envDefault:"3s"`
+		Interval  string `env:"ALERT_SCHEDULER_INTERVAL" envDefault:"10s"`
 		Workers   int    `env:"ALERT_SCHEDULER_WORKERS" envDefault:"1"`
 		QueueSize int    `env:"ALERT_SCHEDULER_QUEUE_SIZE" envDefault:"10"`
 	}
 	MessageStatus struct {
-		StartAt   string `env:"MESSAGE_STATUS_START_AT" envDefault:"10s"`
-		Interval  string `env:"MESSAGE_STATUS_INTERVAL" envDefault:"600s"`
+		StartAt   string `env:"MESSAGE_STATUS_START_AT" envDefault:"4s"`
+		Interval  string `env:"MESSAGE_STATUS_INTERVAL" envDefault:"20s"`
 		Workers   int    `env:"MESSAGE_STATUS_WORKERS" envDefault:"10"`
 		QueueSize int    `env:"MESSAGE_STATUS_QUEUE_SIZE" envDefault:"100"`
 	}
+	Enabled bool `env:"SCHEDULER_ENABLED" envDefault:"false"`
 }
 
 type Config struct {
@@ -73,6 +74,7 @@ type Config struct {
 	Go            GoEnv
 	Notifications Notifications
 	Scheduler     Scheduler
+
 	JwtSecret     string `env:"JWT_SECRET"`
 	SignupEnabled bool   `env:"SIGNUP_ENABLED" envDefault:"true"`
 }

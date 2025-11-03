@@ -17,6 +17,8 @@ type Alert struct {
 	Status      string         `json:"status" gorm:"column:status"`
 	Method      string         `json:"-" gorm:"column:method"`
 	Receptor    pq.StringArray `json:"-" gorm:"column:receptor;type:text[]"`
+	SendNotif   bool           `json:"-" gorm:"column:send_notif;default:false"`
+	Silenced    bool           `json:"-" gorm:"column:silenced;default:false"`
 	CreatedAt   time.Time      `json:"created_at" gorm:"column:created_at"`
 	UpdatedAt   time.Time      `json:"updated_at" gorm:"column:updated_at"`
 	gorm.DeletedAt

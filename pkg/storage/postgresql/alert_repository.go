@@ -176,3 +176,18 @@ func (s *Storage) GetUnsentAlertID(alert alerts.Alert) (string, error) {
 	// Return the ID of the alert
 	return alert.Id, nil
 }
+
+func (s *Storage) GetAlertById(id string) (*alerts.Alert, error) {
+	var alert *alerts.Alert
+	result := s.db.Where("id = ?", id).First(&alert)
+	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		s.logger.Warnw("Alert not found", "id", id)
+		return alert, result.Error
+	}
+	if result.Error != nil {
+		s.logger.Errorw("Error getting alert from database", "error", result.Error)
+		return alert, result.Error
+	}
+
+	return alert, nil
+}

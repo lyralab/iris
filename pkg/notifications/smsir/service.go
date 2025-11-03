@@ -3,6 +3,7 @@ package smsir
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -102,7 +103,7 @@ func (s *Service) Status(messageId string) (notifications.MessageStatusType, err
 		messageStatus = notifications.MessageStatusType(-1)
 		return messageStatus, err
 	}
-
+	s.Logger.Infow("Smsir status response", "status_code", resp.StatusCode, "messageId", messageId)
 	if resp.StatusCode != http.StatusOK {
 		messageStatus = notifications.MessageStatusType(-1)
 		return messageStatus, fmt.Errorf("http status code %d", resp.StatusCode)
@@ -128,18 +129,21 @@ func (s *Service) Status(messageId string) (notifications.MessageStatusType, err
 		messageStatus = notifications.MessageStatusType(-1)
 		return messageStatus, err
 	}
-
-	if rsp.Status != 1 {
-		messageStatus = notifications.MessageStatusType(-1)
-		return messageStatus, fmt.Errorf("http status code %d", rsp.Status)
+	s.Logger.Infow("Smsir status response", " body", rsp.Data.Mobile, "messageId", messageId)
+	if rsp.Status == 1 {
+		messageStatus = notifications.MessageStatusType(10)
+		return messageStatus, nil
 	}
-
-	if rsp.Data.DeliveryStatus != 1 {
+	if rsp.Data.DeliveryStatus == 3 || rsp.Data.DeliveryStatus == 5 {
+		messageStatus = notifications.MessageStatusType(1)
+		return messageStatus, nil
+	}
+	if rsp.Data.DeliveryStatus == 6 || rsp.Data.DeliveryStatus == 7 || rsp.Data.DeliveryStatus == 2 || rsp.Data.DeliveryStatus == 4 {
 		messageStatus = notifications.MessageStatusType(6)
-		return messageStatus, fmt.Errorf("http status code %d", rsp.Data.DeliveryStatus)
+		return messageStatus, errors.New("failed to deliver message")
 	}
 	messageStatus = notifications.TypeMessageStatusDelivered
-
+	s.Logger.Infow("Smsir status message", "status", messageStatus, "messageId", messageId)
 	return messageStatus, nil
 }
 

@@ -9,7 +9,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/root-ali/iris/pkg/alerts"
-	"github.com/root-ali/iris/pkg/messages/alertmanager"
 )
 
 type AlertManagerRequest struct {
@@ -59,10 +58,17 @@ func AlertManagerHandler(as alerts.AlertsService) gin.HandlerFunc {
 			})
 
 		}
-		var als []alertmanager.Alert
+		var als []alerts.Alert
 		for _, a := range amr.Alerts {
-			alert := a.convertToAlertManagerAlert()
+			alert, err := a.convertAlertManagerToAlert(as)
+			if err != nil {
+				continue
+			}
 			als = append(als, alert)
+		}
+		if len(als) == 0 {
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{})
+			return
 		}
 		n, err := as.AddAlertManagerAlerts(als)
 		fmt.Println("number of alerts is saved", n)
@@ -74,21 +80,21 @@ func AlertManagerHandler(as alerts.AlertsService) gin.HandlerFunc {
 
 }
 
-func (ar AlertRequest) convertToAlertManagerAlert() alertmanager.Alert {
-
-	return alertmanager.Alert{
-		Status: ar.Status,
-		AlertLabels: alertmanager.Labels{
-			Severity:  ar.AlertLabels.Severity,
-			AlertName: ar.AlertLabels.AlertName,
-			Method:    ar.AlertLabels.Method,
-			Receptor:  strings.Split(ar.AlertLabels.Receptor, ","),
-		},
-		AlertAnnotation: alertmanager.Annotation{
-			Summary: ar.AlertAnnotation.Summary,
-		},
-		StartsAt:    ar.StartsAt,
-		EndsAt:      ar.EndsAt,
-		Fingerprint: ar.Fingerprint,
+func (ar AlertRequest) convertAlertManagerToAlert(as alerts.AlertsService) (alerts.Alert, error) {
+	alert, err := as.NewAlert(
+		ar.Fingerprint,
+		ar.AlertLabels.AlertName,
+		ar.AlertLabels.Severity,
+		ar.AlertAnnotation.Summary,
+		ar.Status,
+		ar.AlertLabels.Method,
+		*ar.StartsAt,
+		*ar.EndsAt,
+		strings.Split(ar.AlertLabels.Receptor, ","),
+	)
+	if err != nil {
+		return alerts.Alert{}, err
 	}
+	return alert, nil
+
 }
