@@ -162,6 +162,13 @@ func (s *CacheReceptor) setMobilesOnCache() {
 		if cached[group.GroupName] == nil {
 			cached[group.GroupName] = make(map[string]string)
 		}
+		if group.Mobile == "" {
+			s.Logger.Warnw("Empty mobile number found",
+				"group_id", group.GroupID,
+				"group_name", group.GroupName,
+				"user_id", group.UserId)
+			continue
+		}
 		cached[group.GroupName][group.UserId] = group.Mobile
 	}
 
