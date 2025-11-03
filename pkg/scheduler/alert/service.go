@@ -81,6 +81,15 @@ func (s *Scheduler) worker(id int) {
 }
 
 func (s *Scheduler) handleAlert(al alerts.Alert) error {
+	if al.Method == "" || len(al.Receptor) == 0 {
+		s.logger.Warnw("Alert has no method or no receptor defined, skipping", "alertID", al.Id)
+		err := s.repo.MarkAlertAsSent(al.Id)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+
 	// Prepare receptors
 	var receptors []string
 
@@ -103,11 +112,11 @@ func (s *Scheduler) handleAlert(al alerts.Alert) error {
 			receptors = append(receptors, v)
 		}
 	}
-
+	textMessage := al.Status + "\n" + al.Description + "\nTime: " + time.Now().Format(time.RFC1123)
 	// Prepare message
 	msg := notifications.Message{
 		Subject:   al.Name,
-		Message:   al.Description,
+		Message:   textMessage,
 		Receptors: receptors,
 	}
 
@@ -135,24 +144,25 @@ func (s *Scheduler) handleAlert(al alerts.Alert) error {
 		}
 		return err
 	}
-	for _, id := range msgIds {
-		for r, v := range receptorIds {
+	var i = 0
+	for r, v := range receptorIds {
 
-			// Save Message
-			s.logger.Info("Save success message to repository", "messageID", id, "receptor", v)
-			sentMsg := message.NewMessage(id,
-				al.Description,
-				v, provider.GetName(),
-				r,
-				"",
-				"Sent",
-				[]string{provider.GetName()})
-			err := s.messageRepo.Add(sentMsg)
-			if err != nil {
-				s.logger.Errorw("Failed to save sent message", "receptor", v, "error", err)
-				return err
-			}
+		// Save Message
+		s.logger.Info("Save success message to repository", "messageID", msgIds[i], "receptor", v)
+		sentMsg := message.NewMessage(msgIds[i],
+			textMessage,
+			v,
+			provider.GetName(),
+			r,
+			"",
+			"Sent",
+			[]string{provider.GetName()})
+		err := s.messageRepo.Add(sentMsg)
+		if err != nil {
+			s.logger.Errorw("Failed to save sent message", "receptor", v, "error", err)
+			return err
 		}
+		i++
 	}
 
 	// Mark alert as sent
