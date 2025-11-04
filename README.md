@@ -4,8 +4,8 @@ Iris is a comprehensive alert management and notification system designed to rec
 
 ## Features
 
-- **Alert Management**: Receive, store, and manage alerts from Grafana and AlertManager
-- **Multi-Channel Notifications**: Support for SMS (Kavenegar, Smsir) and Email notifications
+- **Alert Management**: Receive, store, and manage alerts from AlertManager
+- **Multi-Channel Notifications**: Support for SMS (Kavenegar, Smsir) 
 - **User & Role Management**: Complete RBAC (Role-Based Access Control) system
 - **Group Management**: Organize users into groups for efficient alert routing
 - **Web Dashboard**: React-based web interface for monitoring and managing alerts
@@ -301,33 +301,7 @@ Authorization: Bearer <token>
 ### Webhook Endpoints
 
 #### Grafana Webhook
-```http
-POST /v0/messages/grafana
-Authorization: Basic admin:<ADMIN_PASS>
-Content-Type: application/json
-
-{
-  "receiver": "My Super Webhook",
-  "status": "firing",
-  "alertService": [
-    {
-      "status": "firing",
-      "labels": {
-        "alertname": "High memory usage",
-        "team": "backend",
-        "receptor": "+1-555-0100",
-        "method": "sms"
-      },
-      "annotations": {
-        "description": "The system has high memory usage",
-        "summary": "High memory alert"
-      },
-      "startsAt": "2024-01-12T09:51:03.157076+02:00",
-      "fingerprint": "c6eadffa33fcdf37"
-    }
-  ]
-}
-```
+not implemented yet
 
 #### AlertManager Webhook
 ```http
@@ -387,7 +361,7 @@ Example Grafana alert configuration:
 {
   "labels": {
     "alertname": "HighMemoryUsage",
-    "receptor": "+1-555-0100",
+    "receptor": "group_name_1,group_name_2",
     "method": "sms",
     "severity": "critical"
   },
@@ -512,10 +486,10 @@ For issues and questions:
 
 ## Changelog
 
-### Version 1.0.0
+### Version 0.0.1
 - Initial release
 - Alert management system
 - Multi-channel notifications
 - User and role management
 - Web dashboard
-- Grafana and AlertManager integration
+- AlertManager integration
