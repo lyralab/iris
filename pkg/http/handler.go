@@ -75,7 +75,7 @@ func (ht *HttpHandler) Handler() *gin.Engine {
 
 	// Message handler routes
 	messageRouter := router.Group("v1/messages",
-		middlewares.BasicAuth("admin", "admin"))
+		middlewares.BasicAuth("admin", ht.AdminPassword))
 	messageRouter.POST("/alertmanager",
 		rest.AlertManagerHandler(ht.AS))
 
