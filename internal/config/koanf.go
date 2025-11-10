@@ -21,7 +21,5 @@ func New(path string) *Config {
 		log.Fatalf("error unmarshalling config: %s", err)
 	}
 
-	log.Printf("following configuration is loaded:\n%+v", instance)
-
 	return &instance
 }
