@@ -8,11 +8,7 @@ import (
 )
 
 func main() {
-	cfg, err := config.Load()
-	if err != nil {
-		log.Fatalf("config load: %v", err)
-	}
-
+	cfg := config.New("config.yml")
 	app, err := bootstrap.Init(cfg)
 	if err != nil {
 		log.Fatalf("bootstrap init: %v", err)
