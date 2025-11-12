@@ -160,7 +160,8 @@ func (s *Service) safeRunJob(msg message.Message) {
 }
 
 func (s *Service) checkMessageStatus(msg message.Message) {
-	if msg.Attempt >= MaxAttempt {
+	if (msg.Attempt > MaxAttempt && msg.Status == message.StatusMap[message.TypeMessageStatusSent]) ||
+		(msg.Attempt > WaitingAttempt && msg.Status == message.StatusMap[message.TypeMessageStatusWaiting]) {
 		s.sendAlternativeNotification(msg)
 		return
 	}
@@ -181,6 +182,7 @@ func (s *Service) checkMessageStatus(msg message.Message) {
 	if err != nil {
 		s.logger.Errorw("failed to get message status from provider",
 			"message", msg.Id, "error", err)
+		// TODO: handle error of kavenegar's api
 		err = s.messageRepo.UpdateMessageStatus(&msg,
 			0,
 			"Failed to get status from provider: "+err.Error())
@@ -201,9 +203,17 @@ func (s *Service) checkMessageStatus(msg message.Message) {
 		}
 		return
 	} else if messageStatus == 6 {
+		// TODO: Handle failed alerts to send with alternative
 		err := s.messageRepo.UpdateMessageStatus(&msg, 6, "Failed")
 		if err != nil {
 			s.logger.Errorw("failed to update message status to Failed for message",
+				"message", msg.Id, "error", err.Error())
+		}
+		return
+	} else if messageStatus == 4 || messageStatus == 5 {
+		err := s.messageRepo.UpdateMessageStatus(&msg, 0, "Waiting")
+		if err != nil {
+			s.logger.Errorw("failed to update message status to Sent for message",
 				"message", msg.Id, "error", err.Error())
 		}
 		return

@@ -2,10 +2,11 @@ package jwtvalidation
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/root-ali/iris/pkg/user"
 	"go.uber.org/zap"
-	"time"
 )
 
 func NewJWTIssuerService(secretKey []byte, issuer string, t time.Duration, l *zap.SugaredLogger) *JWTIssue {
@@ -19,7 +20,7 @@ func NewJWTIssuerService(secretKey []byte, issuer string, t time.Duration, l *za
 
 func (ji *JWTIssue) CreateToken(user user.User) (string, error) {
 	claims := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"sub": user.Name,
+		"sub": user.UserName,
 		"iss": ji.Issuer,
 		"aud": user.Role,
 		"exp": time.Now().Add(ji.Expire).Unix(),
@@ -31,7 +32,7 @@ func (ji *JWTIssue) CreateToken(user user.User) (string, error) {
 		ji.l.Errorf("jwt issuer create token err: %v", err)
 		return "", err
 	}
-	ji.l.Info("jwt issuer create token for user", zap.String("user", user.Name))
+	ji.l.Info("jwt issuer create token for user", zap.String("user", user.UserName))
 	return tokenString, nil
 }
 
@@ -47,7 +48,7 @@ func (ji *JWTIssue) ValidateToken(tokenString string, _ string) error {
 		return fmt.Errorf("jwt issuer invalid token")
 	}
 	var u *user.User
-	u.Name = token.Claims.(jwt.MapClaims)["sub"].(string)
+	u.UserName = token.Claims.(jwt.MapClaims)["sub"].(string)
 	u.Role = token.Claims.(jwt.MapClaims)["aud"].(string)
 	return nil
 }

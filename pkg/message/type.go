@@ -48,12 +48,14 @@ const (
 	TypeMessageStatusSent      StatusType = 1
 	TypeMessageStatusFailed    StatusType = 6
 	TypeMessageStatusDelivered StatusType = 10
+	TypeMessageStatusWaiting   StatusType = 12
 )
 
 var StatusMap = map[StatusType]string{
 	TypeMessageStatusSent:      "Sent",
 	TypeMessageStatusFailed:    "Failed",
 	TypeMessageStatusDelivered: "Delivered",
+	TypeMessageStatusWaiting:   "Waiting",
 }
 
 func NewMessage(senderId, message, receptor, sender, userId, groupName, response string, providerChain []string) *Message {

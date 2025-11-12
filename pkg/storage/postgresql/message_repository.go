@@ -75,7 +75,7 @@ func (s *Storage) ListNotFinishedMessages() ([]message.Message, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
 	result := s.db.Table("message").
-		Where("status = ?", "Sent").
+		Where("status = ?", "Sent").Or("status = ?", "Waiting").
 		Find(&msgs).
 		Clauses(clause.Locking{
 			Strength: "UPDATE",

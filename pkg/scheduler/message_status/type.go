@@ -52,5 +52,6 @@ type Config struct {
 }
 
 var (
-	MaxAttempt = 3
+	MaxAttempt     = 3
+	WaitingAttempt = 5
 )

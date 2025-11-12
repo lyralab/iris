@@ -20,9 +20,13 @@ func (s *Service) List() ([]*Message, error) {
 }
 
 func (s *Service) UpdateMessageStatus(msg *Message, status StatusType, response string) error {
+	if StatusMap[status] != msg.Status {
+		msg.Attempt = 0
+	} else {
+		msg.Attempt++
+	}
 	msg.Status = StatusMap[status]
 	msg.Response = response
-	msg.Attempt += 1
 
 	return s.repo.UpdateMessage(msg)
 }
