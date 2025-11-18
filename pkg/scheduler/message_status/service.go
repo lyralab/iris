@@ -244,7 +244,27 @@ func (s *Service) sendAlternativeNotification(msg message.Message) {
 		"provider", alternativeProvider.GetName())
 	msgId, err := s.sendNotification(msg, alternativeProvider)
 	if err != nil {
+
 		s.logger.Errorw("failed to resend message with alternative provider",
+			"message", msg.Id, "error", err)
+		err := s.messageRepo.UpdateMessageStatus(&msg,
+			6,
+			"Failed to resend with alternative provider: "+err.Error())
+		if err != nil {
+			s.logger.Errorw("failed to update message status to Failed for message after resend attempt",
+				"message", msg.Id, "error", err)
+		}
+		newMessage := message.NewMessage(msgId,
+			msg.Message,
+			msg.Receptor,
+			alternativeProvider.GetName(),
+			msg.UserId,
+			msg.GroupName,
+			"Resent with alternative provider: "+alternativeProvider.GetName(),
+			[]string{provider.GetName(), alternativeProvider.GetName()})
+		newMessage.Status = message.StatusMap[message.TypeMessageStatusFailed]
+		err = s.messageRepo.Add(newMessage)
+		s.logger.Errorw("failed to save resent message to repository after failed resend attempt",
 			"message", msg.Id, "error", err)
 		return
 	}
