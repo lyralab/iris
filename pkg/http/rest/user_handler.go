@@ -30,12 +30,12 @@ type UserSignupBody struct {
 }
 
 type UserUpdateBody struct {
-	UserName  string `json:"username" validate:"required,min=3,max=30"`
-	FirstName string `json:"firstname,omitempty" validate:"omitempty,min=3,max=30"`
-	LastName  string `json:"lastname,omitempty" validate:"omitempty,min=3,max=30"`
-	Password  string `json:"password,omitempty" validate:"omitempty,passwordStrength,min=8,max=30"`
-	Mobile    string `json:"mobile,omitempty" validate:"omitempty,len=11,numeric"`
-	Email     string `json:"email,omitempty" validate:"omitempty,email"`
+	UserName   string `json:"username" validate:"required,min=3,max=30"`
+	FirstName  string `json:"firstname,omitempty" validate:"omitempty,min=3,max=30"`
+	LastName   string `json:"lastname,omitempty" validate:"omitempty,min=3,max=30"`
+	Mobile     string `json:"mobile,omitempty" validate:"omitempty,len=11,numeric"`
+	Email      string `json:"email,omitempty" validate:"omitempty,email"`
+	TelegramID string `json:"telegram_id,omitempty" validate:"omitempty,numeric"`
 }
 
 type UserVerifyBody struct {
@@ -320,6 +320,7 @@ func VerifyUserHandler(us user.UserInterfaceService, logger *zap.SugaredLogger) 
 
 func UpdateUserHandler(us user.UserInterfaceService, logger *zap.SugaredLogger) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		var processed = false
 		bodyBytes, _ := io.ReadAll(c.Request.Body)
 		c.Request.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
 		var u UserUpdateBody
@@ -330,41 +331,69 @@ func UpdateUserHandler(us user.UserInterfaceService, logger *zap.SugaredLogger) 
 			c.AbortWithStatusJSON(400, gin.H{"status": "error", "error": err})
 			return
 		}
-		err = validate.Struct(u)
-		if err != nil {
-			validationErrors := err.(validator.ValidationErrors)
-			errorMessages := make([]string, 0)
-			for _, e := range validationErrors {
-				errorMessages = append(errorMessages, fmt.Sprintf("Field '%s' failed validation: %s",
-					e.Field(), e.Tag()))
-			}
-			logger.Errorw("Validation failed",
-				"method", c.Request.Method,
-				"path", c.Request.URL.Path,
-				"remote_addr", c.Request.RemoteAddr,
-				"body", string(bodyBytes),
-				"errors", errorMessages,
-			)
-			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
-				"status":  "error",
-				"message": "Validation failed",
-				"errors":  errorMessages,
+		role, ok := c.Get("role")
+		if !ok {
+			logger.Errorw("cannot get role from context")
+			c.AbortWithStatusJSON(500, gin.H{"status": "error", "error": "token is invalid"})
+			return
+		}
+		userName, ok := c.Get("username")
+		if !ok {
+			logger.Errorw("cannot get username from context")
+			c.AbortWithStatusJSON(500, gin.H{"status": "error", "error": "token is invalid"})
+			return
+		}
+		if role == "admin" {
+			processed = true
+		} else if role == "viewer" && userName == u.UserName {
+			processed = true
+		} else {
+			logger.Errorw("user not authorize to do this actions",
+				"username", userName, "role", role)
+			c.AbortWithStatusJSON(401, gin.H{
+				"status":  "unauthorized",
+				"message": "user not valid to do this action",
 			})
 			return
 		}
-		updateUser := u.toUser()
-		logger.Infow("Updating user data",
-			"user_id", updateUser.ID,
-			"username", updateUser.UserName,
-			"mail", updateUser.Email,
-			"mobile", updateUser.Mobile)
-		err = us.UpdateUser(updateUser)
-		if err != nil {
-			logger.Errorw("cannot update user", "error", err)
-			c.AbortWithStatusJSON(500, gin.H{"status": "error", "error": err})
-			return
+		if processed {
+			err = validate.Struct(u)
+			if err != nil {
+				validationErrors := err.(validator.ValidationErrors)
+				errorMessages := make([]string, 0)
+				for _, e := range validationErrors {
+					errorMessages = append(errorMessages, fmt.Sprintf("Field '%s' failed validation: %s",
+						e.Field(), e.Tag()))
+				}
+				logger.Errorw("Validation failed",
+					"method", c.Request.Method,
+					"path", c.Request.URL.Path,
+					"remote_addr", c.Request.RemoteAddr,
+					"body", string(bodyBytes),
+					"errors", errorMessages,
+				)
+				c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+					"status":  "error",
+					"message": "Validation failed",
+					"errors":  errorMessages,
+				})
+				return
+			}
+			updateUser := u.toUser()
+			logger.Debugw("Updating user data",
+				"user_id", updateUser.ID,
+				"username", updateUser.UserName,
+				"mail", updateUser.Email,
+				"mobile", updateUser.Mobile,
+				"telegram id", updateUser.TelegramID)
+			err = us.UpdateUser(updateUser)
+			if err != nil {
+				logger.Errorw("cannot update user", "error", err)
+				c.AbortWithStatusJSON(500, gin.H{"status": "error", "error": err})
+				return
+			}
+			c.JSON(200, gin.H{"status": "OK", "username": updateUser.UserName})
 		}
-		c.JSON(200, gin.H{"status": "OK", "username": updateUser.UserName})
 	}
 }
 
@@ -461,14 +490,14 @@ func (ub *UserUpdateBody) toUser() *user.User {
 	if ub.LastName != "" {
 		u.LastName = ub.LastName
 	}
-	if ub.Password != "" {
-		u.Password = ub.Password
-	}
 	if ub.Mobile != "" {
 		u.Mobile = ub.Mobile
 	}
 	if ub.Email != "" {
 		u.Email = ub.Email
+	}
+	if ub.TelegramID != "" {
+		u.TelegramID = ub.TelegramID
 	}
 
 	return u

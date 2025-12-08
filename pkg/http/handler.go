@@ -109,7 +109,7 @@ func (ht *HttpHandler) Handler() *gin.Engine {
 		rest.VerifyUserHandler(ht.US, ht.Logger),
 	)
 	userRouter.PUT("",
-		middlewares.ValidateJWTToken(ht.ATHS, "admin", ht.Logger),
+		middlewares.ValidateJWTToken(ht.ATHS, "admin,viewer", ht.Logger),
 		middlewares.CheckContentTypeHeader("application/json", ht.Logger),
 		rest.UpdateUserHandler(ht.US, ht.Logger),
 	)
