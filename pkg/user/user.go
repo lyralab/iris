@@ -180,6 +180,7 @@ func (us *userServiceImpl) VerifyUser(u *User) error {
 }
 
 func (us *userServiceImpl) UpdateUser(u *User) error {
+	u.ModifiedAt = time.Now()
 	err := us.repo.UpdateUserData(u)
 	if err != nil {
 		return err
