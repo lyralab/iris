@@ -7,6 +7,17 @@ const Profile = () => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [showEditModal, setShowEditModal] = useState(false);
+    const [editForm, setEditForm] = useState({
+        username: '',
+        firstname: '',
+        lastname: '',
+        email: '',
+        mobile_number: '',
+        telegram_id: ''
+    });
+    const [saving, setSaving] = useState(false);
+    const [saveError, setSaveError] = useState(null);
 
     useEffect(() => {
         fetchUserProfile();
@@ -22,6 +33,46 @@ const Profile = () => {
             setError(e.message);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const openEditModal = () => {
+        setEditForm({
+            username: user.username || '',
+            firstname: user.firstName || user.firstname || '',
+            lastname: user.lastName || user.lastname || '',
+            email: user.email || '',
+            mobile_number: user.mobile || user.mobile_number || '',
+            telegram_id: user.telegramID || user.telegram_id || ''
+        });
+        setSaveError(null);
+        setShowEditModal(true);
+    };
+
+    const closeEditModal = () => {
+        setShowEditModal(false);
+        setSaveError(null);
+    };
+
+    const handleInputChange = (e) => {
+        const { name, value } = e.target;
+        setEditForm(prev => ({
+            ...prev,
+            [name]: value
+        }));
+    };
+
+    const handleSave = async () => {
+        setSaving(true);
+        setSaveError(null);
+        try {
+            await apiService.updateUser(editForm);
+            await fetchUserProfile();
+            setShowEditModal(false);
+        } catch (e) {
+            setSaveError(e.message);
+        } finally {
+            setSaving(false);
         }
     };
 
@@ -115,6 +166,10 @@ const Profile = () => {
                                         <label>Mobile</label>
                                         <span>{user.mobile || user.mobile_number || '-'}</span>
                                     </div>
+                                    <div className="info-row">
+                                        <label>Telegram ID</label>
+                                        <span>{user.telegramID || user.telegram_id || '-'}</span>
+                                    </div>
                                 </div>
                             </div>
 
@@ -136,10 +191,92 @@ const Profile = () => {
                                         }) : '-'}</span>
                                     </div>
                                 </div>
+                                <button className="edit-profile-btn" onClick={openEditModal}>
+                                    ✏️ Edit Profile
+                                </button>
                             </div>
                         </div>
                     </div>
                 </div>
+
+                {/* Edit Profile Modal */}
+                {showEditModal && (
+                    <div className="modal-overlay" onClick={closeEditModal}>
+                        <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                            <div className="modal-header">
+                                <h2>Edit Profile</h2>
+                                <button className="modal-close-btn" onClick={closeEditModal}>×</button>
+                            </div>
+                            <div className="modal-body">
+                                {saveError && (
+                                    <div className="modal-error">{saveError}</div>
+                                )}
+                                <div className="form-group">
+                                    <label>First Name</label>
+                                    <input
+                                        type="text"
+                                        name="firstname"
+                                        value={editForm.firstname}
+                                        onChange={handleInputChange}
+                                        placeholder="Enter first name"
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label>Last Name</label>
+                                    <input
+                                        type="text"
+                                        name="lastname"
+                                        value={editForm.lastname}
+                                        onChange={handleInputChange}
+                                        placeholder="Enter last name"
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label>Email</label>
+                                    <input
+                                        type="email"
+                                        name="email"
+                                        value={editForm.email}
+                                        onChange={handleInputChange}
+                                        placeholder="Enter email"
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label>Mobile</label>
+                                    <input
+                                        type="text"
+                                        name="mobile_number"
+                                        value={editForm.mobile_number}
+                                        onChange={handleInputChange}
+                                        placeholder="Enter mobile number"
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label>Telegram ID</label>
+                                    <input
+                                        type="text"
+                                        name="telegram_id"
+                                        value={editForm.telegram_id}
+                                        onChange={handleInputChange}
+                                        placeholder="Enter Telegram ID"
+                                    />
+                                </div>
+                            </div>
+                            <div className="modal-footer">
+                                <button className="modal-cancel-btn" onClick={closeEditModal}>
+                                    Cancel
+                                </button>
+                                <button
+                                    className="modal-save-btn"
+                                    onClick={handleSave}
+                                    disabled={saving}
+                                >
+                                    {saving ? 'Saving...' : 'Save Changes'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </Layout>
     );
