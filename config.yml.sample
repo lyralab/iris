@@ -1,0 +1,57 @@
+iris:
+  postgres:
+    host: ""
+    port: 5432
+    db_name: ""
+    user: ""
+    pass: ""
+    ssl: false
+  http:
+    port: 9090
+    admin_pass: ""
+  go:
+    mode: "debug"
+  notifications:
+    smsir:
+      enabled: true
+      api_key: ""
+      line_number: ""
+      priority: 2
+    kavenegar:
+      enabled: true
+      api_token: ""
+      sender: ""
+      priority: 1
+    email:
+      host: ""
+      port: ""
+      user: ""
+      password: ""
+      from: ""
+      enabled: ""
+    telegram:
+      enabled: true
+      bot_token: ""
+      proxy: ""
+  scheduler:
+    scheduler_enabled: "true"
+    mobile_scheduler:
+      start_at: "1s"
+      interval: "600s"
+      workers: "1"
+      queue_size: "1"
+      cache_capacity: "1"
+    # Alert Scheduler configuration
+    alert_scheduler:
+      start_at: "3s"
+      interval: "10s"
+      workers: "1"
+      queue_size: "10"
+    # Message Status
+    message_status:
+      start_at: "4s"
+      interval: "20s"
+      workers: "10"
+      queue_size: "100"
+  jwt_secret: "your_jwt_secret_key"
+  signup_enabled: "false"
