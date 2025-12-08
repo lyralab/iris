@@ -19,6 +19,7 @@ type Repository interface {
 
 type CacheService interface {
 	GetNumbers(group string) (map[string]string, error)
+	Get(model string, groupName string) (map[string]string, bool)
 }
 
 type CacheReceptor struct {
@@ -39,10 +40,12 @@ type CacheReceptor struct {
 }
 
 type GroupWithMobiles struct {
-	GroupID   string `gorm:"column:group_id"`
-	GroupName string `gorm:"column:group_name"`
-	UserId    string `gorm:"column:user_id"`
-	Mobile    string `gorm:"column:mobiles,type:varchar"`
+	GroupID    string `gorm:"column:group_id"`
+	GroupName  string `gorm:"column:group_name"`
+	UserId     string `gorm:"column:user_id"`
+	Mobile     string `gorm:"column:mobile,type:varchar"`
+	Email      string `gorm:"column:email,type:varchar"`
+	TelegramID string `gorm:"column:telegram_id,type:varchar"`
 }
 
 type Config struct {

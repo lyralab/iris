@@ -16,7 +16,9 @@ func (s *Storage) GetGroupsNumbers(group ...string) ([]cache_receptors.GroupWith
         g.id   AS group_id,
         g.name AS group_name,
         u.id AS user_id ,
-        u.mobile AS mobiles
+        u.mobile AS mobiles,
+    	u.email AS email,
+        u.telegram_id AS telegram_id
     FROM groups g
              LEFT JOIN user_groups ug
                        ON ug.group_id = g.id
@@ -39,19 +41,20 @@ func (s *Storage) GetGroupsNumbers(group ...string) ([]cache_receptors.GroupWith
 	}
 
 	if err != nil {
+		s.logger.Errorw("Failed to execute query", "error", err)
 		return nil, err
 	}
 	defer func(rows *sql.Rows) {
 		err := rows.Close()
 		if err != nil {
-
 		}
 	}(rows)
 
 	for rows.Next() {
 		var g cache_receptors.GroupWithMobiles
-		err := rows.Scan(&g.GroupID, &g.GroupName, &g.UserId, &g.Mobile)
+		err := rows.Scan(&g.GroupID, &g.GroupName, &g.UserId, &g.Mobile, &g.Email, &g.TelegramID)
 		if err != nil {
+			s.logger.Errorw("Failed to scan row", "error", err)
 			return nil, err
 		}
 		gms = append(gms, g)

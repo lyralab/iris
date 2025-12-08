@@ -150,34 +150,52 @@ func (s *CacheReceptor) setMobilesOnCache() {
 		s.Logger.Errorw("Failed to get group numbers", "error", err)
 		return
 	}
-	s.Logger.Info("length group numbers", "length", len(results))
+	s.Logger.Infow("length group numbers", "length", len(results))
 
-	cached := make(map[string]map[string]string)
+	mobileCached := make(map[string]map[string]string)
+	emailCached := make(map[string]map[string]string)
+	telegramCached := make(map[string]map[string]string)
 	for _, group := range results {
-		fmt.Println("Processing group:", group.GroupName)
-		s.Logger.Infow("Group with mobiles",
-			"group_id", group.GroupID,
-			"group_name", group.GroupName,
-			"mobiles", group.Mobile)
-		if cached[group.GroupName] == nil {
-			cached[group.GroupName] = make(map[string]string)
+		if mobileCached[group.GroupName] == nil {
+			mobileCached[group.GroupName] = make(map[string]string)
 		}
-		if group.Mobile == "" {
-			s.Logger.Warnw("Empty mobile number found",
-				"group_id", group.GroupID,
-				"group_name", group.GroupName,
-				"user_id", group.UserId)
-			continue
+		if emailCached[group.GroupName] == nil {
+			emailCached[group.GroupName] = make(map[string]string)
 		}
-		cached[group.GroupName][group.UserId] = group.Mobile
+		if telegramCached[group.GroupName] == nil {
+			telegramCached[group.GroupName] = make(map[string]string)
+		}
+		if group.Mobile != "" {
+			mobileCached[group.GroupName][group.UserId] = group.Mobile
+		}
+		if group.Email != "" {
+			emailCached[group.GroupName][group.UserId] = group.Email
+		}
+		if group.TelegramID != "" {
+			telegramCached[group.GroupName][group.UserId] = group.TelegramID
+		}
 	}
 
-	for groupName, _ := range cached {
-		err := s.Cache.Set("mobiles_"+groupName, cached[groupName], 0)
+	for groupName, _ := range mobileCached {
+		err := s.Cache.Set("mobiles_"+groupName, mobileCached[groupName], 0)
 		if err != nil {
 			return
 		}
 	}
+	for groupName, _ := range emailCached {
+		err := s.Cache.Set("emails_"+groupName, emailCached[groupName], 0)
+		if err != nil {
+			return
+		}
+	}
+	for groupName, _ := range telegramCached {
+		err := s.Cache.Set("telegrams_"+groupName, telegramCached[groupName], 0)
+		if err != nil {
+			return
+		}
+	}
+
+	s.Logger.Info("Finished Cache Receptors Job at %v", time.Now())
 
 }
 
@@ -192,4 +210,29 @@ func (s *CacheReceptor) GetNumbers(name string) (map[string]string, error) {
 		return mobiles, nil
 	}
 	return mobiles, nil
+}
+
+func (s *CacheReceptor) Get(model string, groupName string) (map[string]string, bool) {
+	query := ""
+	switch model {
+	case "sms":
+		query = "mobiles_"
+	case "email":
+		query = "emails_"
+	case "telegram":
+		query = "telegrams_"
+	default:
+		return nil, false
+	}
+	question := query + groupName
+	resp, ok := s.Cache.Get(question)
+	if !ok {
+		s.setMobilesOnCache()
+		resp, ok = s.Cache.Get(question)
+		if !ok {
+			return nil, false
+		}
+		return resp, true
+	}
+	return resp, true
 }

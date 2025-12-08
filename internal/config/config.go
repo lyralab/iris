@@ -52,7 +52,7 @@ type Scheduler struct {
 		Interval      string `env:"MOBILE_SCHEDULER_INTERVAL" envDefault:"600s" koanf:"interval"`
 		Workers       int    `env:"MOBILE_SCHEDULER_WORKERS" envDefault:"1" koanf:"workers"`
 		QueueSize     int    `env:"MOBILE_SCHEDULER_QUEUE_SIZE" envDefault:"1" koanf:"queue_size"`
-		CacheCapacity int    `env:"MOBILE_SCHEDULER_CACHE_CAPACITY" envDefault:"1" koanf:"cache_capacity"`
+		CacheCapacity int    `env:"MOBILE_SCHEDULER_CACHE_CAPACITY" envDefault:"10" koanf:"cache_capacity"`
 	} `koanf:"mobile_scheduler"`
 	AlertScheduler struct {
 		StartAt   string `env:"ALERT_SCHEDULER_START_AT" envDefault:"3s" koanf:"start_at"`
