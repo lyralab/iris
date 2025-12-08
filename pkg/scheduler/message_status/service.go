@@ -261,7 +261,8 @@ func (s *Service) sendAlternativeNotification(msg message.Message) {
 			msg.UserId,
 			msg.GroupName,
 			"Resent with alternative provider: "+alternativeProvider.GetName(),
-			[]string{provider.GetName(), alternativeProvider.GetName()})
+			[]string{provider.GetName(), alternativeProvider.GetName()},
+			message.TypeMessageStatusSent)
 		newMessage.Status = message.StatusMap[message.TypeMessageStatusFailed]
 		err = s.messageRepo.Add(newMessage)
 		s.logger.Errorw("failed to save resent message to repository after failed resend attempt",
@@ -283,7 +284,7 @@ func (s *Service) sendAlternativeNotification(msg message.Message) {
 		msg.UserId,
 		msg.GroupName,
 		"Resent with alternative provider: "+alternativeProvider.GetName(),
-		[]string{provider.GetName(), alternativeProvider.GetName()})
+		[]string{provider.GetName(), alternativeProvider.GetName()}, message.TypeMessageStatusSent)
 	err = s.messageRepo.Add(newMessage)
 	if err != nil {
 		s.logger.Errorw("failed to save resent message to repository",

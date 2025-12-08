@@ -56,7 +56,9 @@ var StatusMap = map[StatusType]string{
 	TypeMessageStatusDelivered: "Delivered",
 }
 
-func NewMessage(senderId, message, receptor, sender, userId, groupName, response string, providerChain []string) *Message {
+func NewMessage(senderId, message, receptor, sender, userId, groupName, response string,
+	providerChain []string,
+	messageStatus StatusType) *Message {
 
 	lastProvider := pq.StringArray(providerChain)
 	return &Message{
@@ -67,7 +69,7 @@ func NewMessage(senderId, message, receptor, sender, userId, groupName, response
 		Message:       message,
 		Receptor:      receptor,
 		Sender:        sender,
-		Status:        StatusMap[TypeMessageStatusSent],
+		Status:        StatusMap[messageStatus],
 		Attempt:       0,
 		LastAttempt:   time.Now(),
 		LastProviders: lastProvider,
