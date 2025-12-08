@@ -2,7 +2,6 @@ package telegram
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -53,7 +52,7 @@ func (s *service) Verify() (string, error) {
 }
 
 func (s *service) Send(message notifications.Message) ([]string, error) {
-	var errStack []error
+	var errStack errorStack
 	ctx := context.Background()
 	responses := make([]string, 0)
 	text := message.Subject + "\n" + message.Message
@@ -61,7 +60,7 @@ func (s *service) Send(message notifications.Message) ([]string, error) {
 		chatID, err := strconv.ParseInt(receptor, 10, 64)
 		if err != nil {
 			s.logger.Errorw("Cannot parse chat id", "receptor", receptor, "error", err)
-			errStack = append(errStack, err)
+			errStack.Append(err)
 			continue
 		}
 
@@ -71,19 +70,20 @@ func (s *service) Send(message notifications.Message) ([]string, error) {
 		})
 		if err != nil {
 			s.logger.Errorw("Error sending telegram message", "chatID", chatID, "error", err)
-			errStack = append(errStack, err)
+			errStack.Append(err)
 			continue
 		}
 		s.logger.Infow("Telegram message sent",
 			"chatID", chatID, "messageID", resp.ID)
+		errStack = append(errStack, nil)
 		responses = append(responses, strconv.Itoa(resp.ID))
 	}
 	if len(errStack) > 0 {
-		return responses, fmt.Errorf("errors occurred during sending: %v", errStack)
+		return responses, errStack
 	}
 	return responses, nil
 }
 
 func (s *service) Status(_ string) (notifications.MessageStatusType, error) {
-	return notifications.TypeMessageStatusDelivered, nil
+	return notifications.TypeMessageStatusFailed, nil
 }
