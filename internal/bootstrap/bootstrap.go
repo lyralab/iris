@@ -76,11 +76,12 @@ func Init(cfg *config.Config) (*App, error) {
 		cfg.Scheduler.MobileScheduler.QueueSize,
 		cfg.Scheduler.MobileScheduler.CacheCapacity,
 	)
-
+	if err != nil {
+		logger.Errorw("cache receptors start failed", "error", err)
+		return nil, err
+	}
+	// smsir notification provider
 	if cfg.Notifications.Smsir.Enabled {
-		if err != nil {
-			logger.Errorw("cache receptors start failed", "error", err)
-		}
 		smsirSvc := smsir.NewSmsirService(
 			cfg.Notifications.Smsir.ApiKey,
 			cfg.Notifications.Smsir.LineNumber,
@@ -92,10 +93,6 @@ func Init(cfg *config.Config) (*App, error) {
 			logger.Errorw("smsir verify failed", "error", err)
 		} else {
 			logger.Infow("smsir verified", "response", v)
-		}
-		if err != nil {
-			logger.Errorw("alert scheduler start failed", "error", err)
-			return nil, err
 		}
 	}
 

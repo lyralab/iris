@@ -20,6 +20,7 @@ type SchedulerConfig struct {
 
 type ReceptorInterface interface {
 	GetNumbers(group string) (map[string]string, error)
+	Get(model string, groupName string) (map[string]string, bool)
 }
 
 type MessageInterface interface {
