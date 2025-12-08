@@ -33,3 +33,5 @@ go.work.sum
 # .vscode/
 # sample http files
 .http
+
+config.yml
