@@ -12,6 +12,7 @@ import (
 	"github.com/root-ali/iris/internal/storage"
 	"github.com/root-ali/iris/pkg/cache"
 	"github.com/root-ali/iris/pkg/message"
+	"github.com/root-ali/iris/pkg/notifications/telegram"
 	"github.com/root-ali/iris/pkg/scheduler/message_status"
 
 	"github.com/root-ali/iris/pkg/notifications"
@@ -111,6 +112,19 @@ func Init(cfg *config.Config) (*App, error) {
 		} else {
 			logger.Infow("kavenegar verified", "response", v)
 		}
+	}
+
+	// telegram notification provider
+	if cfg.Notifications.Telegram.Enabled {
+		telegramSvc, err := telegram.NewTelegramService(
+			cfg.Notifications.Telegram.BotToken,
+			cfg.Notifications.Telegram.Proxy,
+			logger,
+		)
+		if err != nil {
+			logger.Errorw("telegram init failed", "error", err)
+		}
+		allServices = append(allServices, telegramSvc)
 	}
 
 	// provider registry
