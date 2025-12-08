@@ -2,6 +2,7 @@ package alert
 
 import (
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/root-ali/iris/pkg/alerts"
@@ -98,19 +99,35 @@ func (s *Scheduler) handleAlert(al alerts.Alert) error {
 	provider, err := s.getProvider(al.Method, 0)
 	if err != nil {
 		s.logger.Errorw("Failed to get provider", "error", err)
+		err = s.repo.MarkAlertAsSent(al.Id)
+		if err != nil {
+			return err
+		}
 		return err
 	}
 
 	for _, r := range al.Receptor {
-		cached, err := s.receptorRepo.GetNumbers(r)
-		if err != nil {
+		cacheReceptors, ok := s.receptorRepo.Get(al.Method, r)
+		s.logger.Debugw("Fetched receptors from cache",
+			"method", al.Method,
+			"receptor", r,
+			"cached Receptors", cacheReceptors,
+			"found", ok)
+		if !ok {
 			s.logger.Errorw("Failed to get receptors from group", "group", r, "error", err)
-			return err
+			err := s.repo.MarkAlertAsSent(al.Id)
+			if err != nil {
+				return errors.New("failed to mark alert as sent: " + err.Error())
+			}
+			return errors.New("failed to get receptors from group: " + r)
 		}
-		for k, v := range cached {
+		for k, v := range cacheReceptors {
 			receptorIds[k] = v
 			receptors = append(receptors, v)
 		}
+		s.logger.Debugw("Prepared receptors for alert",
+			"method", al.Method,
+			"receptors", receptors)
 	}
 	textMessage := al.Status + "\n" + al.Description + "\nTime: " + time.Now().Format(time.RFC1123)
 	// Prepare message
@@ -122,8 +139,55 @@ func (s *Scheduler) handleAlert(al alerts.Alert) error {
 
 	// Send notification
 	msgIds, err := provider.Send(msg)
-	s.logger.Infow("Notification sent", "messageIDs", msgIds, "error", err)
-	if err != nil {
+
+	if al.Method == "telegram" {
+		s.logger.Infow("Telegram notification details", "receptors", receptors,
+			"errors", err.Error())
+		telegramErrors := strings.Split(err.Error(), ";")
+		i := 0
+		for userId, receptor := range receptorIds {
+			if telegramErrors[i] != "nil" {
+				// Save Message
+				s.logger.Info("Save failed message to repository", "receptor", receptor)
+				failedMsg := message.NewMessage("",
+					al.Description,
+					receptor, provider.GetName(),
+					userId,
+					"",
+					telegramErrors[i],
+					[]string{provider.GetName()},
+					message.TypeMessageStatusSent)
+				err := s.messageRepo.Add(failedMsg)
+				if err != nil {
+					s.logger.Errorw("Failed to save failed message", "receptor", receptor, "error", err)
+					return err
+				}
+			} else {
+				// Save Message
+				s.logger.Info("Save success message to repository", "messageID", msgIds[i], "receptor", receptor)
+				sentMsg := message.NewMessage(msgIds[i],
+					textMessage,
+					receptor,
+					provider.GetName(),
+					userId,
+					"",
+					"Delivered",
+					[]string{provider.GetName()},
+					message.TypeMessageStatusDelivered)
+				err := s.messageRepo.Add(sentMsg)
+				if err != nil {
+					s.logger.Errorw("Failed to save sent message", "receptor", receptor, "error", err)
+					return err
+				}
+			}
+			i++
+		}
+		err = s.repo.MarkAlertAsSent(al.Id)
+		if err != nil {
+			return err
+		}
+		return nil
+	} else if err != nil {
 		s.logger.Errorw("Failed to send notification", "error", err)
 		for r, v := range receptorIds {
 
@@ -135,10 +199,15 @@ func (s *Scheduler) handleAlert(al alerts.Alert) error {
 				r,
 				r,
 				err.Error(),
-				[]string{provider.GetName()})
+				[]string{provider.GetName()},
+				message.TypeMessageStatusFailed)
 			err := s.messageRepo.Add(failedMsg)
 			if err != nil {
 				s.logger.Errorw("Failed to save failed message", "receptor", v, "error", err)
+				return err
+			}
+			err = s.repo.MarkAlertAsSent(al.Id)
+			if err != nil {
 				return err
 			}
 		}
@@ -156,7 +225,8 @@ func (s *Scheduler) handleAlert(al alerts.Alert) error {
 			r,
 			"",
 			"Sent",
-			[]string{provider.GetName()})
+			[]string{provider.GetName()},
+			message.TypeMessageStatusSent)
 		err := s.messageRepo.Add(sentMsg)
 		if err != nil {
 			s.logger.Errorw("Failed to save sent message", "receptor", v, "error", err)
