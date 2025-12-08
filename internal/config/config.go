@@ -39,6 +39,11 @@ type Notifications struct {
 		From     string `env:"EMAIL_FROM" koanf:"from"`
 		Enabled  bool   `env:"EMAIL_ENABLED" envDefault:"false" koanf:"enabled"`
 	}
+	Telegram struct {
+		BotToken string `env:"TELEGRAM_BOT_TOKEN" koanf:"bot_token"`
+		Proxy    string `env:"TELEGRAM_PROXY" envDefault:"" koanf:"proxy"`
+		Enabled  bool   `env:"TELEGRAM_ENABLED" envDefault:"false" koanf:"enabled"`
+	} `env:"TELEGRAM_ENABLED" envDefault:"false" koanf:"telegram"`
 }
 
 type Scheduler struct {
