@@ -33,7 +33,7 @@ type UserUpdateBody struct {
 	UserName   string `json:"username" validate:"required,min=3,max=30"`
 	FirstName  string `json:"firstname,omitempty" validate:"omitempty,min=3,max=30"`
 	LastName   string `json:"lastname,omitempty" validate:"omitempty,min=3,max=30"`
-	Mobile     string `json:"mobile,omitempty" validate:"omitempty,len=11,numeric"`
+	Mobile     string `json:"mobile_number,omitempty" validate:"omitempty,len=11,numeric"`
 	Email      string `json:"email,omitempty" validate:"omitempty,email"`
 	TelegramID string `json:"telegram_id,omitempty" validate:"omitempty,numeric"`
 }
@@ -438,11 +438,12 @@ func GetUserInfoHandler(us user.UserInterfaceService, logger *zap.SugaredLogger)
 			return
 		}
 		userResponse := map[string]string{
-			"username":  u.UserName,
-			"firstName": u.FirstName,
-			"lastName":  u.LastName,
-			"email":     u.Email,
-			"mobile":    u.Mobile,
+			"username":   u.UserName,
+			"firstName":  u.FirstName,
+			"lastName":   u.LastName,
+			"email":      u.Email,
+			"mobile":     u.Mobile,
+			"telegramID": u.TelegramID,
 		}
 		c.JSON(200, gin.H{"status": "OK", "user": userResponse, "user_id": u.ID})
 	}
