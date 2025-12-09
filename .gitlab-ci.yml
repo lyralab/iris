@@ -22,7 +22,7 @@ build:
   stage: build
   script:
     - echo "Building version $VERSION"
-    - echo "Image tags: $IMAGE_TAG, $COMMIT_TAG, $LATEST_TAG"
+    - echo "Image tags $IMAGE_TAG, $COMMIT_TAG, $LATEST_TAG"
     - docker build -t $IMAGE_TAG -t $COMMIT_TAG -t $LATEST_TAG .
   only:
     - main
