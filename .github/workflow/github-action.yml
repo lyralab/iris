@@ -1,0 +1,51 @@
+name: Build and Publish Docker image
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract version from CHANGELOG
+        id: version
+        run: |
+          version=$(awk '/^## \[/{ sub(/^## \[/,""); sub(/\].*/,""); print; exit }' CHANGELOG.md || true)
+          if [ -z "$version" ] || [ "$version" = "Unreleased" ]; then
+            version=develop
+          fi
+          echo "version=$version" >> $GITHUB_OUTPUT
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/iris:${{ steps.version.outputs.version }}
+            ghcr.io/${{ github.repository_owner }}/iris:${{ github.ref_name != '' && startsWith(github.ref, 'refs/tags/') && github.ref_name || 'latest' }}
+            ghcr.io/${{ github.repository_owner }}/iris:${{ github.sha }}
+          labels: |
+            org.opencontainers.image.version=${{ steps.version.outputs.version }}
+            org.opencontainers.image.revision=${{ github.sha }}
