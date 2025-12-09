@@ -1,0 +1,34 @@
+image: harbor.jibit.cloud/library/docker:stable
+stages:
+  - build
+  - push
+
+variables:
+  DOCKER_DRIVER: overlay2
+  DOCKER_HOST: tcp://$DOCKER:2375
+
+before_script:
+  - export VERSION=$(grep -m 1 -oP '(?<=## \[)\d+\.\d+\.\d+(?=\])' CHANGELOG.md || echo "0.0.0")
+  - export IMAGE_TAG=$BASE_IMAGE/$CI_REGISTRY_IMAGE:$VERSION
+  - export COMMIT_TAG=$BASE_IMAGE/$CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA
+  - export LATEST_TAG=$BASE_IMAGE/$CI_REGISTRY_IMAGE:latest
+
+build:
+  stage: build
+  script:
+    - echo "Building version $VERSION"
+    - docker build -t $IMAGE_TAG -t $COMMIT_TAG -t $LATEST_TAG .
+  only:
+    - main
+    - develop
+
+push:
+  stage: push
+  script:
+    - docker push $IMAGE_TAG
+    - docker push $COMMIT_TAG
+    - docker push $LATEST_TAG
+  only:
+    - main
+  dependencies:
+    - build
