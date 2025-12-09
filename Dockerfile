@@ -15,7 +15,7 @@ COPY web/ .
 RUN npm run build
 
 # Now copy it into our base image.
-FROM gcr.io/distroless/static-debian12
+FROM chainguard/wolfi-base:latest
 COPY --from=build /go/src/app/migrations /migrations
 COPY --from=build /go/src/app/assets /assets
 COPY --from=node_build /app/web/build /web/build
