@@ -17,7 +17,7 @@ type NotificationInterface interface {
 	GetPriority() int
 }
 
-type ProviderRepositryInterface interface {
+type RepositoryInterface interface {
 	AddProvider(providers *Providers) error
 	ModifyProvider(providers *Providers) error
 	GetProvider(providers *Providers) error
@@ -56,6 +56,8 @@ type Providers struct {
 type Message struct {
 	Subject   string
 	Message   string
+	State     string
+	Time      string
 	Receptors []string
 }
 
@@ -68,15 +70,8 @@ const (
 	TypeMessageStatusUndelivered MessageStatusType = 11
 )
 
-var MessageStatusMap = map[MessageStatusType]string{
-	TypeMessageStatusSent:        "Sent",
-	TypeMessageStatusFailed:      "Failed",
-	TypeMessageStatusDelivered:   "Delivered",
-	TypeMessageStatusUndelivered: "Undelivered",
-}
-
 type ProviderService struct {
-	repo   ProviderRepositryInterface
+	repo   RepositoryInterface
 	cache  cache.Interface[string, *[]Providers]
 	ns     []NotificationInterface
 	Logger *zap.SugaredLogger

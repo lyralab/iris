@@ -37,7 +37,7 @@ var groupMobiles = []GroupWithMobiles{
 	},
 }
 
-func (m *mockRepo) GetGroupsNumbers(...string) ([]GroupWithMobiles, error) {
+func (m *mockRepo) GetPerGroupIds(...string) ([]GroupWithMobiles, error) {
 	return groupMobiles, nil
 }
 func (m *mockRepo) GetGroupEmails() (string, []string, error) {
@@ -75,7 +75,7 @@ func TestNewCacheReceptorsScheduler(t *testing.T) {
 	if s == nil {
 		t.Fatal("expected service instance, got nil")
 	}
-	s.setMobilesOnCache()
+	s.setOnCache()
 
 	cached, err := s.GetNumbers("admin")
 	if err != nil {

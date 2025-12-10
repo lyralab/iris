@@ -7,7 +7,7 @@ import (
 )
 import _ "github.com/lib/pq"
 
-func (s *Storage) GetGroupsNumbers(group ...string) ([]cache_receptors.GroupWithMobiles, error) {
+func (s *Storage) GetPerGroupIds(group ...string) ([]cache_receptors.GroupWithMobiles, error) {
 	var gms []cache_receptors.GroupWithMobiles
 	var err error
 	// Prepare SQL query with a conditional WHERE clause.
@@ -18,7 +18,8 @@ func (s *Storage) GetGroupsNumbers(group ...string) ([]cache_receptors.GroupWith
         u.id AS user_id ,
         u.mobile AS mobiles,
     	u.email AS email,
-        u.telegram_id AS telegram_id
+        u.telegram_id AS telegram_id,
+        u.mattermost_id AS mattermost_id
     FROM groups g
              LEFT JOIN user_groups ug
                        ON ug.group_id = g.id
@@ -52,11 +53,45 @@ func (s *Storage) GetGroupsNumbers(group ...string) ([]cache_receptors.GroupWith
 
 	for rows.Next() {
 		var g cache_receptors.GroupWithMobiles
-		err := rows.Scan(&g.GroupID, &g.GroupName, &g.UserId, &g.Mobile, &g.Email, &g.TelegramID)
+
+		// Use NullString for nullable text columns to avoid NULL->string scan error.
+		var nsMobile, nsEmail, nsTelegram, nsMattermost sql.NullString
+
+		err := rows.Scan(
+			&g.GroupID,
+			&g.GroupName,
+			&g.UserId,
+			&nsMobile,
+			&nsEmail,
+			&nsTelegram,
+			&nsMattermost,
+		)
 		if err != nil {
 			s.logger.Errorw("Failed to scan row", "error", err)
 			return nil, err
 		}
+
+		if nsMobile.Valid {
+			g.Mobile = nsMobile.String
+		} else {
+			g.Mobile = ""
+		}
+		if nsEmail.Valid {
+			g.Email = nsEmail.String
+		} else {
+			g.Email = ""
+		}
+		if nsTelegram.Valid {
+			g.TelegramID = nsTelegram.String
+		} else {
+			g.TelegramID = ""
+		}
+		if nsMattermost.Valid {
+			g.MattermostID = nsMattermost.String
+		} else {
+			g.MattermostID = ""
+		}
+
 		gms = append(gms, g)
 	}
 
