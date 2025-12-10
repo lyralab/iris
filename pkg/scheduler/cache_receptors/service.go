@@ -217,7 +217,7 @@ func (s *CacheReceptor) Get(model string, groupName string) (map[string]string, 
 	switch model {
 	case "sms":
 		query = "mobiles_"
-	case "email":
+	case "mail":
 		query = "emails_"
 	case "telegram":
 		query = "telegrams_"
