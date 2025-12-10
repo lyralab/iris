@@ -109,10 +109,6 @@ func NewService(config Config, name string, priority int,
 		defer cancel()
 		return nil
 	}
-	err = client.DialWithContext(ctx)
-	if err != nil {
-		logger.Errorf("failed to dial mail server: %v", err)
-	}
 	return &service{
 		client:   client,
 		name:     name,

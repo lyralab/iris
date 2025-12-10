@@ -18,12 +18,14 @@ func (s service) Send(message notifications.Message) ([]string, error) {
 			ChannelId: recipient,
 			Message:   message.Message,
 		}
+
 		_, r, err := s.client.CreatePost(ctx, post)
 		if err != nil {
 			errStack.Append(err)
 			results = append(results, recipient)
 			continue
 		}
+
 		results = append(results, r.RequestId)
 	}
 	if len(errStack) > 0 {
