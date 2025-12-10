@@ -15,6 +15,7 @@ import (
 	"github.com/root-ali/iris/pkg/notifications"
 	"github.com/root-ali/iris/pkg/notifications/kavenegar"
 	"github.com/root-ali/iris/pkg/notifications/mail"
+	"github.com/root-ali/iris/pkg/notifications/mattermost"
 	"github.com/root-ali/iris/pkg/notifications/smsir"
 	"github.com/root-ali/iris/pkg/notifications/telegram"
 	"github.com/root-ali/iris/pkg/scheduler/message_status"
@@ -143,6 +144,18 @@ func Init(cfg *config.Config) (*App, error) {
 		}
 	}
 
+	// Initialize mattermost notification provider
+	if cfg.Notifications.Mattermost.Enabled {
+		mattermostSvc := mattermost.NewService(
+			mattermost.Config{
+				Url:      cfg.Notifications.Mattermost.Url,
+				BotToken: cfg.Notifications.Mattermost.BotToken,
+				Priority: cfg.Notifications.Mattermost.Priority,
+			},
+			logger,
+		)
+		allServices = append(allServices, mattermostSvc)
+	}
 	// provider registry
 	providerCache := cache.New[string, *[]notifications.Providers](logger, cache.WithCapacity(3))
 	providerService := notifications.NewProvidersService(repos.Postgres, allServices, providerCache, logger)
