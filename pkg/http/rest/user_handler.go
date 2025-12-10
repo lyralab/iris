@@ -26,16 +26,19 @@ type UserSignupBody struct {
 	Password        string `json:"password" validate:"required,passwordStrength,min=8,max=30"`
 	ConfirmPassword string `json:"confirm-password" validate:"required,eqfield=Password"`
 	Mobile          string `json:"mobile_number,omitempty" validate:"omitempty,len=11,numeric"`
+	TelegramID      string `json:"telegram_id,omitempty" validate:"omitempty,numeric"`
+	MattermostID    string `json:"mattermost_id,omitempty" validate:"omitempty"`
 	Email           string `json:"email,omitempty" validate:"omitempty,email"`
 }
 
 type UserUpdateBody struct {
-	UserName   string `json:"username" validate:"required,min=3,max=30"`
-	FirstName  string `json:"firstname,omitempty" validate:"omitempty,min=3,max=30"`
-	LastName   string `json:"lastname,omitempty" validate:"omitempty,min=3,max=30"`
-	Mobile     string `json:"mobile_number,omitempty" validate:"omitempty,len=11,numeric"`
-	Email      string `json:"email,omitempty" validate:"omitempty,email"`
-	TelegramID string `json:"telegram_id,omitempty" validate:"omitempty,numeric"`
+	UserName     string `json:"username" validate:"required,min=3,max=30"`
+	FirstName    string `json:"firstname,omitempty" validate:"omitempty,min=3,max=30"`
+	LastName     string `json:"lastname,omitempty" validate:"omitempty,min=3,max=30"`
+	Mobile       string `json:"mobile_number,omitempty" validate:"omitempty,len=11,numeric"`
+	Email        string `json:"email,omitempty" validate:"omitempty,email"`
+	TelegramID   string `json:"telegram_id,omitempty" validate:"omitempty,numeric"`
+	MattermostID string `json:"mattermost_id,omitempty" validate:"omitempty"`
 }
 
 type UserVerifyBody struct {
@@ -471,11 +474,14 @@ func GetUserByIDHandler(us user.UserInterfaceService, logger *zap.SugaredLogger)
 
 func (ub *UserSignupBody) toUser() *user.User {
 	return &user.User{
-		UserName:  ub.UserName,
-		FirstName: ub.FirstName,
-		LastName:  ub.LastName,
-		Password:  ub.Password,
-		Email:     ub.Email,
+		UserName:     ub.UserName,
+		FirstName:    ub.FirstName,
+		LastName:     ub.LastName,
+		Password:     ub.Password,
+		Email:        ub.Email,
+		Mobile:       ub.Mobile,
+		MattermostId: ub.MattermostID,
+		TelegramID:   ub.TelegramID,
 	}
 }
 
@@ -499,6 +505,9 @@ func (ub *UserUpdateBody) toUser() *user.User {
 	}
 	if ub.TelegramID != "" {
 		u.TelegramID = ub.TelegramID
+	}
+	if ub.MattermostID != "" {
+		u.MattermostId = ub.MattermostID
 	}
 
 	return u

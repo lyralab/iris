@@ -25,9 +25,15 @@ func NewSmsirService(apikey string, lineNumber string, p int, logger *zap.Sugare
 
 func (s *Service) Send(message notifications.Message) ([]string, error) {
 	lineNumber, _ := strconv.Atoi(s.LineNumber)
+	text := ""
+	if message.State == "firing" {
+		text = "🚨" + message.Subject + "\n" + message.Message + "\nTime: " + message.Time
+	} else if message.State == "resolved" {
+		text = "✅" + message.Subject + "\n" + message.Message + "\nTime: " + message.Time
+	}
 	requestBody := SendSMSRequestBody{
 		Mobiles:     message.Receptors,
-		MessageText: message.Message,
+		MessageText: text,
 		LineNumber:  lineNumber,
 	}
 

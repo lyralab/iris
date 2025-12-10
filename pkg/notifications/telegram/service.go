@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/go-telegram/bot"
+	"github.com/go-telegram/bot/models"
 	"github.com/root-ali/iris/pkg/notifications"
 	"go.uber.org/zap"
 )
@@ -55,7 +56,13 @@ func (s *service) Send(message notifications.Message) ([]string, error) {
 	var errStack errorStack
 	ctx := context.Background()
 	responses := make([]string, 0)
-	text := message.Subject + "\n" + message.Message
+	text := ""
+	if message.State == "firing" {
+		text = `🚨*` + message.Subject + `*🚨` + "\n\n" + message.Message + "\n\n" + message.Time
+	} else if message.State == "resolved" {
+		text = `✅*` + message.Subject + `*✅` + "\n\n" + message.Message + "\n\n" + message.Time
+	}
+
 	for _, receptor := range message.Receptors {
 		chatID, err := strconv.ParseInt(receptor, 10, 64)
 		if err != nil {
@@ -65,12 +72,15 @@ func (s *service) Send(message notifications.Message) ([]string, error) {
 		}
 
 		resp, err := s.bot.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: chatID,
-			Text:   text,
+			ChatID:    chatID,
+			Text:      text,
+			ParseMode: models.ParseModeMarkdownV1,
 		})
+
 		if err != nil {
 			s.logger.Errorw("Error sending telegram message", "chatID", chatID, "error", err)
 			errStack.Append(err)
+			responses = append(responses, receptor)
 			continue
 		}
 		s.logger.Infow("Telegram message sent",

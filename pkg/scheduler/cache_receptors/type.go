@@ -11,7 +11,7 @@ import (
 )
 
 type Repository interface {
-	GetGroupsNumbers(...string) ([]GroupWithMobiles, error)
+	GetPerGroupIds(...string) ([]GroupWithMobiles, error)
 	GetGroupEmails() (string, []string, error)
 	GetUserEmail() (string, []string, error)
 	GetUserNumber() (string, []string, error)
@@ -40,12 +40,13 @@ type CacheReceptor struct {
 }
 
 type GroupWithMobiles struct {
-	GroupID    string `gorm:"column:group_id"`
-	GroupName  string `gorm:"column:group_name"`
-	UserId     string `gorm:"column:user_id"`
-	Mobile     string `gorm:"column:mobile,type:varchar"`
-	Email      string `gorm:"column:email,type:varchar"`
-	TelegramID string `gorm:"column:telegram_id,type:varchar"`
+	GroupID      string `gorm:"column:group_id"`
+	GroupName    string `gorm:"column:group_name"`
+	UserId       string `gorm:"column:user_id"`
+	Mobile       string `gorm:"column:mobile,type:varchar"`
+	Email        string `gorm:"column:email,type:varchar"`
+	TelegramID   string `gorm:"column:telegram_id,type:varchar"`
+	MattermostID string `gorm:"column:mattermost_id,type:varchar"`
 }
 
 type Config struct {

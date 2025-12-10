@@ -7,7 +7,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func NewProvidersService(repo ProviderRepositryInterface,
+func NewProvidersService(repo RepositoryInterface,
 	np []NotificationInterface,
 	c cache.Interface[string,
 		*[]Providers],
