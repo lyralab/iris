@@ -12,12 +12,13 @@ import (
 	"github.com/root-ali/iris/internal/storage"
 	"github.com/root-ali/iris/pkg/cache"
 	"github.com/root-ali/iris/pkg/message"
-	"github.com/root-ali/iris/pkg/notifications/telegram"
-	"github.com/root-ali/iris/pkg/scheduler/message_status"
-
 	"github.com/root-ali/iris/pkg/notifications"
 	"github.com/root-ali/iris/pkg/notifications/kavenegar"
+	"github.com/root-ali/iris/pkg/notifications/mail"
+	"github.com/root-ali/iris/pkg/notifications/mattermost"
 	"github.com/root-ali/iris/pkg/notifications/smsir"
+	"github.com/root-ali/iris/pkg/notifications/telegram"
+	"github.com/root-ali/iris/pkg/scheduler/message_status"
 	"github.com/root-ali/iris/pkg/storage/postgresql"
 	"github.com/root-ali/iris/pkg/util"
 
@@ -124,6 +125,39 @@ func Init(cfg *config.Config) (*App, error) {
 		allServices = append(allServices, telegramSvc)
 	}
 
+	// mail server provider initialized
+	if cfg.Notifications.Mail.Enabled {
+		mailConfig := mail.Config{
+			Username:    cfg.Notifications.Mail.Username,
+			Password:    cfg.Notifications.Mail.Password,
+			FromAddress: cfg.Notifications.Mail.FromAddress,
+			FromName:    cfg.Notifications.Mail.FromName,
+			SMTPServer:  cfg.Notifications.Mail.SMTPHost,
+		}
+
+		mailServer := mail.NewService(mailConfig, "Mail", 10, logger)
+		if mailServer == nil {
+			logger.Errorw("mail server init failed")
+		} else {
+			logger.Infow("mail server initialized")
+			allServices = append(allServices, mailServer)
+		}
+	}
+
+	// Initialize mattermost notification provider
+	if cfg.Notifications.Mattermost.Enabled {
+		logger.Infow("Initializing mattermost notification provider",
+			"bot token", cfg.Notifications.Mattermost.BotToken, "url", cfg.Notifications.Mattermost.Url)
+		mattermostSvc := mattermost.NewService(
+			mattermost.Config{
+				Url:      cfg.Notifications.Mattermost.Url,
+				BotToken: cfg.Notifications.Mattermost.BotToken,
+				Priority: cfg.Notifications.Mattermost.Priority,
+			},
+			logger,
+		)
+		allServices = append(allServices, mattermostSvc)
+	}
 	// provider registry
 	providerCache := cache.New[string, *[]notifications.Providers](logger, cache.WithCapacity(3))
 	providerService := notifications.NewProvidersService(repos.Postgres, allServices, providerCache, logger)
