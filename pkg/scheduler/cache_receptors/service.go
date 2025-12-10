@@ -139,13 +139,13 @@ func (s *CacheReceptor) safeRunJob() {
 		}
 	}()
 	s.Logger.Info("Starting safe run job on cache receptor job...")
-	s.setMobilesOnCache()
+	s.setOnCache()
 }
 
-func (s *CacheReceptor) setMobilesOnCache() {
+func (s *CacheReceptor) setOnCache() {
 	s.Logger.Info("Starting Cache Receptors Job at %v", time.Now())
 
-	results, err := s.Repository.GetGroupsNumbers()
+	results, err := s.Repository.GetPerGroupIds()
 	if err != nil {
 		s.Logger.Errorw("Failed to get group numbers", "error", err)
 		return
@@ -155,6 +155,7 @@ func (s *CacheReceptor) setMobilesOnCache() {
 	mobileCached := make(map[string]map[string]string)
 	emailCached := make(map[string]map[string]string)
 	telegramCached := make(map[string]map[string]string)
+	mattermostCached := make(map[string]map[string]string)
 	for _, group := range results {
 		if mobileCached[group.GroupName] == nil {
 			mobileCached[group.GroupName] = make(map[string]string)
@@ -165,6 +166,9 @@ func (s *CacheReceptor) setMobilesOnCache() {
 		if telegramCached[group.GroupName] == nil {
 			telegramCached[group.GroupName] = make(map[string]string)
 		}
+		if mattermostCached[group.GroupName] == nil {
+			mattermostCached[group.GroupName] = make(map[string]string)
+		}
 		if group.Mobile != "" {
 			mobileCached[group.GroupName][group.UserId] = group.Mobile
 		}
@@ -173,6 +177,9 @@ func (s *CacheReceptor) setMobilesOnCache() {
 		}
 		if group.TelegramID != "" {
 			telegramCached[group.GroupName][group.UserId] = group.TelegramID
+		}
+		if group.MattermostID != "" {
+			mattermostCached[group.GroupName][group.UserId] = group.MattermostID
 		}
 	}
 
@@ -194,6 +201,12 @@ func (s *CacheReceptor) setMobilesOnCache() {
 			return
 		}
 	}
+	for groupName, _ := range mattermostCached {
+		err := s.Cache.Set("mattermost_"+groupName, mattermostCached[groupName], 0)
+		if err != nil {
+			return
+		}
+	}
 
 	s.Logger.Info("Finished Cache Receptors Job at %v", time.Now())
 
@@ -202,7 +215,7 @@ func (s *CacheReceptor) setMobilesOnCache() {
 func (s *CacheReceptor) GetNumbers(name string) (map[string]string, error) {
 	mobiles, ok := s.Cache.Get("mobiles_" + name)
 	if !ok {
-		s.setMobilesOnCache()
+		s.setOnCache()
 		mobiles, ok = s.Cache.Get("mobiles_" + name)
 		if !ok {
 			return nil, fmt.Errorf("no mobiles found for group: %s", name)
@@ -221,13 +234,15 @@ func (s *CacheReceptor) Get(model string, groupName string) (map[string]string, 
 		query = "emails_"
 	case "telegram":
 		query = "telegrams_"
+	case "mattermost":
+		query = "mattermost_"
 	default:
 		return nil, false
 	}
 	question := query + groupName
 	resp, ok := s.Cache.Get(question)
 	if !ok {
-		s.setMobilesOnCache()
+		s.setOnCache()
 		resp, ok = s.Cache.Get(question)
 		if !ok {
 			return nil, false

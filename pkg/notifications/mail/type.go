@@ -32,68 +32,74 @@ type service struct {
 	logger *zap.SugaredLogger
 }
 
+type AlertNotification struct {
+	State     string    // "firing" or "resolved"
+	Title     string    // Alert title
+	Message   string    // Alert message
+	Timestamp time.Time // Alert time
+}
+
 var irisTemplate = `
 <!DOCTYPE html>
 <html lang="en" style="margin:0; padding:0; font-family:Arial, sans-serif;">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Iris Alert Notification</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{.Title}} - Iris Alert</title>
 </head>
 
 <body style="margin:0; padding:0; background:#f5f5f7; font-family:Arial, sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f7; padding:20px 0;">
-    <tr>
-      <td align="center">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f7; padding:20px 0;">
+        <tr>
+            <td align="center">
+                <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff; border-radius:10px; overflow:hidden; box-shadow:0 2px 10px rgba(0,0,0,0.05);">
 
-        <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff; border-radius:10px; overflow:hidden;">
+                    <!-- Header with State-Based Color -->
+                    <tr>
+                        <td style="background:{{if eq .State "firing"}}#FF4444{{else}}#4CAF50{{end}}; padding:20px; text-align:center; color:#ffffff;">
+                            <h1 style="margin:0; font-size:24px;">
+                                {{if eq .State "firing"}}🚨{{else}}✅{{end}} {{.Title}}
+                            </h1>
+                            <p style="margin:8px 0 0; font-size:14px; opacity:0.9;">
+                                {{.Timestamp.Format "Jan 02, 2006 15:04:05 MST"}}
+                            </p>
+                        </td>
+                    </tr>
 
-          <tr>
-            <td style="background:#4B5EFF; padding:20px; text-align:center; color:#ffffff;">
-              <h1 style="margin:0; font-size:24px;">Iris Alert Notification</h1>
-              <p style="margin:5px 0 0; font-size:14px; opacity:0.9;">
-                This message is sent from Iris monitoring service
-              </p>
+                    <!-- Main Message Content -->
+                    <tr>
+                        <td style="padding:30px 25px; color:#333333; font-size:15px; line-height:1.6;">
+                            <div style="background:{{if eq .State "firing"}}#fff0f0{{else}}#f0fff4{{end}}; 
+                                      border-left:4px solid {{if eq .State "firing"}}#FF4444{{else}}#4CAF50{{end}}; 
+                                      padding:20px; margin:0; border-radius:6px;">
+                                <p style="margin:0; font-size:16px; line-height:1.6; color:#222;">
+                                    {{.Message}}
+                                </p>
+                            </div>
+
+                            <!-- State Indicator -->
+                            <div style="margin-top:25px; text-align:center;">
+                                <span style="background:{{if eq .State "firing"}}#FFE5E5{{else}}#E8F5E9{{end}}; 
+                                      color:{{if eq .State "firing"}}#CC0000{{else}}#2E7D32{{end}}; 
+                                      padding:8px 20px; border-radius:20px; font-size:14px; font-weight:bold; display:inline-block;">
+                                    {{if eq .State "firing"}}⚠️ ALERT ACTIVE{{else}}✅ ALERT RESOLVED{{end}}
+                                </span>
+                            </div>
+                        </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                        <td style="background:#f0f0f0; padding:15px; text-align:center; font-size:12px; color:#555; border-top:1px solid #ddd;">
+                            <p style="margin:0;">
+                                Iris Monitoring Service • {{.Timestamp.Format "2006"}}
+                            </p>
+                        </td>
+                    </tr>
+                </table>
             </td>
-          </tr>
-
-          <tr>
-            <td style="padding:25px; color:#333333; font-size:15px; line-height:1.6;">
-              <p>Hello,</p>
-
-              <p>
-                You are receiving this message because Iris has detected an event that requires your attention.
-              </p>
-
-              <div style="background:#f0f2ff; border-left:4px solid #4B5EFF; padding:12px 16px; margin:20px 0; border-radius:6px;">
-                <strong>Alert Details:</strong>
-                <p style="margin:6px 0 0;">{{ .Message }}</p>
-              </div>
-
-              <p>
-                For more information, please log into your Iris dashboard.
-              </p>
-
-              <p>Regards,<br><strong>Iris System</strong></p>
-            </td>
-          </tr>
-
-          <tr>
-            <td style="background:#f0f0f0; padding:15px; text-align:center; font-size:12px; color:#555;">
-              <p style="margin:0;">
-                This is an automated message, please do not reply.
-              </p>
-              <p style="margin:5px 0 0; font-size:11px; color:#888;">
-                © 2025 Iris Monitoring Service
-              </p>
-            </td>
-          </tr>
-
-        </table>
-
-      </td>
-    </tr>
-  </table>
+        </tr>
+    </table>
 </body>
 </html>
 `
@@ -103,16 +109,13 @@ func NewService(config Config, name string, priority int,
 	client, err := mail.NewClient(config.SMTPServer,
 		mail.WithSMTPAuth(mail.SMTPAuthAutoDiscover), mail.WithTLSPortPolicy(mail.TLSMandatory),
 		mail.WithUsername(config.Username), mail.WithPassword(config.Password))
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	if err != nil {
 		logger.Errorf("failed to create mail client: %v", err)
 		defer cancel()
 		return nil
 	}
-	err = client.DialWithContext(ctx)
-	if err != nil {
-		logger.Errorf("failed to dial mail server: %v", err)
-	}
+
 	return &service{
 		client:   client,
 		name:     name,

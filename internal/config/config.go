@@ -54,6 +54,12 @@ type Notifications struct {
 		Enabled     bool   `env:"MAIL_ENABLED" envDefault:"false" koanf:"enabled"`
 		Priority    int    `env:"MAIL_PRIORITY" envDefault:"5" koanf:"priority"`
 	} `koanf:"mail"`
+	Mattermost struct {
+		Url      string `env:"MATTERMOST_URL" koanf:"url"`
+		BotToken string `env:"MATTERMOST_BOT_TOKEN" koanf:"bot_token"`
+		Enabled  bool   `env:"MATTERMOST_ENABLED" envDefault:"false" koanf:"enabled"`
+		Priority int    `env:"MATTERMOST_PRIORITY" envDefault:"3" koanf:"priority"`
+	} `koanf:"mattermost"`
 }
 
 type Scheduler struct {
