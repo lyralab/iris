@@ -133,7 +133,9 @@ func (s *Scheduler) handleAlert(al alerts.Alert) error {
 	// Prepare message
 	msg := notifications.Message{
 		Subject:   al.Name,
-		Message:   textMessage,
+		Message:   al.Description,
+		State:     al.Status,
+		Time:      time.Now().Format(time.DateTime),
 		Receptors: receptors,
 	}
 

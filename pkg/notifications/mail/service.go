@@ -3,6 +3,7 @@ package mail
 import (
 	"bytes"
 	"html/template"
+	"time"
 
 	"github.com/root-ali/iris/pkg/notifications"
 	"github.com/wneessen/go-mail"
@@ -12,7 +13,14 @@ func (s *service) Send(message notifications.Message) ([]string, error) {
 	msg := mail.NewMsg()
 
 	messageSubject := message.Subject
-	messageBody, err := generateEmail(message.Message)
+	timeParse, err := time.Parse(time.DateTime, message.Time)
+	als := AlertNotification{
+		State:     message.State,
+		Title:     message.Subject,
+		Message:   message.Message,
+		Timestamp: timeParse,
+	}
+	messageBody, err := generateEmail(als)
 	if err != nil {
 		s.logger.Errorf("failed to generate email body: %v", err)
 		return nil, err
@@ -29,7 +37,7 @@ func (s *service) Send(message notifications.Message) ([]string, error) {
 	msg.Subject(messageSubject)
 	msg.SetBodyString("text/html", messageBody)
 
-	if err := s.client.Send(msg); err != nil {
+	if err := s.client.DialAndSend(msg); err != nil {
 		s.logger.Errorf("failed to send email: %v", err)
 		return nil, err
 	}
@@ -57,18 +65,14 @@ func (s *service) GetPriority() int {
 	return s.priority
 }
 
-func generateEmail(message string) (string, error) {
+func generateEmail(als AlertNotification) (string, error) {
 	tmpl, err := template.New("iris").Parse(irisTemplate)
 	if err != nil {
 		return "", err
 	}
 
 	var buf bytes.Buffer
-	err = tmpl.Execute(&buf, struct {
-		Message string
-	}{
-		Message: message,
-	})
+	err = tmpl.Execute(&buf, als)
 	if err != nil {
 		return "", err
 	}

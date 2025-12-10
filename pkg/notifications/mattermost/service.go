@@ -16,7 +16,37 @@ func (s service) Send(message notifications.Message) ([]string, error) {
 	for _, recipient := range message.Receptors {
 		post := &model.Post{
 			ChannelId: recipient,
-			Message:   message.Message,
+		}
+		post.AddProp("from", "iris")
+
+		if message.State == "firing" {
+			post.Message = "🚨 " + message.Subject + " 🚨"
+			post.AddProp("attachments", []*model.SlackAttachment{
+				{
+					Title:  message.State,
+					Text:   message.Message,
+					Color:  "#FF6B6B",
+					Footer: message.Time,
+				},
+			})
+			post.AddProp("emoji", ":red_circle:")
+			post.AddProp("override_icon_emoji", ":red_circle:")
+			// Optional: Also override the username
+			post.AddProp("override_username", "IRIS BOT")
+		} else if message.State == "resolved" {
+			post.Message = "✅ " + message.Subject + " ✅"
+			post.AddProp("attachments", []*model.SlackAttachment{
+				{
+					Title:  message.State,
+					Text:   message.Message,
+					Color:  "#008000",
+					Footer: message.Time,
+				},
+			})
+			post.AddProp("override_icon_emoji", ":large_green_circle:")
+			// Optional: Also override the username
+			post.AddProp("override_username", "IRIS BOT")
+			post.AddProp("emoji", ":green_check_mark:")
 		}
 
 		_, r, err := s.client.CreatePost(ctx, post)
