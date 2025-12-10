@@ -44,6 +44,16 @@ type Notifications struct {
 		Proxy    string `env:"TELEGRAM_PROXY" envDefault:"" koanf:"proxy"`
 		Enabled  bool   `env:"TELEGRAM_ENABLED" envDefault:"false" koanf:"enabled"`
 	} `env:"TELEGRAM_ENABLED" envDefault:"false" koanf:"telegram"`
+	Mail struct {
+		SMTPHost    string `env:"MAIL_SMTP_HOST" koanf:"smtp_host"`
+		SMTPPort    int    `env:"MAIL_SMTP_PORT" koanf:"smtp_port"`
+		Username    string `env:"MAIL_USERNAME" koanf:"username"`
+		Password    string `env:"MAIL_PASSWORD" koanf:"password"`
+		FromAddress string `env:"MAIL_FROM_ADDRESS" koanf:"from_address"`
+		FromName    string `env:"MAIL_FROM_NAME" koanf:"from_name"`
+		Enabled     bool   `env:"MAIL_ENABLED" envDefault:"false" koanf:"enabled"`
+		Priority    int    `env:"MAIL_PRIORITY" envDefault:"5" koanf:"priority"`
+	} `koanf:"mail"`
 }
 
 type Scheduler struct {
