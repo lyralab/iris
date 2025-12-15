@@ -97,26 +97,23 @@ func (s *Storage) AlertsBySeverity() ([]*alerts.AlertsBySeverity, error) {
 }
 
 func (s *Storage) GetUnsentAlerts() ([]alerts.Alert, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	als := make([]alerts.Alert, 0)
-
+	al := make([]alerts.Alert, 0)
 	result := s.db.Table("alerts").
-		Where("send_notif = ?", false).
 		WithContext(ctx).
-		Find(&als)
+		Where("send_notif = ?", false).
+		Find(&al)
 
 	if result.Error != nil {
 		s.logger.Error("Error fetching unsent alerts from database:", result.Error)
 		return nil, result.Error
 	}
 
-	s.logger.Infof("Fetched %d unsent alerts", len(als))
-	results := make([]alerts.Alert, len(als))
-	copy(results, als)
+	s.logger.Infof("Fetched %d unsent alerts", len(al))
 
-	return results, nil
+	return al, nil
 }
 
 func (s *Storage) MarkAlertAsSent(alertID string) error {
@@ -196,7 +193,8 @@ func (s *Storage) GetAlertByFingerPrintAndStatus(fingerPrint, status string) (*a
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	var alert *alerts.Alert
-	result := s.db.Where("fingerprint = ?", fingerPrint).
+	result := s.db.Table("alerts").
+		Where("fingerprint = ?", fingerPrint).
 		Where("status = ?", status).
 		First(&alert).
 		WithContext(ctx)

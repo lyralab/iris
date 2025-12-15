@@ -59,7 +59,7 @@ func (s service) Send(message notifications.Message) ([]string, error) {
 		results = append(results, r.RequestId)
 	}
 	if len(errStack) > 0 {
-		return results, errStack
+		return results, nil
 	}
 	return results, nil
 }

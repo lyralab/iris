@@ -12,7 +12,7 @@ import (
 )
 
 type HttpHandler struct {
-	AS            alerts.AlertsService
+	AS            alerts.Service
 	HS            health_check.HealthService
 	US            user.UserInterfaceService
 	ATHS          auth.AuthServiceInterface

@@ -21,9 +21,9 @@ type AlertRepository interface {
 	GetAlertByFingerPrintAndStatus(fingerPrint, status string) (*Alert, error)
 }
 
-type AlertsService interface {
+type Service interface {
 	AddAlertManagerAlerts([]Alert) (int64, error)
-	NewAlert(id, name, severity, description, status, method string,
+	NewAlert(id, name, severity, description, status string, method []string,
 		startsAt, endsAt time.Time,
 		receptor []string) (Alert, error)
 	GetFiringAlertsBySeverity() ([]*AlertsBySeverity, error)
@@ -35,11 +35,12 @@ type alertsService struct {
 	ar  AlertRepository
 }
 
-func NewAlertService(l *zap.SugaredLogger, ai AlertRepository) AlertsService {
+func NewAlertService(l *zap.SugaredLogger, ai AlertRepository) Service {
 	return &alertsService{l, ai}
 }
 
-func (as *alertsService) NewAlert(fingerprint, name, severity, description, status, method string,
+func (as *alertsService) NewAlert(fingerprint, name, severity, description, status string,
+	method []string,
 	startsAt, endsAt time.Time,
 	receptor []string,
 ) (Alert, error) {

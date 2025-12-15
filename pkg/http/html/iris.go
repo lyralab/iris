@@ -6,7 +6,7 @@ import (
 	"net/http"
 )
 
-func Index(_ alerts.AlertsService) gin.HandlerFunc {
+func Index(_ alerts.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		//als, _ := as.GetFiringAlertsBySeverity()
 		//firing, _ := as.GetAlerts("firing", "critical", 10, 1)
