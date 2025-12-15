@@ -59,7 +59,8 @@ func Init(cfg *config.Config) (*App, error) {
 	}
 
 	// notifications (providers + schedulers)
-	allServices := make([]notifications.NotificationInterface, 0, 2)
+	allServices := make([]notifications.NotificationInterface, 0)
+	deactiveProviders := make([]string, 0)
 
 	cacheReceptorsSchedulerStartAt, err := time.ParseDuration(cfg.Scheduler.MobileScheduler.StartAt)
 	cacheReceptorsSchedulerInterval, err := time.ParseDuration(cfg.Scheduler.MobileScheduler.Interval)
@@ -95,6 +96,8 @@ func Init(cfg *config.Config) (*App, error) {
 		} else {
 			logger.Infow("smsir verified", "response", v)
 		}
+	} else {
+		deactiveProviders = append(deactiveProviders, "Smsir")
 	}
 
 	if cfg.Notifications.Kavenegar.Enabled {
@@ -110,6 +113,8 @@ func Init(cfg *config.Config) (*App, error) {
 		} else {
 			logger.Infow("kavenegar verified", "response", v)
 		}
+	} else {
+		deactiveProviders = append(deactiveProviders, "Kavenegar")
 	}
 
 	// telegram notification provider
@@ -123,6 +128,8 @@ func Init(cfg *config.Config) (*App, error) {
 			logger.Errorw("telegram init failed", "error", err)
 		}
 		allServices = append(allServices, telegramSvc)
+	} else {
+		deactiveProviders = append(deactiveProviders, "Telegram")
 	}
 
 	// mail server provider initialized
@@ -142,6 +149,8 @@ func Init(cfg *config.Config) (*App, error) {
 			logger.Infow("mail server initialized")
 			allServices = append(allServices, mailServer)
 		}
+	} else {
+		deactiveProviders = append(deactiveProviders, "Mail")
 	}
 
 	// Initialize mattermost notification provider
@@ -157,7 +166,10 @@ func Init(cfg *config.Config) (*App, error) {
 			logger,
 		)
 		allServices = append(allServices, mattermostSvc)
+	} else {
+		deactiveProviders = append(deactiveProviders, "Mattermost")
 	}
+
 	// provider registry
 	providerCache := cache.New[string, *[]notifications.Providers](logger, cache.WithCapacity(3))
 	providerService := notifications.NewProvidersService(repos.Postgres, allServices, providerCache, logger)
@@ -178,6 +190,14 @@ func Init(cfg *config.Config) (*App, error) {
 			logger.Errorw("provider add failed", "provider", p.GetName(), "error", err)
 		} else {
 			logger.Infow("provider added", "provider", p.GetName())
+		}
+	}
+	// Disable deactive providers
+	for _, p := range deactiveProviders {
+		err := providerService.DisableProvider(p)
+		if err != nil {
+			logger.Errorw("disable provider failed", "provider", p, "error", err)
+			panic(err)
 		}
 	}
 

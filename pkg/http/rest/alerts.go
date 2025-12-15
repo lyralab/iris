@@ -21,7 +21,7 @@ type AlertResponse struct {
 	UpdatedAt   string `json:"updated_at"`
 }
 
-func GetAlerts(as alerts.AlertsService) gin.HandlerFunc {
+func GetAlerts(as alerts.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var status, limit, page, severity string
 		var l, p int
@@ -68,7 +68,7 @@ func GetAlerts(as alerts.AlertsService) gin.HandlerFunc {
 	}
 }
 
-func GetFiringAlertsBySeverity(as alerts.AlertsService) gin.HandlerFunc {
+func GetFiringAlertsBySeverity(as alerts.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		als, err := as.GetFiringAlertsBySeverity()
 
