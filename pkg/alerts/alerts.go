@@ -16,7 +16,7 @@ type Alert struct {
 	StartsAt    time.Time      `json:"starts_at" gorm:"column:starts_at"`
 	EndsAt      time.Time      `json:"ends_at" gorm:"column:ends_at"`
 	Status      string         `json:"status" gorm:"column:status"`
-	Method      string         `json:"-" gorm:"column:method"`
+	Method      pq.StringArray `json:"-" gorm:"column:method;type:text[]"`
 	Receptor    pq.StringArray `json:"-" gorm:"column:receptor;type:text[]"`
 	SendNotif   bool           `json:"-" gorm:"column:send_notif;default:false"`
 	Silenced    bool           `json:"-" gorm:"column:silenced;default:false"`

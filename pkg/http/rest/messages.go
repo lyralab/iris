@@ -38,7 +38,7 @@ type AnnotationRequest struct {
 	Summary string `json:"summary"`
 }
 
-func AlertManagerHandler(as alerts.AlertsService) gin.HandlerFunc {
+func AlertManagerHandler(as alerts.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		body, _ := c.GetRawData()
 		if len(body) == 0 {
@@ -80,14 +80,14 @@ func AlertManagerHandler(as alerts.AlertsService) gin.HandlerFunc {
 
 }
 
-func (ar AlertRequest) convertAlertManagerToAlert(as alerts.AlertsService) (alerts.Alert, error) {
+func (ar AlertRequest) convertAlertManagerToAlert(as alerts.Service) (alerts.Alert, error) {
 	alert, err := as.NewAlert(
 		ar.Fingerprint,
 		ar.AlertLabels.AlertName,
 		ar.AlertLabels.Severity,
 		ar.AlertAnnotation.Summary,
 		ar.Status,
-		ar.AlertLabels.Method,
+		strings.Split(ar.AlertLabels.Method, ","),
 		*ar.StartsAt,
 		*ar.EndsAt,
 		strings.Split(ar.AlertLabels.Receptor, ","),
