@@ -51,9 +51,9 @@ func (k *KavenegarService) Status(messageID string) (notifications.MessageStatus
 func (k *KavenegarService) kavenegarSend(_ string, messages notifications.Message) ([]string, error) {
 	text := ""
 	if messages.State == "firing" {
-		text = "🚨" + messages.Subject + "\n" + messages.Message + "\nTime: " + messages.Time
+		text = "🚨 Firing \n" + messages.Subject + "\n" + messages.Message + "\nTime: " + messages.Time
 	} else if messages.State == "resolved" {
-		text = "✅" + messages.Subject + "\n" + messages.Message + "\nTime: " + messages.Time
+		text = "✅ Resolved \n" + messages.Subject + "\n" + messages.Message + "\nTime: " + messages.Time
 	}
 	resp, err := k.API.Message.Send("", messages.Receptors, text, nil)
 	if err != nil {
