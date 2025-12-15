@@ -58,9 +58,9 @@ func (s *service) Send(message notifications.Message) ([]string, error) {
 	responses := make([]string, 0)
 	text := ""
 	if message.State == "firing" {
-		text = `🚨*` + message.Subject + `*🚨` + "\n\n" + message.Message + "\n\n" + message.Time
+		text = `🚨<b> Firing </b>🚨` + "\n\n<b>" + message.Subject + "</b>\n\n" + message.Message + "\n\n" + message.Time
 	} else if message.State == "resolved" {
-		text = `✅*` + message.Subject + `*✅` + "\n\n" + message.Message + "\n\n" + message.Time
+		text = `✅<b> Resolved </b>✅` + "\n\n<b>" + message.Subject + "</b>\n\n" + message.Message + "\n\n" + message.Time
 	}
 
 	for _, receptor := range message.Receptors {
@@ -74,7 +74,7 @@ func (s *service) Send(message notifications.Message) ([]string, error) {
 		resp, err := s.bot.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID:    chatID,
 			Text:      text,
-			ParseMode: models.ParseModeMarkdownV1,
+			ParseMode: models.ParseModeHTML,
 		})
 
 		if err != nil {
