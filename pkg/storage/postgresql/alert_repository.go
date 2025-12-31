@@ -88,6 +88,7 @@ func (s *Storage) AlertsBySeverity() ([]*alerts.AlertsBySeverity, error) {
 	result := s.db.Table("alerts").
 		Select("severity,count(severity) as count").
 		Group("severity").
+		Where("status = ?", "firing").
 		Scan(&als)
 	if result.Error != nil {
 		s.logger.Error("Error getting query from database ,", result.Error)
