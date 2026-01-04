@@ -1,0 +1,2 @@
+ALTER TABLE users
+    ADD COLUMN mattermost_id VARCHAR(50) DEFAULT NULL;
