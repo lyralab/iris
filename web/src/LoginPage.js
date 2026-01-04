@@ -24,9 +24,11 @@ const LoginPage = () => {
         }
     }, [navigate]);
 
-    const fetchCaptcha = async () => {
+    const fetchCaptcha = async (clearError = true) => {
         setCaptchaLoading(true);
-        setError('');
+        if (clearError) {
+            setError('');
+        }
         try {
             const data = await apiService.generateCaptcha();
             if (data.status === 'success' && data.data) {
@@ -44,11 +46,13 @@ const LoginPage = () => {
 
     const handleRefreshCaptcha = () => {
         setCaptchaAnswer('');
-        fetchCaptcha();
+        fetchCaptcha(false); // Don't clear error when manually refreshing
     };
 
     const handleLogin = async (event) => {
         event.preventDefault();
+        event.stopPropagation();
+        
         setError('');
 
         if (!captchaAnswer) {
@@ -68,8 +72,14 @@ const LoginPage = () => {
                 handleRefreshCaptcha();
             }
         } catch (err) {
-            setError(err.message || 'Login failed');
-            handleRefreshCaptcha();
+            const errorMessage = err.message || 'Login failed';
+            setError(errorMessage);
+            setCaptchaAnswer('');
+            
+            // Refresh captcha but keep the error message visible
+            setTimeout(() => {
+                fetchCaptcha(false);
+            }, 100);
         } finally {
             setLoading(false);
         }
@@ -84,7 +94,11 @@ const LoginPage = () => {
                     <p className="login-subtitle">Sign in to continue</p>
                 </div>
 
-                {error && <div className="error">{error}</div>}
+                {error && (
+                    <div className="error">
+                        {error}
+                    </div>
+                )}
 
                 <form onSubmit={handleLogin}>
                     <div className="form-group">
