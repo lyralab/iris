@@ -19,18 +19,27 @@ type GoEnv struct {
 }
 
 type Notifications struct {
+	Asiatech struct {
+		Host     string `env:"ASIATECH_HOST" koanf:"host"`
+		Username string `env:"ASIATECH_USERNAME" koanf:"username"`
+		Password string `env:"ASIATECH_PASSWORD" koanf:"password"`
+		Scope    string `env:"ASIATECH_SCOPE" koanf:"scope"`
+		Sender   string `env:"ASIATECH_SENDER" koanf:"sender"`
+		Priority int    `env:"ASIATECH_PRIORITY" envDefault:"4" koanf:"priority"`
+		Enabled  bool   `env:"ASIATECH_ENABLED" envDefault:"false" koanf:"enabled"`
+	} `knoanf:"asiatech"`
 	Smsir struct {
 		ApiKey     string `env:"SMSIR_API_TOKEN" koanf:"api_key"`
 		LineNumber string `env:"SMSIR_LINE_NUMBER" koanf:"line_number"`
 		Enabled    bool   `env:"SMSIR_ENABLED" envDefault:"false" koanf:"enabled"`
 		Priority   int    `env:"SMSIR_PRIORITY" envDefault:"2" koanf:"priority"`
-	}
+	} `koanf:"smsir"`
 	Kavenegar struct {
 		ApiToken string `env:"KAVENEGAR_API_TOKEN" koanf:"api_token"`
 		Sender   string `env:"KAVENEGAR_SENDER" envDefault:"" koanf:"sender"`
 		Enabled  bool   `env:"KAVENEGAR_ENABLED" envDefault:"true" koanf:"enabled"`
 		Priority int    `env:"KAVENEGAR_PRIORITY" envDefault:"1" koanf:"priority"`
-	}
+	} `koanf:"kavenegar"`
 	Email struct {
 		Host     string `env:"EMAIL_HOST" koanf:"host"`
 		Port     string `env:"EMAIL_PORT" koanf:"port"`
@@ -38,7 +47,7 @@ type Notifications struct {
 		Password string `env:"EMAIL_PASSWORD" koanf:"password"`
 		From     string `env:"EMAIL_FROM" koanf:"from"`
 		Enabled  bool   `env:"EMAIL_ENABLED" envDefault:"false" koanf:"enabled"`
-	}
+	} `koanf:"email"`
 	Telegram struct {
 		BotToken string `env:"TELEGRAM_BOT_TOKEN" koanf:"bot_token"`
 		Proxy    string `env:"TELEGRAM_PROXY" envDefault:"" koanf:"proxy"`

@@ -13,6 +13,7 @@ import (
 	"github.com/root-ali/iris/pkg/cache"
 	"github.com/root-ali/iris/pkg/message"
 	"github.com/root-ali/iris/pkg/notifications"
+	"github.com/root-ali/iris/pkg/notifications/asiatech"
 	"github.com/root-ali/iris/pkg/notifications/kavenegar"
 	"github.com/root-ali/iris/pkg/notifications/mail"
 	"github.com/root-ali/iris/pkg/notifications/mattermost"
@@ -100,6 +101,7 @@ func Init(cfg *config.Config) (*App, error) {
 		deactiveProviders = append(deactiveProviders, "Smsir")
 	}
 
+	// kavenegar notification provider
 	if cfg.Notifications.Kavenegar.Enabled {
 		kv := kavenegar.NewKavenegarService(
 			cfg.Notifications.Kavenegar.ApiToken,
@@ -170,39 +172,29 @@ func Init(cfg *config.Config) (*App, error) {
 		deactiveProviders = append(deactiveProviders, "Mattermost")
 	}
 
-	// mail server provider initialized
-	if cfg.Notifications.Mail.Enabled {
-		mailConfig := mail.Config{
-			Username:    cfg.Notifications.Mail.Username,
-			Password:    cfg.Notifications.Mail.Password,
-			FromAddress: cfg.Notifications.Mail.FromAddress,
-			FromName:    cfg.Notifications.Mail.FromName,
-			SMTPServer:  cfg.Notifications.Mail.SMTPHost,
-		}
-
-		mailServer := mail.NewService(mailConfig, "Mail", 10, logger)
-		if mailServer == nil {
-			logger.Errorw("mail server init failed")
-		} else {
-			logger.Infow("mail server initialized")
-			allServices = append(allServices, mailServer)
-		}
-	}
-
-	// Initialize mattermost notification provider
-	if cfg.Notifications.Mattermost.Enabled {
-		logger.Infow("Initializing mattermost notification provider",
-			"bot token", cfg.Notifications.Mattermost.BotToken, "url", cfg.Notifications.Mattermost.Url)
-		mattermostSvc := mattermost.NewService(
-			mattermost.Config{
-				Url:      cfg.Notifications.Mattermost.Url,
-				BotToken: cfg.Notifications.Mattermost.BotToken,
-				Priority: cfg.Notifications.Mattermost.Priority,
-			},
+	// Initialize asiatech notification provider
+	if cfg.Notifications.Asiatech.Enabled {
+		asiatechCache := cache.New[string, string](logger, cache.WithCapacity(1))
+		asiatechSvc := asiatech.NewService(
+			cfg.Notifications.Asiatech.Username,
+			cfg.Notifications.Asiatech.Password,
+			cfg.Notifications.Asiatech.Scope,
+			cfg.Notifications.Asiatech.Host,
+			cfg.Notifications.Asiatech.Sender,
+			cfg.Notifications.Asiatech.Priority,
+			asiatechCache,
 			logger,
 		)
-		allServices = append(allServices, mattermostSvc)
+		allServices = append(allServices, asiatechSvc)
+		if v, err := asiatechSvc.Verify(); err != nil {
+			logger.Errorw("asiatech verify failed", "error", err)
+		} else {
+			logger.Infow("asiatech verified", "response", v)
+		}
+	} else {
+		deactiveProviders = append(deactiveProviders, "Asiatech")
 	}
+
 	// provider registry
 	providerCache := cache.New[string, *[]notifications.Providers](logger, cache.WithCapacity(3))
 	providerService := notifications.NewProvidersService(repos.Postgres, allServices, providerCache, logger)
