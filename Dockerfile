@@ -3,6 +3,7 @@ FROM golang:1.25-alpine as build
 WORKDIR /go/src/app
 COPY . .
 
+env GOPROXY=https://nexus.jibit.cloud/repository/gobit/
 RUN go mod download
 RUN CGO_ENABLED=0;GOEXPERIMENT=greenteagc go build -o /go/bin/app ./cmd/server/main.go
 
