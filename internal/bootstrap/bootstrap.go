@@ -277,7 +277,7 @@ func Init(cfg *config.Config) (*App, error) {
 		JWTSecret:       []byte(cfg.JwtSecret),
 		SignupEnabled:   cfg.SignupEnabled,
 		ProviderService: providerService,
-		AdminPass:       cfg.HTTP.AdminPass,
+		AdminPass:       cfg.Server.AdminPass,
 		GinMode:         cfg.Go.Mode, // reuse
 	})
 

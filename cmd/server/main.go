@@ -21,7 +21,7 @@ func main() {
 	}
 
 	// Run HTTP
-	if err := app.Router.Run(":" + cfg.HTTP.Port); err != nil {
+	if err := app.Router.Run(":" + cfg.Server.Port); err != nil {
 		app.Logger.Fatalw("http server failed", "error", err)
 	}
 }

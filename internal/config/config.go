@@ -9,7 +9,7 @@ type Postgres struct {
 	SSL  bool   `env:"POSTGRES_SSL" envDefault:"false" koanf:"ssl"`
 }
 
-type HTTP struct {
+type Server struct {
 	Port      string `env:"HTTP_PORT" envDefault:"9090" koanf:"port"`
 	AdminPass string `env:"ADMIN_PASS" koanf:"admin_pass"`
 }
@@ -96,7 +96,7 @@ type Scheduler struct {
 
 type Config struct {
 	Postgres      Postgres      `koanf:"postgres"`
-	HTTP          HTTP          `koanf:"http"`
+	Server        Server        `koanf:"server"`
 	Go            GoEnv         `koanf:"go"`
 	Notifications Notifications `koanf:"notifications"`
 	Scheduler     Scheduler     `koanf:"scheduler"`
