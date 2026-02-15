@@ -1,0 +1,23 @@
+apiVersion: v2
+name: iris
+description: A Helm chart for deploying iris on kubernetes
+type: application
+version: 0.1.0
+appVersion: "0.0.11"
+
+home: https://harbor.jibit.cloud/library/helm-microservice
+
+keywords:
+  - iris
+  - local
+  - monitoring
+
+maintainers:
+  - name: Ali Soltani
+    email: soltani@jibit.ir
+  - name: Saleh Borhani
+    email: borhani@jibit.ir
+  - name: Alireza Pourchali
+    email: pourchali@jibit.ir
+  - name: Alireza Habibzadeh
+    email: habibzadeh@jibit.ir

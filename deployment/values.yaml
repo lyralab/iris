@@ -1,0 +1,202 @@
+---
+# Default values for microservice.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# Define the number of replicas for the deployment
+replicaCount: 1
+
+# This sets the container image
+image:
+  repository: harbor.jibit.cloud/utils/iris
+  pullPolicy: IfNotPresent
+  tag: "0.0.11"
+
+# This is for the secrets for pulling an image from a private repository
+imagePullSecrets:
+  - name: harbor-sec
+
+# This is to override the chart name.
+nameOverride: "iris"
+fullnameOverride: "iris"
+appVersion: "0.0.11"
+
+# This section builds out the service account
+serviceAccount:
+  create: false
+  automount: true
+  annotations: {}
+  name: ""
+
+# This is for setting Kubernetes Annotations to a Pod.
+podAnnotations:
+  iris_version: 0.0.11
+podLabels: {}
+
+# This is for setting up the security context for the pod and container
+podSecurityContext: {}
+securityContext: {}
+
+
+# This is for setting up the service 
+services:
+  enabled: true
+  service:
+    http:
+      enabled: true
+      type: ClusterIP
+      port: 9090
+      targetPort: http
+      protocol: TCP
+
+# This is for setting up the config map
+configMap:
+  config:
+    key: config.yml
+    path: config/yml
+    mountPath: /config.yml
+    subPath: config.yml
+    content: |
+      iris:
+        postgres:
+          host: "172.16.69.200"
+          port: 5432
+          db_name: "iris"
+          user: "iris"
+          ssl: false
+        server:
+          port: 9090
+        go:
+          mode: "debug"
+        notifications:
+          smsir:
+            enabled: true
+            line_number: "30007732911486"
+            priority: 2
+          kavenegar:
+            enabled: true
+            sender: ""
+            priority: 1
+          email:
+            host: ""
+            port: ""
+            user: ""
+            password: ""
+            from: ""
+            enabled: false
+          telegram:
+            enabled: false
+            bot_token: ""
+            proxy: ""
+        scheduler:
+          scheduler_enabled: "true"
+          mobile_scheduler:
+            start_at: "1s"
+            interval: "600s"
+            workers: "1"
+            queue_size: "1"
+            cache_capacity: "1"
+          # Alert Scheduler configuration
+          alert_scheduler:
+            start_at: "3s"
+            interval: "10s"
+            workers: "1"
+            queue_size: "10"
+          # Message Status
+          message_status:
+            start_at: "4s"
+            interval: "20s"
+            workers: "10"
+            queue_size: "100"
+        jwt_secret: "your_jwt_secret_key"
+        signup_enabled: "false"
+  
+
+# This block is for setting up the ingress
+ingress:
+  enabled: false
+
+# This is for setting up the HTTPRoute
+httpRoute:
+  enabled: false
+
+# This is for setting up the IngressRoute
+ingressRoute:
+  enabled: false
+  # entrypoint: web
+  # service: http
+  # routes:
+  #   - hosts: chart-example.local
+  #     pathPrefix: /
+  #     middlewares:
+  #       - my-middleware
+
+# This is for setting up the Traefik middlewares
+middlewares: {}
+
+resources:
+  requests:
+    memory: "256Mi"
+    cpu: "500m"
+  limits:
+    memory: "1024Mi"
+    cpu: "2"
+  
+# envSecret
+secretEnv:
+  - name: IRIS_HTTP_ADMIN_PASS
+    secret: iris
+    key: admin-pass
+  - name: IRIS_POSTGRES_PASS
+    secret: iris
+    key: postgres-pass
+  - name: IRIS_JWT_SECRET
+    secret: iris
+    key: jwt-secret
+  - name: IRIS_NOTIFICATION_SMSIR_API_KEY
+    secret: iris
+    key: smsir-api-key
+  - name: IRIS_NOTIFICATION_KAVENEGAR_API_TOKEN
+    secret: iris
+    key: kavenegar-api-token
+
+# This is to setup the liveness and readiness probes
+livenessProbe:
+  failureThreshold: 3
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  successThreshold: 1
+  httpGet:
+    path: /
+    port: http
+
+readinessProbe:
+  failureThreshold: 3
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  successThreshold: 1
+  httpGet:
+    path: /
+    port: http
+
+# This section is for setting up autoscaling
+autoscaling:
+  enabled: false
+
+# Additional volumes on the output Deployment definition.
+volumes: []
+
+# Additional volumeMounts on the output Deployment definition.
+volumeMounts: []
+
+# This is for setting up node selectors, tolerations, and affinity
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+# This is for setting up the promethues serviceMonitor
+serviceMonitor: {}
+
+prometheusRule: {}
