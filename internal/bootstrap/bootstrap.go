@@ -128,8 +128,9 @@ func Init(cfg *config.Config) (*App, error) {
 		)
 		if err != nil {
 			logger.Errorw("telegram init failed", "error", err)
+		} else {
+			allServices = append(allServices, telegramSvc)
 		}
-		allServices = append(allServices, telegramSvc)
 	} else {
 		deactiveProviders = append(deactiveProviders, "Telegram")
 	}

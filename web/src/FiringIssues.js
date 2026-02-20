@@ -7,17 +7,24 @@ const FiringIssues = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-  // Credentials (Replace with Secure Handling)
-  const encodedCredentials = btoa(`${config.auth.username}:${config.auth.password}`);
+  // Helper function to get a cookie by name
+  const getCookie = (name) => {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+    return null;
+  };
+
   useEffect(() => {
       const fetchFiringIssues = async () => {
         setLoading(true);
         setError(null);
 
         try {
-          const response = await fetch(config.api.firingIssues, { // Replace with your actual endpoint
+          const token = getCookie('jwt');
+          const response = await fetch(config.api.firingIssues, {
                headers: {
-                  Authorization: `Basic ${encodedCredentials}`,
+                  Authorization: `Bearer ${token}`,
                    'Content-Type': 'application/json',
                  },
             });

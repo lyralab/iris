@@ -179,7 +179,7 @@ const AlertsPage = () => {
                                     <tbody>
                                         {firingAlerts.map((alert, index) => (
                                             <tr key={index}>
-                                                <td className="alert-name">{alert.alert_name || 'Unknown'}</td>
+                                                <td className="alert-name">{alert.name || 'Unknown'}</td>
                                                 <td>
                                                     <span className={`severity-badge ${getSeverityClass(alert.severity)}`}>
                                                         {alert.severity || 'N/A'}
@@ -189,7 +189,7 @@ const AlertsPage = () => {
                                                     <span className="status-badge firing">Firing</span>
                                                 </td>
                                                 <td>{new Date(alert.starts_at).toLocaleString()}</td>
-                                                <td className="alert-description">{alert.summary || 'No description'}</td>
+                                                <td className="alert-description">{alert.description || 'No description'}</td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -219,7 +219,7 @@ const AlertsPage = () => {
                                     <tbody>
                                         {resolvedAlerts.map((alert, index) => (
                                             <tr key={index}>
-                                                <td className="alert-name">{alert.alert_name || 'Unknown'}</td>
+                                                <td className="alert-name">{alert.name || 'Unknown'}</td>
                                                 <td>
                                                     <span className={`severity-badge ${getSeverityClass(alert.severity)}`}>
                                                         {alert.severity || 'N/A'}
@@ -229,7 +229,7 @@ const AlertsPage = () => {
                                                     <span className="status-badge resolved">Resolved</span>
                                                 </td>
                                                 <td>{new Date(alert.ends_at).toLocaleString()}</td>
-                                                <td className="alert-description">{alert.summary || 'No description'}</td>
+                                                <td className="alert-description">{alert.description || 'No description'}</td>
                                             </tr>
                                         ))}
                                     </tbody>

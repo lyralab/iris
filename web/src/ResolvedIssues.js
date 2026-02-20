@@ -1,13 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import config from './config';
 
-const encodedCredentials = btoa(`${config.auth.username}:${config.auth.password}`);
-
 const ResolvedIssues = () => {
   const [resolvedSeverityFilter, setResolvedSeverityFilter] = useState('all');
   const [resolvedIssues, setResolvedIssues] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Helper function to get a cookie by name
+  const getCookie = (name) => {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+    return null;
+  };
 
   useEffect(() => {
     const fetchResolvedIssues = async () => {
@@ -15,9 +21,10 @@ const ResolvedIssues = () => {
       setError(null);
 
       try {
+        const token = getCookie('jwt');
         const response = await fetch(config.api.resolvedIssues, {
             headers: {
-              Authorization: `Basic ${encodedCredentials}`,
+              Authorization: `Bearer ${token}`,
                 'Content-Type': 'application/json',
             },
         });

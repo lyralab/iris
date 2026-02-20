@@ -54,7 +54,7 @@ func (s *service) Verify() (string, error) {
 }
 
 func (s *service) GetName() string {
-	return s.name
+	return "Mail"
 }
 
 func (s *service) GetFlag() string {
