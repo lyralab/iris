@@ -22,7 +22,7 @@ func New(path string) *Config {
 
 	// Load env configurations with prefix "IRIS_". For example, "IRIS_SERVER_PORT" will be mapped to "server.port" in the config struct.
 	err := k.Load(env.Provider("IRIS_", ".", func(s string) string {
-		s = strings.TrimPrefix(s, "APP_")
+		s = strings.TrimPrefix(s, "IRIS")
 		s = strings.ToLower(s)
 		s = strings.ReplaceAll(s, "_", ".")
 		return s
