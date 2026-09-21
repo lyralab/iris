@@ -18,7 +18,7 @@ Iris is a comprehensive alert management and notification system designed to rec
 
 ## Prerequisites
 
-- **Go**: 1.23.0 or higher
+- **Go**: 1.27 or higher
 - **PostgreSQL**: 13 or higher
 - **Node.js**: 16 or higher (for web frontend)
 - **Git**: For version control

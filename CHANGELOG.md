@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.4] - 2026-09-21
 ### Added
 - Implement Bale provider for notifications
+### Changed
+- Upgrade Go from 1.24 to 1.27
+- Switch Docker build to Chainguard images (go/node/static)
 
 ## [0.1.3] - 2026-02-21
 ### Changed
