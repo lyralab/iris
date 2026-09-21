@@ -19,6 +19,7 @@ type User struct {
 	Mobile         string    `gorm:"column:mobile;null"`
 	TelegramID     string    `gorm:"column:telegram_id;null"`
 	MattermostId   string    `gorm:"column:mattermost_id;null"`
+	BaleID         string    `gorm:"column:bale_id;null"`
 	Role           string    `gorm:"column:role_id"`
 	CreatedAt      time.Time `gorm:"created_at"`
 	ModifiedAt     time.Time `gorm:"modified_at"`

@@ -19,6 +19,7 @@ const UserManagement = () => {
         lastname: '',
         email: '',
         mobile_number: '',
+        bale_id: '',
         password: '',
         'confirm-password': ''
     });
@@ -81,6 +82,7 @@ const UserManagement = () => {
                 lastname: '',
                 email: '',
                 mobile_number: '',
+                bale_id: '',
                 password: '',
                 'confirm-password': ''
             });
@@ -162,6 +164,7 @@ const UserManagement = () => {
                                 <th>Last Name</th>
                                 <th>Email</th>
                                 <th>Mobile</th>
+                                <th>Bale ID</th>
                                 <th>Status</th>
                                 <th>Actions</th>
                             </tr>
@@ -174,6 +177,7 @@ const UserManagement = () => {
                                     <td>{user.lastName || '-'}</td>
                                     <td>{user.email || '-'}</td>
                                     <td>{user.mobile || '-'}</td>
+                                    <td>{user.bale_id || '-'}</td>
                                     <td>
                                         {(() => {
                                             const statusInfo = getStatusInfo(user.status);
@@ -272,6 +276,15 @@ const UserManagement = () => {
                                     <small>11 digits required</small>
                                 </div>
                                 <div className="form-group">
+                                    <label>Bale ID:</label>
+                                    <input
+                                        type="text"
+                                        value={newUser.bale_id}
+                                        onChange={(e) => setNewUser({ ...newUser, bale_id: e.target.value })}
+                                        placeholder="Numeric Bale ID"
+                                    />
+                                </div>
+                                <div className="form-group">
                                     <label>Password:</label>
                                     <input
                                         type="password"
@@ -351,6 +364,15 @@ const UserManagement = () => {
                                         value={selectedUser.mobile || ''}
                                         onChange={(e) => setSelectedUser({ ...selectedUser, mobile: e.target.value })}
                                         pattern="[0-9]{11}"
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label>Bale ID:</label>
+                                    <input
+                                        type="text"
+                                        value={selectedUser.bale_id || ''}
+                                        onChange={(e) => setSelectedUser({ ...selectedUser, bale_id: e.target.value })}
+                                        placeholder="Numeric Bale ID"
                                     />
                                 </div>
                                 <div className="modal-actions">

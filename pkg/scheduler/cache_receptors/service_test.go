@@ -28,6 +28,7 @@ var groupMobiles = []GroupWithMobiles{
 		GroupName: "testing",
 		UserId:    "user2",
 		Mobile:    "7777777777",
+		BaleID:    "123123123",
 	},
 	{
 		GroupID:   "group1",
@@ -57,7 +58,7 @@ func mockLogger() *zap.SugaredLogger {
 func newMockService() (*CacheReceptor, error) {
 	repo := &mockRepo{}
 	logger := mockLogger()
-	c := cache.New[string, map[string]string](logger, cache.WithCapacity(3))
+	c := cache.New[string, map[string]string](logger, cache.WithCapacity(20))
 	config := Config{
 		Interval:  1 * time.Minute,
 		Workers:   2,
@@ -83,6 +84,14 @@ func TestNewCacheReceptorsScheduler(t *testing.T) {
 	}
 	if len(cached) != 1 || cached["user2"] != "5555555555" {
 		t.Fatalf("expected cached numbers to contain '5555555555', got %v", cached)
+	}
+
+	baleCached, ok := s.Get("bale", "testing")
+	if !ok {
+		t.Fatal("expected bale receptors to be cached")
+	}
+	if baleCached["user2"] != "123123123" {
+		t.Fatalf("expected bale id 123123123, got %v", baleCached)
 	}
 
 }

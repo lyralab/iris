@@ -47,6 +47,7 @@ type GroupWithMobiles struct {
 	Email        string `gorm:"column:email,type:varchar"`
 	TelegramID   string `gorm:"column:telegram_id,type:varchar"`
 	MattermostID string `gorm:"column:mattermost_id,type:varchar"`
+	BaleID       string `gorm:"column:bale_id,type:varchar"`
 }
 
 type Config struct {

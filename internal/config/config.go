@@ -28,6 +28,12 @@ type Notifications struct {
 		Priority int    `env:"ASIATECH_PRIORITY" envDefault:"4" koanf:"priority"`
 		Enabled  bool   `env:"ASIATECH_ENABLED" envDefault:"false" koanf:"enabled"`
 	} `knoanf:"asiatech"`
+	Bale struct {
+		URL      string `env:"BALE_URL" koanf:"url"`
+		Token    string `env:"BALE_TOKEN" koanf:"token"`
+		Priority int    `env:"BALE_PRIORITY" envDefault:"5" koanf:"priority"`
+		Enabled  bool   `env:"BALE_ENABLED" envDefault:"false" koanf:"enabled"`
+	} `koanf:"bale"`
 	Smsir struct {
 		ApiKey     string `env:"SMSIR_API_TOKEN" koanf:"api_key"`
 		LineNumber string `env:"SMSIR_LINE_NUMBER" koanf:"line_number"`
@@ -77,7 +83,7 @@ type Scheduler struct {
 		Interval      string `env:"MOBILE_SCHEDULER_INTERVAL" envDefault:"600s" koanf:"interval"`
 		Workers       int    `env:"MOBILE_SCHEDULER_WORKERS" envDefault:"1" koanf:"workers"`
 		QueueSize     int    `env:"MOBILE_SCHEDULER_QUEUE_SIZE" envDefault:"1" koanf:"queue_size"`
-		CacheCapacity int    `env:"MOBILE_SCHEDULER_CACHE_CAPACITY" envDefault:"10" koanf:"cache_capacity"`
+		CacheCapacity int    `env:"MOBILE_SCHEDULER_CACHE_CAPACITY" envDefault:"100" koanf:"cache_capacity"`
 	} `koanf:"mobile_scheduler"`
 	AlertScheduler struct {
 		StartAt   string `env:"ALERT_SCHEDULER_START_AT" envDefault:"3s" koanf:"start_at"`

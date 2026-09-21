@@ -88,6 +88,11 @@ configMap:
             enabled: false
             bot_token: ""
             proxy: ""
+          bale:
+            enabled: false
+            url: "https://tapi.bale.ai"
+            token: ""
+            priority: 5
         scheduler:
           scheduler_enabled: "true"
           mobile_scheduler:
