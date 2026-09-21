@@ -14,7 +14,8 @@ const Profile = () => {
         lastname: '',
         email: '',
         mobile_number: '',
-        telegram_id: ''
+        telegram_id: '',
+        bale_id: ''
     });
     const [saving, setSaving] = useState(false);
     const [saveError, setSaveError] = useState(null);
@@ -43,7 +44,8 @@ const Profile = () => {
             lastname: user.lastName || user.lastname || '',
             email: user.email || '',
             mobile_number: user.mobile || user.mobile_number || '',
-            telegram_id: user.telegramID || user.telegram_id || ''
+            telegram_id: user.telegramID || user.telegram_id || '',
+            bale_id: user.baleID || user.bale_id || ''
         });
         setSaveError(null);
         setShowEditModal(true);
@@ -170,6 +172,10 @@ const Profile = () => {
                                         <label>Telegram ID</label>
                                         <span>{user.telegramID || user.telegram_id || '-'}</span>
                                     </div>
+                                    <div className="info-row">
+                                        <label>Bale ID</label>
+                                        <span>{user.baleID || user.bale_id || '-'}</span>
+                                    </div>
                                 </div>
                             </div>
 
@@ -259,6 +265,16 @@ const Profile = () => {
                                         value={editForm.telegram_id}
                                         onChange={handleInputChange}
                                         placeholder="Enter Telegram ID"
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label>Bale ID</label>
+                                    <input
+                                        type="text"
+                                        name="bale_id"
+                                        value={editForm.bale_id}
+                                        onChange={handleInputChange}
+                                        placeholder="Enter Bale ID"
                                     />
                                 </div>
                             </div>

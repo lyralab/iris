@@ -179,18 +179,18 @@ func TestSend_FiringAlert_MockServer(t *testing.T) {
 	logger := zap.NewNop().Sugar()
 
 	service := &Service{
-		host:     server.URL,
-		username: "testuser",
-		password: "testpass",
-		scope:    "testscope",
-		sender:   "testsender",
+		host:     "https://smsapi.asiatech.ir",
+		username: "jibit",
+		password: "LrThD@?rbz3F",
+		scope:    "ApiAccess",
+		sender:   "9890000476",
 		priority: 1,
 		c:        mockCache,
 		logger:   logger,
 	}
 
-	mockCache.On("Get", "asiatech_token").Return("", false)
-	mockCache.On("Set", "asiatech_token", "test_token", 4*time.Minute).Return(nil)
+	mockCache.On("Get", "asiatech").Return("", false)
+	mockCache.On("Set", "asiatech", "test_token", 4*time.Minute).Return(nil)
 
 	message := notifications.Message{
 		State:     "firing",

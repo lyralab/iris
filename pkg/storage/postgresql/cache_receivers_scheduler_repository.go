@@ -19,7 +19,8 @@ func (s *Storage) GetPerGroupIds(group ...string) ([]cache_receptors.GroupWithMo
         u.mobile AS mobiles,
     	u.email AS email,
         u.telegram_id AS telegram_id,
-        u.mattermost_id AS mattermost_id
+        u.mattermost_id AS mattermost_id,
+    	u.bale_id AS bale_id
     FROM groups g
              LEFT JOIN user_groups ug
                        ON ug.group_id = g.id
@@ -55,7 +56,7 @@ func (s *Storage) GetPerGroupIds(group ...string) ([]cache_receptors.GroupWithMo
 		var g cache_receptors.GroupWithMobiles
 
 		// Use NullString for nullable text columns to avoid NULL->string scan error.
-		var nsMobile, nsEmail, nsTelegram, nsMattermost sql.NullString
+		var nsMobile, nsEmail, nsTelegram, nsMattermost, nsBaleID sql.NullString
 
 		err := rows.Scan(
 			&g.GroupID,
@@ -65,6 +66,7 @@ func (s *Storage) GetPerGroupIds(group ...string) ([]cache_receptors.GroupWithMo
 			&nsEmail,
 			&nsTelegram,
 			&nsMattermost,
+			&nsBaleID,
 		)
 		if err != nil {
 			s.logger.Errorw("Failed to scan row", "error", err)
@@ -90,6 +92,11 @@ func (s *Storage) GetPerGroupIds(group ...string) ([]cache_receptors.GroupWithMo
 			g.MattermostID = nsMattermost.String
 		} else {
 			g.MattermostID = ""
+		}
+		if nsBaleID.Valid {
+			g.BaleID = nsBaleID.String
+		} else {
+			g.BaleID = ""
 		}
 
 		gms = append(gms, g)

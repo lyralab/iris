@@ -156,6 +156,7 @@ func (s *CacheReceptor) setOnCache() {
 	emailCached := make(map[string]map[string]string)
 	telegramCached := make(map[string]map[string]string)
 	mattermostCached := make(map[string]map[string]string)
+	baleCached := make(map[string]map[string]string)
 	for _, group := range results {
 		if mobileCached[group.GroupName] == nil {
 			mobileCached[group.GroupName] = make(map[string]string)
@@ -169,6 +170,9 @@ func (s *CacheReceptor) setOnCache() {
 		if mattermostCached[group.GroupName] == nil {
 			mattermostCached[group.GroupName] = make(map[string]string)
 		}
+		if baleCached[group.GroupName] == nil {
+			baleCached[group.GroupName] = make(map[string]string)
+		}
 		if group.Mobile != "" {
 			mobileCached[group.GroupName][group.UserId] = group.Mobile
 		}
@@ -180,6 +184,9 @@ func (s *CacheReceptor) setOnCache() {
 		}
 		if group.MattermostID != "" {
 			mattermostCached[group.GroupName][group.UserId] = group.MattermostID
+		}
+		if group.BaleID != "" {
+			baleCached[group.GroupName][group.UserId] = group.BaleID
 		}
 	}
 
@@ -196,13 +203,19 @@ func (s *CacheReceptor) setOnCache() {
 		}
 	}
 	for groupName, _ := range telegramCached {
-		err := s.Cache.Set("telegrams_"+groupName, telegramCached[groupName], 0)
+		err := s.Cache.Set("telegram_"+groupName, telegramCached[groupName], 0)
 		if err != nil {
 			return
 		}
 	}
 	for groupName, _ := range mattermostCached {
 		err := s.Cache.Set("mattermost_"+groupName, mattermostCached[groupName], 0)
+		if err != nil {
+			return
+		}
+	}
+	for groupName, _ := range baleCached {
+		err := s.Cache.Set("bale_"+groupName, baleCached[groupName], 0)
 		if err != nil {
 			return
 		}
@@ -233,14 +246,19 @@ func (s *CacheReceptor) Get(model string, groupName string) (map[string]string, 
 	case "mail":
 		query = "emails_"
 	case "telegram":
-		query = "telegrams_"
+		query = "telegram_"
 	case "mattermost":
 		query = "mattermost_"
+	case "bale":
+		query = "bale_"
 	default:
 		return nil, false
 	}
+	s.Logger.Debugw("Getting receptors from cache", "model", model, "groupName", groupName, "query", query)
 	question := query + groupName
+	s.Logger.Debugw("Getting receptors from cache", "question", question)
 	resp, ok := s.Cache.Get(question)
+	s.Logger.Debugw("Getting receptors from cache", "resp", resp, "ok", ok)
 	if !ok {
 		s.setOnCache()
 		resp, ok = s.Cache.Get(question)

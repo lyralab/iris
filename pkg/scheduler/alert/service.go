@@ -128,6 +128,7 @@ func (s *Scheduler) handleAlert(al alerts.Alert) error {
 			"provider", p.GetName())
 
 		for _, r := range al.Receptor {
+			s.logger.Debugw("Getting receptors from cache", "method", al.Method, "receptor", r)
 			cacheReceptors, ok := s.receptorRepo.Get(p.GetFlag(), r)
 			s.logger.Debugw("Fetched receptors from cache",
 				"method", al.Method,

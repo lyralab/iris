@@ -28,6 +28,7 @@ type UserSignupBody struct {
 	Mobile          string `json:"mobile_number,omitempty" validate:"omitempty,len=11,numeric"`
 	TelegramID      string `json:"telegram_id,omitempty" validate:"omitempty,numeric"`
 	MattermostID    string `json:"mattermost_id,omitempty" validate:"omitempty"`
+	BaleID          string `json:"bale_id,omitempty" validate:"omitempty,numeric"`
 	Email           string `json:"email,omitempty" validate:"omitempty,email"`
 }
 
@@ -39,6 +40,7 @@ type UserUpdateBody struct {
 	Email        string `json:"email,omitempty" validate:"omitempty,email"`
 	TelegramID   string `json:"telegram_id,omitempty" validate:"omitempty,numeric"`
 	MattermostID string `json:"mattermost_id,omitempty" validate:"omitempty"`
+	BaleID       string `json:"bale_id,omitempty" validate:"omitempty,numeric"`
 }
 
 type UserVerifyBody struct {
@@ -418,6 +420,7 @@ func GetAllUsersHandler(us user.UserInterfaceService, logger *zap.SugaredLogger)
 				"lastName":  u.LastName,
 				"email":     u.Email,
 				"mobile":    u.Mobile,
+				"bale_id":   u.BaleID,
 				"status":    u.Status,
 			}
 		}
@@ -447,6 +450,7 @@ func GetUserInfoHandler(us user.UserInterfaceService, logger *zap.SugaredLogger)
 			"email":      u.Email,
 			"mobile":     u.Mobile,
 			"telegramID": u.TelegramID,
+			"bale_id":    u.BaleID,
 		}
 		c.JSON(200, gin.H{"status": "OK", "user": userResponse, "user_id": u.ID})
 	}
@@ -467,6 +471,7 @@ func GetUserByIDHandler(us user.UserInterfaceService, logger *zap.SugaredLogger)
 			"lastName":  u.LastName,
 			"email":     u.Email,
 			"mobile":    u.Mobile,
+			"bale_id":   u.BaleID,
 		}
 		c.JSON(200, gin.H{"status": "OK", "user": userResponse, "user_id": u.ID})
 	}
@@ -482,6 +487,7 @@ func (ub *UserSignupBody) toUser() *user.User {
 		Mobile:       ub.Mobile,
 		MattermostId: ub.MattermostID,
 		TelegramID:   ub.TelegramID,
+		BaleID:       ub.BaleID,
 	}
 }
 
@@ -508,6 +514,9 @@ func (ub *UserUpdateBody) toUser() *user.User {
 	}
 	if ub.MattermostID != "" {
 		u.MattermostId = ub.MattermostID
+	}
+	if ub.BaleID != "" {
+		u.BaleID = ub.BaleID
 	}
 
 	return u
