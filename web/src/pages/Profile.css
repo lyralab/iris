@@ -121,60 +121,12 @@
 .role-badge {
     display: inline-block;
     padding: 0.4rem 1rem !important;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    background: var(--accent) !important;
     color: white !important;
     border-radius: 20px !important;
     font-weight: 600;
     font-size: 0.85rem !important;
     text-transform: capitalize;
-}
-
-.status-badge {
-    display: inline-block;
-    padding: 0.4rem 1rem;
-    border-radius: 20px;
-    font-size: 0.9rem;
-    font-weight: 600;
-    text-align: center;
-}
-
-.status-badge.status-active {
-    background-color: #d4edda;
-    color: #155724;
-}
-
-.status-badge.status-new {
-    background-color: #fff3cd;
-    color: #856404;
-}
-
-.status-badge.status-disable {
-    background-color: #f8d7da;
-    color: #721c24;
-}
-
-.status-badge.status-unknown {
-    background-color: #e2e3e5;
-    color: #383d41;
-}
-
-.loading {
-    text-align: center;
-    padding: 3rem;
-    font-size: 1.2rem;
-    color: #7f8c8d;
-}
-
-.error-message {
-    background-color: #f8d7da;
-    color: #721c24;
-    padding: 1.5rem;
-    border-radius: 8px;
-    border: 1px solid #f5c6cb;
-    text-align: center;
-    font-size: 1.1rem;
-    max-width: 500px;
-    margin: 2rem auto;
 }
 
 @media (max-width: 768px) {
@@ -220,23 +172,8 @@
     }
 }
 
-/* Edit Profile Button */
 .edit-profile-btn {
     margin-top: 1.5rem;
-    padding: 0.75rem 1.5rem;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    border: none;
-    border-radius: 8px;
-    font-size: 1rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.edit-profile-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
 }
 
 /* Modal Styles */
@@ -304,11 +241,11 @@
     font-size: 0.9rem;
 }
 
-.form-group {
+.profile-page .form-group {
     margin-bottom: 1.25rem;
 }
 
-.form-group label {
+.profile-page .form-group label {
     display: block;
     font-size: 0.85rem;
     font-weight: 600;
@@ -318,7 +255,7 @@
     margin-bottom: 0.5rem;
 }
 
-.form-group input {
+.profile-page .form-group input {
     width: 100%;
     padding: 0.75rem 1rem;
     font-size: 1rem;
@@ -328,13 +265,13 @@
     box-sizing: border-box;
 }
 
-.form-group input:focus {
+.profile-page .form-group input:focus {
     outline: none;
-    border-color: #667eea;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(31, 111, 235, 0.15);
 }
 
-.form-group input::placeholder {
+.profile-page .form-group input::placeholder {
     color: #bdc3c7;
 }
 
@@ -344,43 +281,5 @@
     gap: 1rem;
     padding: 1.5rem;
     border-top: 1px solid #ecf0f1;
-}
-
-.modal-cancel-btn {
-    padding: 0.75rem 1.5rem;
-    background-color: #ecf0f1;
-    color: #2c3e50;
-    border: none;
-    border-radius: 8px;
-    font-size: 1rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background-color 0.2s;
-}
-
-.modal-cancel-btn:hover {
-    background-color: #bdc3c7;
-}
-
-.modal-save-btn {
-    padding: 0.75rem 1.5rem;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    border: none;
-    border-radius: 8px;
-    font-size: 1rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.modal-save-btn:hover:not(:disabled) {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-}
-
-.modal-save-btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
 }
 

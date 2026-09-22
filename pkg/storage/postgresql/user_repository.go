@@ -3,6 +3,7 @@ package postgresql
 import (
 	"github.com/root-ali/iris/pkg/user"
 	"go.uber.org/zap"
+	"gorm.io/gorm"
 )
 
 func (s *Storage) AddUser(user *user.User) error {
@@ -81,9 +82,26 @@ func (s *Storage) VerifyUser(u *user.User) error {
 	return nil
 }
 
+func nullable(v string) interface{} {
+	if v == "" {
+		return gorm.Expr("NULL")
+	}
+	return v
+}
+
 func (s *Storage) UpdateUserData(u *user.User) error {
 	s.logger.Debugw("updating user data", "user_id", u.ID, "username", u.UserName)
-	result := s.db.Model(&user.User{}).Where("user_name = ?", u.UserName).Updates(u)
+	// Map update writes every contact field, including a cleared one.
+	result := s.db.Model(&user.User{}).Where("user_name = ?", u.UserName).Updates(map[string]interface{}{
+		"first_name":    u.FirstName,
+		"last_name":     u.LastName,
+		"email":         nullable(u.Email),
+		"mobile":        nullable(u.Mobile),
+		"telegram_id":   nullable(u.TelegramID),
+		"mattermost_id": nullable(u.MattermostId),
+		"bale_id":       nullable(u.BaleID),
+		"modified_at":   u.ModifiedAt,
+	})
 	if result.Error != nil {
 		s.logger.Error("Error updating user data", zap.Error(result.Error))
 		return result.Error

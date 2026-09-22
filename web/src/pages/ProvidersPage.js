@@ -10,6 +10,7 @@ const ProvidersPage = () => {
     const [showEditModal, setShowEditModal] = useState(false);
     const [selectedProvider, setSelectedProvider] = useState(null);
     const [editData, setEditData] = useState({ priority: '', status: true });
+    const [actionError, setActionError] = useState('');
 
     useEffect(() => {
         fetchProviders();
@@ -39,31 +40,31 @@ const ProvidersPage = () => {
 
     const handleUpdateProvider = async (e) => {
         e.preventDefault();
+        setActionError('');
         try {
             await apiService.modifyProvider({
                 name: selectedProvider.name,
                 priority: parseInt(editData.priority),
                 status: editData.status,
             });
-            
-            alert('Provider updated successfully');
             setShowEditModal(false);
             setSelectedProvider(null);
             fetchProviders();
-        } catch (e) {
-            alert('Error updating provider: ' + e.message);
+        } catch (err) {
+            setActionError(err.message);
         }
     };
 
     const handleToggleStatus = async (provider) => {
+        setActionError('');
         try {
             await apiService.modifyProvider({
                 name: provider.name,
                 status: !provider.enabled,
             });
             fetchProviders();
-        } catch (e) {
-            alert('Error toggling provider status: ' + e.message);
+        } catch (err) {
+            setActionError(err.message);
         }
     };
 
@@ -87,16 +88,22 @@ const ProvidersPage = () => {
         <Layout>
             <div className="providers-page">
                 <div className="page-header">
-                    <h1>Notification Providers</h1>
-                    <p className="subtitle">Manage notification providers and their priorities</p>
+                    <div>
+                        <h1>Notification Providers</h1>
+                        <p className="subtitle">Manage notification providers and their priorities</p>
+                    </div>
                 </div>
+
+                {actionError && !showEditModal && (
+                    <div className="error-message">{actionError}</div>
+                )}
 
                 <div className="providers-grid">
                     {providers.map((provider) => (
                         <div key={provider.id} className={`provider-card ${provider.enabled ? 'enabled' : 'disabled'}`}>
                             <div className="provider-header">
                                 <h3>{provider.name}</h3>
-                                <span className={`status-badge ${provider.enabled ? 'active' : 'inactive'}`}>
+                                <span className={`status-badge ${provider.enabled ? 'status-active' : 'status-disable'}`}>
                                     {provider.enabled ? 'Enabled' : 'Disabled'}
                                 </span>
                             </div>
@@ -119,13 +126,13 @@ const ProvidersPage = () => {
                             </div>
                             <div className="provider-actions">
                                 <button
-                                    className="btn-edit"
+                                    className="btn-secondary"
                                     onClick={() => handleEditProvider(provider)}
                                 >
                                     Edit Settings
                                 </button>
                                 <button
-                                    className={`btn-toggle ${provider.enabled ? 'disable' : 'enable'}`}
+                                    className={provider.enabled ? 'btn-danger' : 'btn-primary'}
                                     onClick={() => handleToggleStatus(provider)}
                                 >
                                     {provider.enabled ? 'Disable' : 'Enable'}
@@ -140,6 +147,7 @@ const ProvidersPage = () => {
                     <div className="modal-overlay" onClick={() => setShowEditModal(false)}>
                         <div className="modal" onClick={(e) => e.stopPropagation()}>
                             <h2>Edit Provider: {selectedProvider.name}</h2>
+                            {actionError && <div className="error-message">{actionError}</div>}
                             <form onSubmit={handleUpdateProvider}>
                                 <div className="form-group">
                                     <label>Priority (1-5):</label>

@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0] - 2026-09-22
+### Added
+- Remove a user from a group from the API and the group management page
+- Confirmation dialog before destructive actions in user and group management
+- Group descriptions on group list responses
+- Telegram, Mattermost, and Bale ids on user list and user detail responses
+- Bale provider settings in the environment example
+
+### Changed
+- Telegram and Bale ids accept negative channel ids
+- Clearing a contact field on a user now saves as empty
+- Shared dashboard styles across login, alerts, users, groups, providers, and profile
+- HTTP server listens on all interfaces
+
+### Fixed
+- Group membership removal used the wrong columns and a soft delete, which blocked adding the user again
+
 ## [0.1.4] - 2026-09-21
 ### Added
 - Implement Bale provider for notifications
