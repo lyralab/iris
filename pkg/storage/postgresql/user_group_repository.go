@@ -16,7 +16,8 @@ func (s *Storage) AddUserToGroup(userID, groupID string) error {
 }
 
 func (s *Storage) RemoveUserFromGroup(userID, groupID string) error {
-	result := s.db.Delete(&groups.UserGroup{}, "uid = ? AND gid = ?", userID, groupID)
+	// ponytail: hard delete. PK is (group_id, user_id); a soft-deleted row blocks re-add.
+	result := s.db.Unscoped().Where("user_id = ? AND group_id = ?", userID, groupID).Delete(&groups.UserGroup{})
 	if result.Error != nil {
 		s.logger.Errorf("Failed to remove user group from user_group table: %v", result.Error)
 		return result.Error

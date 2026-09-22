@@ -155,6 +155,9 @@ func (ht *HttpHandler) Handler() *gin.Engine {
 		middlewares.CheckContentTypeHeader("application/json", ht.Logger),
 		middlewares.ValidateJWTToken(ht.ATHS, "admin", ht.Logger),
 		rest.AddUserToGroupHandler(ht.GR, ht.Logger))
+	groupRouter.DELETE("/:group_id/users/:user_id",
+		middlewares.ValidateJWTToken(ht.ATHS, "admin", ht.Logger),
+		rest.RemoveUserFromGroupHandler(ht.GR, ht.Logger))
 	groupRouter.GET("/:group_id/users",
 		middlewares.ValidateJWTToken(ht.ATHS, "admin", ht.Logger),
 		rest.GetUsersInGroupHandler(ht.GR, ht.US, ht.Logger),

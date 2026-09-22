@@ -26,13 +26,27 @@ class APIService {
             headers,
         });
 
-        if (!response.ok) {
-            const error = await response.json().catch(() => ({ message: 'Request failed' }));
-            const errorMessage = error.message || error.error || `HTTP ${response.status}`;
-            throw new Error(errorMessage);
+        const text = await response.text();
+        let data = null;
+        if (text) {
+            try {
+                data = JSON.parse(text);
+            } catch (e) {
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                throw new Error(e.message);
+            }
         }
 
-        return response.json();
+        if (!response.ok) {
+            const error = data || { message: 'Request failed' };
+            const details = Array.isArray(error.errors) ? error.errors.join('; ') : '';
+            const errorMessage = details || error.message || error.error || `HTTP ${response.status}`;
+            throw new Error(typeof errorMessage === 'string' ? errorMessage : `HTTP ${response.status}`);
+        }
+
+        return data;
     }
 
     // ============ Health Endpoints ============
@@ -130,6 +144,12 @@ class APIService {
         return this.fetch(config.api.addUserToGroup(groupId), {
             method: 'POST',
             body: JSON.stringify({ user_id: userId }),
+        });
+    }
+
+    async removeUserFromGroup(groupId, userId) {
+        return this.fetch(`${config.api.groupUsers(groupId)}/${userId}`, {
+            method: 'DELETE',
         });
     }
 

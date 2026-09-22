@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 
@@ -21,7 +22,9 @@ func main() {
 	}
 
 	// Run HTTP
-	if err := app.Router.Run(":" + cfg.Server.Port); err != nil {
+	fmt.Println("cfg.Server.Port", cfg.Server.Port)
+
+	if err := app.Router.Run("0.0.0.0:" + cfg.Server.Port); err != nil {
 		app.Logger.Fatalw("http server failed", "error", err)
 	}
 }

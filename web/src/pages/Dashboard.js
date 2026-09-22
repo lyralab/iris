@@ -1,7 +1,17 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import apiService from '../utils/apiService';
 import Layout from '../components/Layout';
 import './Dashboard.css';
+
+const SEVERITIES = [
+    { key: 'critical', label: 'Critical' },
+    { key: 'high', label: 'High' },
+    { key: 'warning', label: 'Warning' },
+    { key: 'medium', label: 'Medium' },
+    { key: 'low', label: 'Low' },
+    { key: 'page', label: 'Page' },
+];
 
 const Dashboard = () => {
     const [alerts, setAlerts] = useState({ critical: 0, high: 0, medium: 0, low: 0, page: 0, warning: 0 });
@@ -24,14 +34,12 @@ const Dashboard = () => {
             // Fetch alert summary
             const alertData = await apiService.getAlertSummary();
             const mappedData = {};
-            let totalActive = 0;
 
             // Handle null or undefined severites array
             if (alertData && alertData.severites && Array.isArray(alertData.severites)) {
                 alertData.severites.forEach(item => {
                     if (item && item.severity && typeof item.count === 'number') {
                         mappedData[item.severity] = item.count;
-                        totalActive += item.count;
                     }
                 });
             }
@@ -103,58 +111,27 @@ const Dashboard = () => {
     return (
         <Layout>
             <div className="dashboard">
-                <h1>Dashboard</h1>
-
-                <div className="alert-summary">
-                    <h2>Alert Summary by Severity</h2>
-                    <div className="summary-items">
-                        <div className="summary-item critical">
-                            <div className="item-top">
-                                <div className="icon">🔥</div>
-                                <div className="count">{alerts.critical || 0}</div>
-                            </div>
-                            <div className="label">Critical</div>
-                        </div>
-                        <div className="summary-item high">
-                            <div className="item-top">
-                                <div className="icon">⚠️</div>
-                                <div className="count">{alerts.high || 0}</div>
-                            </div>
-                            <div className="label">High</div>
-                        </div>
-                        <div className="summary-item medium">
-                            <div className="item-top">
-                                <div className="icon">🟡</div>
-                                <div className="count">{alerts.medium || 0}</div>
-                            </div>
-                            <div className="label">Medium</div>
-                        </div>
-                        <div className="summary-item warning">
-                            <div className="item-top">
-                                <div className="icon">🟡</div>
-                                <div className="count">{alerts.warning || 0}</div>
-                            </div>
-                            <div className="label">Warning</div>
-                        </div>
-                        <div className="summary-item low">
-                            <div className="item-top">
-                                <div className="icon">🟢</div>
-                                <div className="count">{alerts.low || 0}</div>
-                            </div>
-                            <div className="label">Low</div>
-                        </div>
-                        <div className="summary-item page">
-                            <div className="item-top">
-                                <div className="icon">✉️</div>
-                                <div className="count">{alerts.page || 0}</div>
-                            </div>
-                            <div className="label">Page</div>
-                        </div>
-                    </div>
+                <div className="page-header">
+                    <h1>Dashboard</h1>
                 </div>
 
-                {topAlerts.length > 0 && (
-                    <div className="top-alerts-section">
+                <section className="active-alerts">
+                    <h2>Active alerts</h2>
+                    <div className="stats-grid">
+                        {SEVERITIES.map((item) => (
+                            <Link
+                                key={item.key}
+                                to={`/alerts?severity=${item.key}`}
+                                className={`stat-card stat-${item.key}`}
+                            >
+                                <span className="stat-label">{item.label}</span>
+                                <span className="stat-value">{alerts[item.key] || 0}</span>
+                            </Link>
+                        ))}
+                    </div>
+                </section>
+
+                <div className="top-alerts-section">
                         <div className="section-header">
                             <h2>Latest Critical & Warning Alerts ({topAlerts.length})</h2>
                             <div className="alert-config">
@@ -172,41 +149,43 @@ const Dashboard = () => {
                                 </select>
                             </div>
                         </div>
-                        <div className="alerts-table-container">
-                            <table className="alerts-table">
-                                <thead>
-                                    <tr>
-                                        <th>Alert Name</th>
-                                        <th>Severity</th>
-                                        <th>Status</th>
-                                        <th>Started At</th>
-                                        <th>Description</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {topAlerts.map((alert, index) => (
-                                        <tr key={alert.id || index}>
-                                            <td className="alert-name">{alert.name || alert.alert_name || 'Unknown'}</td>
-                                            <td>
-                                                <span className={`severity-badge ${getSeverityClass(alert.severity)}`}>
-                                                    {alert.severity || 'N/A'}
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <span className="status-badge firing">Firing</span>
-                                            </td>
-                                            <td>{new Date(alert.starts_at || alert.created_at).toLocaleString()}</td>
-                                            <td className="alert-description">{alert.description || alert.summary || 'No description'}</td>
+                        {topAlerts.length === 0 ? (
+                            <p className="empty">No firing alerts</p>
+                        ) : (
+                            <div className="alerts-table-container">
+                                <table className="alerts-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Alert Name</th>
+                                            <th>Severity</th>
+                                            <th>Status</th>
+                                            <th>Started At</th>
+                                            <th>Description</th>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                )}
+                                    </thead>
+                                    <tbody>
+                                        {topAlerts.map((alert, index) => (
+                                            <tr key={alert.id || index}>
+                                                <td className="alert-name">{alert.name || alert.alert_name || 'Unknown'}</td>
+                                                <td>
+                                                    <span className={`severity-badge ${getSeverityClass(alert.severity)}`}>
+                                                        {alert.severity || 'N/A'}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <span className="status-badge firing">Firing</span>
+                                                </td>
+                                                <td>{new Date(alert.starts_at || alert.created_at).toLocaleString()}</td>
+                                                <td className="alert-description">{alert.description || alert.summary || 'No description'}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                </div>
 
-                {resolvedAlerts.length > 0 && (
-                    <div className="resolved-alerts-section">
+                <div className="resolved-alerts-section">
                         <div className="section-header">
                             <h2>Latest Resolved Alerts ({resolvedAlerts.length})</h2>
                             <div className="alert-config">
@@ -224,38 +203,41 @@ const Dashboard = () => {
                                 </select>
                             </div>
                         </div>
-                        <div className="alerts-table-container">
-                            <table className="alerts-table">
-                                <thead>
-                                    <tr>
-                                        <th>Alert Name</th>
-                                        <th>Severity</th>
-                                        <th>Status</th>
-                                        <th>Resolved At</th>
-                                        <th>Description</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {resolvedAlerts.map((alert, index) => (
-                                        <tr key={alert.id || index}>
-                                            <td className="alert-name">{alert.name || alert.alert_name || 'Unknown'}</td>
-                                            <td>
-                                                <span className={`severity-badge ${getSeverityClass(alert.severity)}`}>
-                                                    {alert.severity || 'N/A'}
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <span className="status-badge resolved">Resolved</span>
-                                            </td>
-                                            <td>{new Date(alert.ends_at || alert.updated_at).toLocaleString()}</td>
-                                            <td className="alert-description">{alert.description || alert.summary || 'No description'}</td>
+                        {resolvedAlerts.length === 0 ? (
+                            <p className="empty">No resolved alerts</p>
+                        ) : (
+                            <div className="alerts-table-container">
+                                <table className="alerts-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Alert Name</th>
+                                            <th>Severity</th>
+                                            <th>Status</th>
+                                            <th>Resolved At</th>
+                                            <th>Description</th>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                )}
+                                    </thead>
+                                    <tbody>
+                                        {resolvedAlerts.map((alert, index) => (
+                                            <tr key={alert.id || index}>
+                                                <td className="alert-name">{alert.name || alert.alert_name || 'Unknown'}</td>
+                                                <td>
+                                                    <span className={`severity-badge ${getSeverityClass(alert.severity)}`}>
+                                                        {alert.severity || 'N/A'}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <span className="status-badge resolved">Resolved</span>
+                                                </td>
+                                                <td>{new Date(alert.ends_at || alert.updated_at).toLocaleString()}</td>
+                                                <td className="alert-description">{alert.description || alert.summary || 'No description'}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                </div>
             </div>
         </Layout>
     );
