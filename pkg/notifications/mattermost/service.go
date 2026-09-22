@@ -21,7 +21,7 @@ func (s service) Send(message notifications.Message) ([]string, error) {
 
 		if message.State == "firing" {
 			post.Message = "🚨 " + message.Subject + " 🚨"
-			post.AddProp("attachments", []*model.SlackAttachment{
+			post.AddProp("attachments", []*model.MessageAttachment{
 				{
 					Title:  message.State,
 					Text:   message.Message,
@@ -35,7 +35,7 @@ func (s service) Send(message notifications.Message) ([]string, error) {
 			post.AddProp("override_username", "IRIS BOT")
 		} else if message.State == "resolved" {
 			post.Message = "✅ " + message.Subject + " ✅"
-			post.AddProp("attachments", []*model.SlackAttachment{
+			post.AddProp("attachments", []*model.MessageAttachment{
 				{
 					Title:  message.State,
 					Text:   message.Message,

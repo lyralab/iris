@@ -5,7 +5,7 @@ type Postgres struct {
 	Port string `env:"POSTGRES_PORT" koanf:"port"`
 	Name string `env:"POSTGRES_DATABASE_NAME" koanf:"db_name"`
 	User string `env:"POSTGRES_USER" koanf:"user"`
-	Pass string `env:"POSTGRES_PASS" koanf:"pass"`
+	Pass string `env:"POSTGRES_PASS" koanf:"password"`
 	SSL  bool   `env:"POSTGRES_SSL" envDefault:"false" koanf:"ssl"`
 }
 

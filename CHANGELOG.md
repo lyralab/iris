@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - SMS.ir API key configuration key name, so the token loads from `apikey`
 - Kavenegar API token configuration key name, so the token loads from `token`
+- Postgres password configuration key name, so the password loads from `password`
+- Mattermost message attachments for the updated SDK
 
 ### Changed
 - Upgrade Go module dependencies
