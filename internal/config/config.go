@@ -35,13 +35,13 @@ type Notifications struct {
 		Enabled  bool   `env:"BALE_ENABLED" envDefault:"false" koanf:"enabled"`
 	} `koanf:"bale"`
 	Smsir struct {
-		ApiKey     string `env:"SMSIR_API_TOKEN" koanf:"api_key"`
+		ApiKey     string `env:"SMSIR_API_TOKEN" koanf:"apikey"`
 		LineNumber string `env:"SMSIR_LINE_NUMBER" koanf:"line_number"`
 		Enabled    bool   `env:"SMSIR_ENABLED" envDefault:"false" koanf:"enabled"`
 		Priority   int    `env:"SMSIR_PRIORITY" envDefault:"2" koanf:"priority"`
 	} `koanf:"smsir"`
 	Kavenegar struct {
-		ApiToken string `env:"KAVENEGAR_API_TOKEN" koanf:"api_token"`
+		ApiToken string `env:"KAVENEGAR_API_TOKEN" koanf:"token"`
 		Sender   string `env:"KAVENEGAR_SENDER" envDefault:"" koanf:"sender"`
 		Enabled  bool   `env:"KAVENEGAR_ENABLED" envDefault:"true" koanf:"enabled"`
 		Priority int    `env:"KAVENEGAR_PRIORITY" envDefault:"1" koanf:"priority"`
