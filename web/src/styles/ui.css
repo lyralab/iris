@@ -381,3 +381,22 @@ button:disabled {
         align-items: flex-start;
     }
 }
+
+.refresh-controls {
+    gap: 0.75rem;
+}
+
+.last-updated {
+    color: var(--muted);
+    font-size: 0.85rem;
+    white-space: nowrap;
+}
+
+.refresh-hint {
+    background: var(--sev-warning-bg);
+    color: var(--sev-warning-fg);
+    padding: 0.6rem 1rem;
+    border-radius: 6px;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+}

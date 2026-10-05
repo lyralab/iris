@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import apiService from '../utils/apiService';
 import Layout from '../components/Layout';
+import useAutoRefresh, { REFRESH_OPTIONS, readRefreshMs, formatLastUpdated } from '../utils/useAutoRefresh';
 import './AlertsPage.css';
 
 const SEVERITIES = ['critical', 'high', 'warning', 'medium', 'low', 'page'];
@@ -13,41 +14,55 @@ const AlertsPage = () => {
     const [error, setError] = useState(null);
     const [activeTab, setActiveTab] = useState('firing');
     const severity = searchParams.get('severity') || '';
+    const [refreshMs, setRefreshMs] = useState(() => readRefreshMs('iris.alerts.refreshMs'));
+    const [lastUpdated, setLastUpdated] = useState(null);
+    const [refreshError, setRefreshError] = useState(null);
 
-    useEffect(() => {
-        let cancelled = false;
-
-        const load = async () => {
+    const load = useCallback(async (silent = false) => {
+        if (!silent) {
             setLoading(true);
             setError(null);
-            try {
-                const data = await apiService.getAlerts({
-                    status: activeTab,
-                    severity,
-                    limit: 100,
-                    page: 1,
-                });
-                const list = data && data.alerts && Array.isArray(data.alerts) ? data.alerts : [];
-                if (!cancelled) {
-                    setAllAlerts(list);
-                }
-            } catch (e) {
-                if (!cancelled) {
-                    setError(e.message);
-                    setAllAlerts([]);
-                }
-            } finally {
-                if (!cancelled) {
-                    setLoading(false);
-                }
+        } else {
+            setRefreshError(null);
+        }
+        try {
+            const data = await apiService.getAlerts({
+                status: activeTab,
+                severity,
+                limit: 100,
+                page: 1,
+            });
+            const list = data && data.alerts && Array.isArray(data.alerts) ? data.alerts : [];
+            setAllAlerts(list);
+            setLastUpdated(new Date());
+        } catch (e) {
+            if (silent) {
+                setRefreshError(e.message);
+            } else {
+                setError(e.message);
+                setAllAlerts([]);
             }
-        };
-
-        load();
-        return () => {
-            cancelled = true;
-        };
+        } finally {
+            if (!silent) {
+                setLoading(false);
+            }
+        }
     }, [activeTab, severity]);
+
+    useEffect(() => {
+        load(false);
+    }, [load]);
+
+    useAutoRefresh(() => load(true), refreshMs);
+
+    const onRefreshChange = (value) => {
+        setRefreshMs(value);
+        try {
+            localStorage.setItem('iris.alerts.refreshMs', String(value));
+        } catch (e) {
+            // ignore persistence errors
+        }
+    };
 
     const onSeverityChange = (value) => {
         const next = new URLSearchParams(searchParams);
@@ -80,22 +95,43 @@ const AlertsPage = () => {
             <div className="alerts-page">
                 <div className="page-header">
                     <h1>Alerts</h1>
-                    <label className="filter-field">
-                        Severity
-                        <select
-                            className="select-input"
-                            value={severity}
-                            onChange={(e) => onSeverityChange(e.target.value)}
-                        >
-                            <option value="">All</option>
-                            {SEVERITIES.map((level) => (
-                                <option key={level} value={level}>
-                                    {level.charAt(0).toUpperCase() + level.slice(1)}
-                                </option>
-                            ))}
-                        </select>
-                    </label>
+                    <div className="header-actions refresh-controls">
+                        {lastUpdated && (
+                            <span className="last-updated">Last updated {formatLastUpdated(lastUpdated)}</span>
+                        )}
+                        <label className="filter-field">
+                            Severity
+                            <select
+                                className="select-input"
+                                value={severity}
+                                onChange={(e) => onSeverityChange(e.target.value)}
+                            >
+                                <option value="">All</option>
+                                {SEVERITIES.map((level) => (
+                                    <option key={level} value={level}>
+                                        {level.charAt(0).toUpperCase() + level.slice(1)}
+                                    </option>
+                                ))}
+                            </select>
+                        </label>
+                        <label className="filter-field">
+                            Refresh
+                            <select
+                                className="select-input"
+                                value={refreshMs}
+                                onChange={(e) => onRefreshChange(Number(e.target.value))}
+                            >
+                                {REFRESH_OPTIONS.map((o) => (
+                                    <option key={o.value} value={o.value}>{o.label}</option>
+                                ))}
+                            </select>
+                        </label>
+                        <button className="btn-secondary" onClick={() => load(true)}>
+                            Refresh
+                        </button>
+                    </div>
                 </div>
+                {refreshError && <div className="refresh-hint">Background refresh failed: {refreshError}</div>}
 
                 <div className="tabs">
                     <button

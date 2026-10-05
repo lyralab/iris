@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import apiService from '../utils/apiService';
 import Layout from '../components/Layout';
+import useAutoRefresh, { REFRESH_OPTIONS, readRefreshMs, formatLastUpdated } from '../utils/useAutoRefresh';
 import './Dashboard.css';
 
 const SEVERITIES = [
@@ -21,14 +22,17 @@ const Dashboard = () => {
     const [resolvedLimit, setResolvedLimit] = useState(10);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [refreshMs, setRefreshMs] = useState(() => readRefreshMs('iris.dashboard.refreshMs'));
+    const [lastUpdated, setLastUpdated] = useState(null);
+    const [refreshError, setRefreshError] = useState(null);
 
-    useEffect(() => {
-        fetchDashboardData();
-    }, [firingLimit, resolvedLimit]);
-
-    const fetchDashboardData = async () => {
-        setLoading(true);
-        setError(null);
+    const fetchDashboardData = useCallback(async (silent = false) => {
+        if (!silent) {
+            setLoading(true);
+            setError(null);
+        } else {
+            setRefreshError(null);
+        }
 
         try {
             // Fetch alert summary
@@ -73,10 +77,32 @@ const Dashboard = () => {
                 setResolvedAlerts([]);
             }
 
+            setLastUpdated(new Date());
         } catch (e) {
-            setError(e.message);
+            if (silent) {
+                setRefreshError(e.message);
+            } else {
+                setError(e.message);
+            }
         } finally {
-            setLoading(false);
+            if (!silent) {
+                setLoading(false);
+            }
+        }
+    }, [firingLimit, resolvedLimit]);
+
+    useEffect(() => {
+        fetchDashboardData(false);
+    }, [fetchDashboardData]);
+
+    useAutoRefresh(() => fetchDashboardData(true), refreshMs);
+
+    const onRefreshChange = (value) => {
+        setRefreshMs(value);
+        try {
+            localStorage.setItem('iris.dashboard.refreshMs', String(value));
+        } catch (e) {
+            // ignore persistence errors
         }
     };
 
@@ -113,7 +139,28 @@ const Dashboard = () => {
             <div className="dashboard">
                 <div className="page-header">
                     <h1>Dashboard</h1>
+                    <div className="header-actions refresh-controls">
+                        {lastUpdated && (
+                            <span className="last-updated">Last updated {formatLastUpdated(lastUpdated)}</span>
+                        )}
+                        <label className="filter-field">
+                            Refresh
+                            <select
+                                className="select-input"
+                                value={refreshMs}
+                                onChange={(e) => onRefreshChange(Number(e.target.value))}
+                            >
+                                {REFRESH_OPTIONS.map((o) => (
+                                    <option key={o.value} value={o.value}>{o.label}</option>
+                                ))}
+                            </select>
+                        </label>
+                        <button className="btn-secondary" onClick={() => fetchDashboardData(true)}>
+                            Refresh
+                        </button>
+                    </div>
                 </div>
+                {refreshError && <div className="refresh-hint">Background refresh failed: {refreshError}</div>}
 
                 <section className="active-alerts">
                     <h2>Active alerts</h2>
