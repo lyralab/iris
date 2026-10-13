@@ -2,10 +2,12 @@ package rest
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	iris_error "github.com/root-ali/iris/pkg/errors"
 	"github.com/root-ali/iris/pkg/groups"
 	"github.com/root-ali/iris/pkg/user"
 	"go.uber.org/zap"
@@ -81,8 +83,16 @@ func DeleteGroupHandler(gr groups.GroupServiceInterface, logger *zap.SugaredLogg
 
 func GetGroupHandler(gr groups.GroupServiceInterface, logger *zap.SugaredLogger) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		groupId := c.Query("id")
-		g, err := gr.GetGroup(groupId)
+		groupId := c.Param("group_id")
+		if groupId == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "group_id is required"})
+			return
+		}
+		g, err := gr.GetGroupById(groupId)
+		if errors.Is(err, iris_error.ErrGroupNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "group not found"})
+			return
+		}
 		if err != nil {
 			logger.Errorw("Failed to get group", "error", err)
 			c.JSON(400, gin.H{"error": "Failed to get group"})

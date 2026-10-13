@@ -298,6 +298,7 @@ func Init(cfg *config.Config) (*App, error) {
 		ProviderService: providerService,
 		AdminPass:       cfg.Server.AdminPass,
 		GinMode:         cfg.Go.Mode, // reuse
+		GroupCache:      cr,
 	})
 
 	return &App{

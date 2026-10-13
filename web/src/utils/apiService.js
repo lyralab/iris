@@ -115,7 +115,7 @@ class APIService {
     }
 
     async getGroup(groupId) {
-        return this.fetch(`${config.api.groups}?id=${groupId}`);
+        return this.fetch(config.api.group(groupId));
     }
 
     async createGroup(groupData) {
