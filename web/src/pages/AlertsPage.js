@@ -5,6 +5,11 @@ import Layout from '../components/Layout';
 import useAutoRefresh, { REFRESH_OPTIONS, readRefreshMs, formatLastUpdated } from '../utils/useAutoRefresh';
 import './AlertsPage.css';
 
+function timeValue(value) {
+    const t = new Date(value).getTime();
+    return Number.isNaN(t) ? 0 : t;
+}
+
 const SEVERITIES = ['critical', 'high', 'warning', 'medium', 'low', 'page'];
 
 const AlertsPage = () => {
@@ -86,9 +91,10 @@ const AlertsPage = () => {
         return classes[level?.toLowerCase()] || 'severity-default';
     };
 
-    const rows = Array.isArray(allAlerts) ? allAlerts.filter(alert => alert && alert.status === activeTab) : [];
     const timeLabel = activeTab === 'firing' ? 'Started At' : 'Resolved At';
     const timeField = activeTab === 'firing' ? 'starts_at' : 'ends_at';
+    const rows = (Array.isArray(allAlerts) ? allAlerts.filter(alert => alert && alert.status === activeTab) : [])
+        .sort((a, b) => timeValue(b[timeField]) - timeValue(a[timeField]));
 
     return (
         <Layout>

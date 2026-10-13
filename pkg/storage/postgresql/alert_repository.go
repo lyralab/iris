@@ -75,7 +75,10 @@ func (s *Storage) GetAlerts(status string, severity string, l int, p int) ([]*al
 		l = -1
 	}
 	s.logger.Info("query", statusQuery, "limit", l, "offset", offset)
-	err := s.db.Where("status LIKE ?", statusQuery).Where("severity LIKE ?", severityQuery).Limit(l).Offset(offset).Find(&as).Error
+	// Recent first. Firing rows use start time; resolved rows use end time.
+	err := s.db.Where("status LIKE ?", statusQuery).Where("severity LIKE ?", severityQuery).
+		Order("CASE WHEN status = 'resolved' THEN COALESCE(ends_at, updated_at, created_at) ELSE COALESCE(starts_at, created_at) END DESC, created_at DESC").
+		Limit(l).Offset(offset).Find(&as).Error
 	if err != nil {
 		s.logger.Error("Error getting as from database")
 		return as, err

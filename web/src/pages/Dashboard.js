@@ -5,6 +5,11 @@ import Layout from '../components/Layout';
 import useAutoRefresh, { REFRESH_OPTIONS, readRefreshMs, formatLastUpdated } from '../utils/useAutoRefresh';
 import './Dashboard.css';
 
+function timeValue(value) {
+    const t = new Date(value).getTime();
+    return Number.isNaN(t) ? 0 : t;
+}
+
 const SEVERITIES = [
     { key: 'critical', label: 'Critical' },
     { key: 'high', label: 'High' },
@@ -54,10 +59,9 @@ const Dashboard = () => {
             try {
                 const detailedAlerts = await apiService.getAlerts({ status: 'firing', limit: firingLimit * 2, page: 1 });
                 if (detailedAlerts && detailedAlerts.alerts && Array.isArray(detailedAlerts.alerts)) {
-                    // Filter for critical and warning, sort by created date
                     const filteredAlerts = detailedAlerts.alerts
                         .filter(alert => alert && (alert.severity === 'critical' || alert.severity === 'warning'))
-                        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+                        .sort((a, b) => timeValue(b.starts_at || b.created_at) - timeValue(a.starts_at || a.created_at))
                         .slice(0, firingLimit);
                     setTopAlerts(filteredAlerts);
                 }
@@ -70,7 +74,11 @@ const Dashboard = () => {
             try {
                 const resolvedData = await apiService.getAlerts({ status: 'resolved', limit: resolvedLimit, page: 1 });
                 if (resolvedData && resolvedData.alerts && Array.isArray(resolvedData.alerts)) {
-                    setResolvedAlerts(resolvedData.alerts);
+                    setResolvedAlerts(
+                        [...resolvedData.alerts].sort(
+                            (a, b) => timeValue(b.ends_at || b.updated_at) - timeValue(a.ends_at || a.updated_at),
+                        ),
+                    );
                 }
             } catch (e) {
                 console.log('Resolved alerts API error:', e);
