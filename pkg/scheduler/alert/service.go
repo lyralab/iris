@@ -65,18 +65,42 @@ func (s *Scheduler) fetchAndEnqueue() {
 		return
 	}
 	for _, al := range unsent {
+		if !s.track(al.Id) {
+			continue
+		}
 		select {
 		case s.queue <- al:
 		case <-s.ctx.Done():
+			s.untrack(al.Id)
 			return
 		}
 	}
 }
 
+func (s *Scheduler) track(id string) bool {
+	s.inflightMu.Lock()
+	defer s.inflightMu.Unlock()
+	if _, ok := s.inflight[id]; ok {
+		return false
+	}
+	s.inflight[id] = struct{}{}
+	return true
+}
+
+func (s *Scheduler) untrack(id string) {
+	s.inflightMu.Lock()
+	delete(s.inflight, id)
+	s.inflightMu.Unlock()
+}
+
 func (s *Scheduler) worker(id int) {
 	defer s.wgWorkers.Done()
 	for al := range s.queue {
-		if err := s.handleAlert(al); err != nil {
+		err := func() error {
+			defer s.untrack(al.Id)
+			return s.handleAlert(al)
+		}()
+		if err != nil {
 			s.logger.Errorw("Failed processing alert", "worker", id, "alert", al, "error", err)
 		}
 	}
@@ -114,12 +138,14 @@ func (s *Scheduler) handleAlert(al alerts.Alert) error {
 	provider, err := s.getProvider(al.Method, 0)
 	if err != nil {
 		s.logger.Errorw("Failed to get provider", "error", err)
-		err = s.repo.MarkAlertAsSent(al.Id)
-		if err != nil {
-			return err
-		}
 		return err
 	}
+
+	var (
+		sent    bool // at least one Send succeeded
+		sendErr error
+		missed  []string // groups with no cached receptors
+	)
 
 	for _, p := range provider {
 		receptorIds := make(map[string]string)
@@ -136,12 +162,9 @@ func (s *Scheduler) handleAlert(al alerts.Alert) error {
 				"cached Receptors", cacheReceptors,
 				"found", ok)
 			if !ok {
-				s.logger.Errorw("Failed to get receptors from group", "group", r, "error", err)
-				err := s.repo.MarkAlertAsSent(al.Id)
-				if err != nil {
-					return errors.New("failed to mark alert as sent: " + err.Error())
-				}
-				return errors.New("failed to get receptors from group: " + r)
+				s.logger.Errorw("Failed to get receptors from group", "group", r)
+				missed = append(missed, r)
+				continue
 			}
 			for k, v := range cacheReceptors {
 				if ok := userMessage[k]; ok {
@@ -174,96 +197,71 @@ func (s *Scheduler) handleAlert(al alerts.Alert) error {
 		msg.Receptors = receptors
 
 		msgIds, err := p.Send(msg)
-		if p.GetName() == "Telegram" {
-			s.logger.Infow("Telegram notification details", "receptors", receptors,
-				"errors", err.Error())
-			telegramErrors := strings.Split(err.Error(), ";")
-			i := 0
-			for userId, receptor := range receptorIds {
-				if telegramErrors[i] != "nil" {
-					// Save Message
-					failedMsg := message.NewMessage("",
-						saveTextMsg,
-						receptor, p.GetName(),
-						userId,
-						"",
-						telegramErrors[i],
-						[]string{p.GetName()},
-						message.TypeMessageStatusSent)
-					err := s.messageRepo.Add(failedMsg)
-					if err != nil {
-						s.logger.Errorw("Failed to save failed message", "receptor", receptor, "error", err)
-						continue
-					}
-				} else {
-					// Save Message
-					sentMsg := message.NewMessage(msgIds[i],
-						saveTextMsg,
-						receptor,
-						p.GetName(),
-						userId,
-						"",
-						"Delivered",
-						[]string{p.GetName()},
-						message.TypeMessageStatusDelivered)
-					err := s.messageRepo.Add(sentMsg)
-					if err != nil {
-						s.logger.Errorw("Failed to save sent message", "receptor", receptor, "error", err)
-						continue
-					}
-				}
-				i++
+
+		// Per-recipient results, "nil" = delivered. Set only when err.Error() is
+		// shaped "r1;r2;...;" with one non-empty token per recipient (Telegram does this).
+		var results []string
+		if err != nil {
+			s.logger.Errorw("Failed to send notification", "provider", p.GetName(), "error", err)
+			if sendErr == nil {
+				sendErr = err
 			}
-
-			continue
-		} else if err != nil {
-			s.logger.Errorw("Failed to send notification", "error", err)
-			for r, v := range receptorIds {
-
-				// Save Message
-				failedMsg := message.NewMessage("",
-					saveTextMsg,
-					v, p.GetName(),
-					r,
-					r,
-					err.Error(),
-					[]string{p.GetName()},
-					message.TypeMessageStatusFailed)
-				err := s.messageRepo.Add(failedMsg)
-				if err != nil {
-					s.logger.Errorw("Failed to save failed message", "receptor", v, "error", err)
-					return err
-				}
-
+			results = strings.Split(strings.TrimSuffix(err.Error(), ";"), ";")
+			if len(results) != len(receptors) || slices.Contains(results, "") {
+				results = nil
 			}
-			continue
-		}
-		var i = 0
-		for r, v := range receptorIds {
-
-			// Save Message
-			userMessage[r] = true
-			sentMsg := message.NewMessage(msgIds[i],
-				saveTextMsg,
-				v,
-				p.GetName(),
-				r,
-				"",
-				"Sent",
-				[]string{p.GetName()},
-				message.TypeMessageStatusSent)
-			err := s.messageRepo.Add(sentMsg)
-			if err != nil {
-				s.logger.Errorw("Failed to save sent message", "receptor", v, "error", err)
-				continue
+			// Partial delivery still counts as sent; retrying would resend to recipients who already got it.
+			if slices.Contains(results, "nil") {
+				sent = true
 			}
-			i++
+		} else {
+			sent = true
 		}
 
-		continue
+		userIds := make(map[string]string, len(receptorIds))
+		for u, c := range receptorIds {
+			userIds[c] = u
+		}
+		for i, v := range receptors {
+			senderId, response, status := "", "Sent", message.TypeMessageStatusSent
+			switch {
+			case err == nil || results != nil && results[i] == "nil":
+				if i < len(msgIds) {
+					senderId = msgIds[i]
+				}
+				if u, ok := userIds[v]; ok {
+					userMessage[u] = true
+				}
+				// Telegram has no delivery receipts: an accepted API call is final, skip status polling.
+				if p.GetFlag() == "telegram" {
+					response, status = "Delivered", message.TypeMessageStatusDelivered
+				}
+			case results != nil:
+				response, status = results[i], message.TypeMessageStatusFailed
+			default:
+				response, status = err.Error(), message.TypeMessageStatusFailed
+			}
+			m := message.NewMessage(senderId, saveTextMsg, v, p.GetName(), userIds[v], "",
+				response, []string{p.GetName()}, status)
+			if err := s.messageRepo.Add(m); err != nil {
+				s.logger.Errorw("Failed to save message", "receptor", v, "error", err)
+			}
+		}
 	}
 
-	// Mark alert as sent
+	if !sent {
+		var missErr error
+		if len(missed) > 0 {
+			missErr = errors.New("failed to get receptors from group: " + strings.Join(missed, ", "))
+		}
+		if missErr == nil && sendErr != nil {
+			return sendErr
+		}
+		if err := errors.Join(sendErr, missErr); err != nil {
+			return err
+		}
+	}
+	// Once any channel delivered, mark sent so a later poll does not deliver it again.
 	return s.repo.MarkAlertAsSent(al.Id)
 }
 

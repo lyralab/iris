@@ -46,6 +46,10 @@ type Scheduler struct {
 	wgWorkers sync.WaitGroup
 	wgLoop    sync.WaitGroup
 	ticker    *time.Ticker
+
+	// ponytail: in-memory set. A second replica can still deliver the same alert. Upgrade: a claim column.
+	inflight   map[string]struct{}
+	inflightMu sync.Mutex
 }
 
 func NewScheduler(
@@ -79,5 +83,6 @@ func NewScheduler(
 		ctx:          ctx,
 		cancel:       cancel,
 		queue:        make(chan alerts.Alert, cfg.QueueSize),
+		inflight:     make(map[string]struct{}),
 	}
 }
