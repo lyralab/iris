@@ -171,6 +171,9 @@ func (ht *HttpHandler) Handler() *gin.Engine {
 		middlewares.ValidateJWTToken(ht.ATHS, "admin", ht.Logger),
 		middlewares.CheckContentTypeHeader("application/json", ht.Logger),
 		rest.ModifyProviderHandler(ht.PS))
+	providerRouter.GET("/:name/messages",
+		middlewares.ValidateJWTToken(ht.ATHS, "admin", ht.Logger),
+		rest.GetProviderMessagesHandler(ht.MS))
 
 	// Serve static files from web/build
 	router.Use(static.Serve("/", static.LocalFile("./web/build", true)))

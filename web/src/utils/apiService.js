@@ -187,6 +187,10 @@ class APIService {
         return this.fetch(`${config.api.providers}?${param}=${identifier}`);
     }
 
+    async getProviderMessages(name, limit = 10) {
+        return this.fetch(`${config.api.providers}/${encodeURIComponent(name)}/messages?limit=${limit}`);
+    }
+
     async modifyProvider(providerData) {
         return this.fetch(config.api.providers, {
             method: 'PUT',

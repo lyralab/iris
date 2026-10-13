@@ -127,6 +127,42 @@
     cursor: pointer;
 }
 
+.messages-modal {
+    width: min(1100px, 100%);
+}
+
+.messages-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.messages-header h2 {
+    margin: 0;
+}
+
+.messages-controls {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.messages-controls select {
+    width: auto;
+}
+
+.messages-modal .nowrap {
+    white-space: nowrap;
+}
+
+.message-response {
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-width: 360px;
+}
+
 @media (max-width: 768px) {
     .providers-grid {
         grid-template-columns: 1fr;

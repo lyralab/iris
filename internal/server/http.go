@@ -8,6 +8,7 @@ import (
 	"github.com/root-ali/iris/pkg/groups"
 	"github.com/root-ali/iris/pkg/health_check"
 	"github.com/root-ali/iris/pkg/http"
+	"github.com/root-ali/iris/pkg/message"
 	"github.com/root-ali/iris/pkg/notifications"
 	"github.com/root-ali/iris/pkg/roles"
 	"github.com/root-ali/iris/pkg/storage/postgresql"
@@ -50,6 +51,7 @@ func RegisterRoutes(d Deps) *gin.Engine {
 		GR:            groupService,
 		CS:            captchaSvc,
 		PS:            d.ProviderService,
+		MS:            message.NewService(d.Repos, d.Logger),
 		AdminPassword: d.AdminPass,
 		GinMode:       d.GinMode,
 		SignupEnabled: d.SignupEnabled,

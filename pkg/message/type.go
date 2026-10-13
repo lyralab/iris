@@ -14,6 +14,7 @@ type Repository interface {
 	UpdateMessage(msg *Message) error
 	ListMessages() ([]*Message, error)
 	ListNotFinishedMessages() ([]Message, error)
+	ListMessagesBySender(sender string, limit int) ([]Sent, error)
 }
 
 type Service struct {
@@ -40,6 +41,16 @@ type Message struct {
 
 	CreatedAt time.Time
 	UpdatedAt time.Time
+}
+
+// Sent is a message row as shown in a provider's recent-messages list.
+type Sent struct {
+	Receptor  string    `json:"receptor"`
+	UserName  string    `json:"user_name"`
+	Status    string    `json:"status"`
+	Response  string    `json:"response"`
+	Message   string    `json:"message"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 type StatusType int
