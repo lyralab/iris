@@ -3,6 +3,23 @@ import config from './config';
 
 const encodedCredentials = btoa(`${config.auth.username}:${config.auth.password}`);
 
+const formatDuration = (durationMs) => {
+    const seconds = Math.round(durationMs / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+
+    if (days > 0) {
+        return `${days}d ${hours % 24}h`
+    } else if (hours > 0) {
+        return `${hours}h ${minutes % 60}m`
+    } else if (minutes > 0) {
+        return `${minutes}m ${seconds % 60}s`
+    } else {
+        return `${seconds}s`;
+    }
+};
+
 const ResolvedIssues = () => {
   const [resolvedSeverityFilter, setResolvedSeverityFilter] = useState('all');
   const [resolvedIssues, setResolvedIssues] = useState([]);
@@ -45,24 +62,6 @@ const ResolvedIssues = () => {
 
     fetchResolvedIssues();
   }, []);
-
-    const formatDuration = (durationMs) => {
-        const seconds = Math.round(durationMs / 1000);
-        const minutes = Math.floor(seconds / 60);
-        const hours = Math.floor(minutes / 60);
-        const days = Math.floor(hours / 24);
-
-        if (days > 0) {
-            return `${days}d ${hours % 24}h`
-        } else if (hours > 0) {
-            return `${hours}h ${minutes % 60}m`
-        }else if (minutes > 0) {
-            return `${minutes}m ${seconds % 60}s`
-        } else {
-            return `${seconds}s`;
-        }
-
-    };
 
     const filteredResolvedIssues = resolvedIssues.filter(
       (issue) => resolvedSeverityFilter === 'all' || issue.severity === resolvedSeverityFilter

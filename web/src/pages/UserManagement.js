@@ -44,11 +44,6 @@ const UserManagement = () => {
         return statusMap[status] || { label: status || 'Unknown', className: 'status-unknown' };
     };
 
-    useEffect(() => {
-        fetchUsers();
-        fetchGroups();
-    }, []);
-
     const fetchUsers = async () => {
         setLoading(true);
         setError(null);
@@ -70,6 +65,11 @@ const UserManagement = () => {
             console.log('Error fetching groups:', e);
         }
     };
+
+    useEffect(() => {
+        fetchUsers();
+        fetchGroups();
+    }, []);
 
     const handleAddUser = async (e) => {
         e.preventDefault();
