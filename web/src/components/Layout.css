@@ -5,7 +5,7 @@
 }
 
 .navbar {
-    background: #1b2838;
+    background: var(--nav-bg);
     color: white;
     display: flex;
     flex-wrap: wrap;
@@ -84,6 +84,19 @@
 }
 
 .logout-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.theme-toggle {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    padding: 0.3rem 0.6rem;
+    border-radius: 999px;
+    cursor: pointer;
+    font: inherit;
+}
+
+.theme-toggle:hover {
     background: rgba(255, 255, 255, 0.08);
 }
 

@@ -9,7 +9,7 @@
 }
 
 .confirm-dialog {
-    background: white;
+    background: var(--surface);
     padding: 2rem;
     border-radius: 8px;
     max-width: 420px;
@@ -23,7 +23,7 @@
 }
 
 .confirm-dialog p {
-    color: #555;
+    color: var(--muted);
     margin: 0;
     line-height: 1.5;
 }

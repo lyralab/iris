@@ -25,6 +25,46 @@
     --sev-low-fg: #15803d;
     --sev-page-bg: #dbeafe;
     --sev-page-fg: #1d4ed8;
+
+    --surface-alt: #f8fafc;
+    --nav-bg: #1b2838;
+    --success-hover: #166534;
+    --login-glow: #dbeafe;
+    color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+    --bg: #0f1720;
+    --surface: #1a2432;
+    --text: #e6edf3;
+    --muted: #9aa7b5;
+    --border: #2d3a4a;
+    --accent: #4c8dff;
+    --accent-hover: #3a78e8;
+    --danger: #e5584a;
+    --danger-hover: #cf4538;
+    --secondary: #5b6a7c;
+    --secondary-hover: #6d7d90;
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+
+    --sev-critical-bg: #4a1d1d;
+    --sev-critical-fg: #ff8a80;
+    --sev-high-bg: #4a2a14;
+    --sev-high-fg: #ffa066;
+    --sev-warning-bg: #4a3a12;
+    --sev-warning-fg: #f5c451;
+    --sev-medium-bg: #43401a;
+    --sev-medium-fg: #e5d85c;
+    --sev-low-bg: #17391f;
+    --sev-low-fg: #5fd17f;
+    --sev-page-bg: #172a4d;
+    --sev-page-fg: #8ab4ff;
+
+    --surface-alt: #202d3d;
+    --nav-bg: #0a1018;
+    --success-hover: #2e9e55;
+    --login-glow: #172a4d;
+    color-scheme: dark;
 }
 
 * {
@@ -142,7 +182,7 @@ body {
 }
 
 .btn-verify:hover {
-    background: #166534;
+    background: var(--success-hover);
 }
 
 button:disabled {
@@ -243,7 +283,7 @@ button:disabled {
 .members-table th {
     text-align: left;
     padding: 0.75rem 1rem;
-    background: #1b2838;
+    background: var(--nav-bg);
     color: white;
     font-size: 0.8rem;
     font-weight: 600;
@@ -260,7 +300,7 @@ button:disabled {
 .users-table tbody tr:hover,
 .alerts-table tbody tr:hover,
 .members-table tbody tr:hover {
-    background: #f8fafc;
+    background: var(--surface-alt);
 }
 
 .users-table-container,
