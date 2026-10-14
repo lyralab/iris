@@ -1,0 +1,6 @@
+{
+  "ignoreFiles": ["src/styles/ui.css"],
+  "rules": {
+    "color-no-hex": true
+  }
+}
