@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-10-14
+### Added
+- Alerts page and dashboard auto-refresh on a saved interval
+- Latest notifications per provider (`GET /v0/providers/:name/messages`) and a provider messages view
+- Lint web sources in merge request pipelines
+
+### Changed
+- Alerts are sorted newest first on the dashboard and alerts page, with the same fallbacks as the API
+- Receptor cache is refreshed after group changes and after a user's contact details change
+- A failed SMS provider falls back to the next active SMS provider by priority, then name
+
+### Fixed
+- Duplicate alert delivery and missing Telegram delivery status
+- Overlapping alert refreshes and stale responses overwriting newer alerts in the web UI
+- Receptors leaking between providers, so Telegram no longer receives SMS numbers
+- Asiatech panic on a failed request; a host without a scheme is rejected with a clear error
+- Selecting a provider that is active in the database but disabled in config no longer panics
+
 ## [1.0.2] - 2026-09-22
 ### Fixed
 - Drop the unused Mattermost server module so image builds no longer download `server/v8`

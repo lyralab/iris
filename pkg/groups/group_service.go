@@ -8,8 +8,8 @@ import (
 	"time"
 )
 
-func NewGroupService(logger *zap.SugaredLogger, gr GroupRepositoryInterface) GroupServiceInterface {
-	return &GroupService{log: logger, gr: gr}
+func NewGroupService(logger *zap.SugaredLogger, gr GroupRepositoryInterface, cache ReceptorCache) GroupServiceInterface {
+	return &GroupService{log: logger, gr: gr, cache: cache}
 }
 
 func (gr *GroupService) CreateGroup(g *Group) error {
@@ -17,12 +17,7 @@ func (gr *GroupService) CreateGroup(g *Group) error {
 	if err != nil {
 		if errors.Is(err, iris_error.ErrGroupNotFound) {
 			gr.log.Infow("Group does not exist, creating new group", "group", g.Name)
-			groupId, _ := util.NewUUIDv7()
-			g.ID = groupId
-			g.CreatedAt = time.Now()
-			g.ModifiedAt = time.Now()
-			gr.log.Infow("we are going to save group", "group", g)
-			return gr.gr.AddGroup(g)
+			return gr.insertGroup(g)
 		}
 		gr.log.Errorw("Error getting group", "error", err)
 		return err
@@ -31,20 +26,40 @@ func (gr *GroupService) CreateGroup(g *Group) error {
 		gr.log.Infow("Group already exists", "group", checkGroup.Name)
 		return iris_error.ErrGroupAlreadyexisted
 	}
-	groupId, _ := util.NewUUIDv7()
-	g.ID = groupId
-	g.CreatedAt = time.Now()
-	g.ModifiedAt = time.Now()
+	return gr.insertGroup(g)
+}
+
+func (gr *GroupService) insertGroup(g *Group) error {
+	groupID, err := util.NewUUIDv7()
+	if err != nil {
+		return err
+	}
+	g.ID = groupID
+	now := time.Now()
+	g.CreatedAt = now
+	g.ModifiedAt = now
 	gr.log.Infow("we are going to save group", "group", g)
-	return gr.gr.AddGroup(g)
+	if err := gr.gr.AddGroup(g); err != nil {
+		return err
+	}
+	gr.refreshReceptors()
+	return nil
 }
 
 func (gr *GroupService) GetGroup(name string) (*Group, error) {
 	return gr.gr.GetGroupByName(name)
 }
 
+func (gr *GroupService) GetGroupById(id string) (*Group, error) {
+	return gr.gr.GetGroupById(id)
+}
+
 func (gr *GroupService) DeleteGroup(g *Group) error {
-	return gr.gr.DeleteGroup(g)
+	if err := gr.gr.DeleteGroup(g); err != nil {
+		return err
+	}
+	gr.refreshReceptors()
+	return nil
 }
 
 func (gr *GroupService) GetAllGroups() ([]*Group, error) {
@@ -52,11 +67,26 @@ func (gr *GroupService) GetAllGroups() ([]*Group, error) {
 }
 
 func (gr *GroupService) AddUser(g *Group, userId string) error {
-	return gr.gr.AddUserToGroup(userId, g.ID)
+	if err := gr.gr.AddUserToGroup(userId, g.ID); err != nil {
+		return err
+	}
+	gr.refreshReceptors()
+	return nil
 }
 
 func (gr *GroupService) RemoveUser(g *Group, userId string) error {
-	return gr.gr.RemoveUserFromGroup(userId, g.ID)
+	if err := gr.gr.RemoveUserFromGroup(userId, g.ID); err != nil {
+		return err
+	}
+	gr.refreshReceptors()
+	return nil
+}
+
+func (gr *GroupService) refreshReceptors() {
+	if gr.cache == nil {
+		return
+	}
+	gr.cache.Refresh()
 }
 
 func (gr *GroupService) ListUsers(g *Group) ([]string, error) {

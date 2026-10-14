@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import config from './config';
 
+const encodedCredentials = btoa(`${config.auth.username}:${config.auth.password}`);
+
 const FiringIssues = () => {
     const [severityFilter, setSeverityFilter] = useState('critical');
     const [issues, setIssues] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-  // Credentials (Replace with Secure Handling)
-  const encodedCredentials = btoa(`${config.auth.username}:${config.auth.password}`);
   useEffect(() => {
       const fetchFiringIssues = async () => {
         setLoading(true);

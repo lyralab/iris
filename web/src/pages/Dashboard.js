@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import apiService from '../utils/apiService';
 import Layout from '../components/Layout';
+import useAutoRefresh, { REFRESH_OPTIONS, readRefreshMs, formatLastUpdated, latestOnly } from '../utils/useAutoRefresh';
+import { byNewest } from '../utils/alertSort';
 import './Dashboard.css';
 
 const SEVERITIES = [
@@ -21,20 +23,39 @@ const Dashboard = () => {
     const [resolvedLimit, setResolvedLimit] = useState(10);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [refreshMs, setRefreshMs] = useState(() => readRefreshMs('iris.dashboard.refreshMs'));
+    const [lastUpdated, setLastUpdated] = useState(null);
+    const [refreshError, setRefreshError] = useState(null);
+    const [startRequest] = useState(latestOnly);
+    const manualPending = useRef(false);
 
-    useEffect(() => {
-        fetchDashboardData();
-    }, [firingLimit, resolvedLimit]);
-
-    const fetchDashboardData = async () => {
-        setLoading(true);
-        setError(null);
+    const fetchDashboardData = useCallback(async (silent = false) => {
+        // A background refresh must not supersede a pending manual load and hide its error.
+        if (silent && manualPending.current) return;
+        const isLatest = startRequest();
+        if (!silent) {
+            manualPending.current = true;
+            setLoading(true);
+            setError(null);
+        } else {
+            setRefreshError(null);
+        }
 
         try {
-            // Fetch alert summary
             const alertData = await apiService.getAlertSummary();
-            const mappedData = {};
+            const detailedAlerts = await apiService.getAlerts({ status: 'firing', limit: firingLimit * 2, page: 1 })
+                .catch((e) => {
+                    console.log('Detailed alerts API error:', e);
+                    return null;
+                });
+            const resolvedData = await apiService.getAlerts({ status: 'resolved', limit: resolvedLimit, page: 1 })
+                .catch((e) => {
+                    console.log('Resolved alerts API error:', e);
+                    return null;
+                });
+            if (!isLatest()) return;
 
+            const mappedData = {};
             // Handle null or undefined severites array
             if (alertData && alertData.severites && Array.isArray(alertData.severites)) {
                 alertData.severites.forEach(item => {
@@ -43,40 +64,48 @@ const Dashboard = () => {
                     }
                 });
             }
-
             setAlerts(mappedData);
 
-            // Fetch detailed firing alerts for critical and warning
-            try {
-                const detailedAlerts = await apiService.getAlerts({ status: 'firing', limit: firingLimit * 2, page: 1 });
-                if (detailedAlerts && detailedAlerts.alerts && Array.isArray(detailedAlerts.alerts)) {
-                    // Filter for critical and warning, sort by created date
-                    const filteredAlerts = detailedAlerts.alerts
-                        .filter(alert => alert && (alert.severity === 'critical' || alert.severity === 'warning'))
-                        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-                        .slice(0, firingLimit);
-                    setTopAlerts(filteredAlerts);
-                }
-            } catch (e) {
-                console.log('Detailed alerts API error:', e);
-                setTopAlerts([]);
-            }
+            // Critical and warning firing alerts only
+            const firing = detailedAlerts && Array.isArray(detailedAlerts.alerts) ? detailedAlerts.alerts : [];
+            setTopAlerts(
+                firing
+                    .filter(alert => alert && (alert.severity === 'critical' || alert.severity === 'warning'))
+                    .sort(byNewest)
+                    .slice(0, firingLimit),
+            );
 
-            // Fetch resolved alerts
-            try {
-                const resolvedData = await apiService.getAlerts({ status: 'resolved', limit: resolvedLimit, page: 1 });
-                if (resolvedData && resolvedData.alerts && Array.isArray(resolvedData.alerts)) {
-                    setResolvedAlerts(resolvedData.alerts);
-                }
-            } catch (e) {
-                console.log('Resolved alerts API error:', e);
-                setResolvedAlerts([]);
-            }
+            const resolved = resolvedData && Array.isArray(resolvedData.alerts) ? resolvedData.alerts : [];
+            setResolvedAlerts([...resolved].sort(byNewest));
 
+            setLastUpdated(new Date());
         } catch (e) {
-            setError(e.message);
+            if (!isLatest()) return;
+            if (silent) {
+                setRefreshError(e.message);
+            } else {
+                setError(e.message);
+            }
         } finally {
-            setLoading(false);
+            if (isLatest()) {
+                manualPending.current = false;
+                setLoading(false);
+            }
+        }
+    }, [firingLimit, resolvedLimit, startRequest]);
+
+    useEffect(() => {
+        fetchDashboardData(false);
+    }, [fetchDashboardData]);
+
+    const refresh = useAutoRefresh(() => fetchDashboardData(true), refreshMs);
+
+    const onRefreshChange = (value) => {
+        setRefreshMs(value);
+        try {
+            localStorage.setItem('iris.dashboard.refreshMs', String(value));
+        } catch (e) {
+            // ignore persistence errors
         }
     };
 
@@ -113,7 +142,28 @@ const Dashboard = () => {
             <div className="dashboard">
                 <div className="page-header">
                     <h1>Dashboard</h1>
+                    <div className="header-actions refresh-controls">
+                        {lastUpdated && (
+                            <span className="last-updated">Last updated {formatLastUpdated(lastUpdated)}</span>
+                        )}
+                        <label className="filter-field">
+                            Refresh
+                            <select
+                                className="select-input"
+                                value={refreshMs}
+                                onChange={(e) => onRefreshChange(Number(e.target.value))}
+                            >
+                                {REFRESH_OPTIONS.map((o) => (
+                                    <option key={o.value} value={o.value}>{o.label}</option>
+                                ))}
+                            </select>
+                        </label>
+                        <button className="btn-secondary" onClick={refresh}>
+                            Refresh
+                        </button>
+                    </div>
                 </div>
+                {refreshError && <div className="refresh-hint">Background refresh failed: {refreshError}</div>}
 
                 <section className="active-alerts">
                     <h2>Active alerts</h2>

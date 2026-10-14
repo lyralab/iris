@@ -36,6 +36,11 @@ type CacheReceptor struct {
 	taskCh chan struct{}
 	wg     sync.WaitGroup
 
+	// refreshMu serializes scheduler ticks and group-change refills.
+	refreshMu sync.Mutex
+	// keys are the receptor entries written by the last successful fill.
+	keys []string
+
 	Logger *zap.SugaredLogger
 }
 

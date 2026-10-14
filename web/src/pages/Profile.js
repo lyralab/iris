@@ -21,10 +21,6 @@ const Profile = () => {
     const [saving, setSaving] = useState(false);
     const [saveError, setSaveError] = useState(null);
 
-    useEffect(() => {
-        fetchUserProfile();
-    }, []);
-
     const fetchUserProfile = async () => {
         setLoading(true);
         setError(null);
@@ -37,6 +33,10 @@ const Profile = () => {
             setLoading(false);
         }
     };
+
+    useEffect(() => {
+        fetchUserProfile();
+    }, []);
 
     const openEditModal = () => {
         setEditForm({

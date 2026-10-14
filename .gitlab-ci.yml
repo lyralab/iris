@@ -26,6 +26,21 @@ before_script:
   - export COMMIT_TAG=$BASE_IMAGE/$CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA
   - export LATEST_TAG=$BASE_IMAGE/$CI_REGISTRY_IMAGE:latest
 
+lint_web:
+  stage: build
+  image:
+    name: harbor.jibit.cloud/library/chainguard/node:latest-dev
+    # Chainguard node image entrypoint is `node`; clear it so the runner gets a shell.
+    entrypoint: [""]
+  before_script: []
+  script:
+    - cd web
+    - npm ci
+    - npm run lint
+    - CI=true npm test -- --watchAll=false
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+
 build_push:
   stage: build
   script:

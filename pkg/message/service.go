@@ -27,6 +27,10 @@ func (s *Service) UpdateMessageStatus(msg *Message, status StatusType, response 
 	return s.repo.UpdateMessage(msg)
 }
 
+func (s *Service) ListBySender(sender string, limit int) ([]Sent, error) {
+	return s.repo.ListMessagesBySender(sender, limit)
+}
+
 func (s *Service) ListNotFinishedMessages() ([]Message, error) {
 	return s.repo.ListNotFinishedMessages()
 }

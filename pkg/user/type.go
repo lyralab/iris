@@ -3,6 +3,7 @@ package user
 import (
 	"time"
 
+	"github.com/root-ali/iris/pkg/groups"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
@@ -29,6 +30,7 @@ type User struct {
 type userServiceImpl struct {
 	repo   UserInterfaceRepository
 	role   UserRoleRepository
+	cache  groups.ReceptorCache
 	logger *zap.SugaredLogger
 }
 

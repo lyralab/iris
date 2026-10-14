@@ -3,9 +3,11 @@ package rest
 import (
 	"errors"
 	"fmt"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	iriserror "github.com/root-ali/iris/pkg/errors"
+	"github.com/root-ali/iris/pkg/message"
 	"github.com/root-ali/iris/pkg/notifications"
 )
 
@@ -101,6 +103,35 @@ func GetProvidersHandler(ps notifications.ProviderServiceInterface) gin.HandlerF
 
 		}
 
+	}
+}
+
+const (
+	defaultMessagesLimit = 10
+	maxMessagesLimit     = 100
+)
+
+type messageLister interface {
+	ListBySender(sender string, limit int) ([]message.Sent, error)
+}
+
+// parseMessagesLimit falls back to the default for missing or invalid values and caps at the max.
+func parseMessagesLimit(raw string) int {
+	n, err := strconv.Atoi(raw)
+	if err != nil || n < 1 {
+		return defaultMessagesLimit
+	}
+	return min(n, maxMessagesLimit)
+}
+
+func GetProviderMessagesHandler(ml messageLister) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		msgs, err := ml.ListBySender(c.Param("name"), parseMessagesLimit(c.Query("limit")))
+		if err != nil {
+			c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(200, gin.H{"messages": msgs, "status": "success"})
 	}
 }
 

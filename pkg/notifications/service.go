@@ -32,6 +32,7 @@ func (p *ProviderService) EnableProvider(name string) error {
 		p.Logger.Error("Error enabling provider: ", err)
 		return err
 	}
+	p.invalidateCache()
 	return nil
 }
 
@@ -44,6 +45,7 @@ func (p *ProviderService) DisableProvider(name string) error {
 		p.Logger.Error("Error disabling provider: ", err)
 		return err
 	}
+	p.invalidateCache()
 	return nil
 }
 
@@ -56,7 +58,14 @@ func (p *ProviderService) ModifyProviderPriority(name string, priority int) erro
 		p.Logger.Error("Error changing provider priority: ", err)
 		return err
 	}
+	p.invalidateCache()
 	return nil
+}
+
+// invalidateCache drops cached provider lists so the next dispatch reads the repository.
+func (p *ProviderService) invalidateCache() {
+	p.cache.Delete("active_providers")
+	p.cache.Delete("providers_priority")
 }
 
 func (p *ProviderService) GetProviderByName(name string) (*Providers, error) {

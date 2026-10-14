@@ -56,12 +56,13 @@ func (s *Storage) GetPerGroupIds(group ...string) ([]cache_receptors.GroupWithMo
 		var g cache_receptors.GroupWithMobiles
 
 		// Use NullString for nullable text columns to avoid NULL->string scan error.
-		var nsMobile, nsEmail, nsTelegram, nsMattermost, nsBaleID sql.NullString
+		// user_id is null when a group has no members (LEFT JOIN).
+		var nsUserID, nsMobile, nsEmail, nsTelegram, nsMattermost, nsBaleID sql.NullString
 
 		err := rows.Scan(
 			&g.GroupID,
 			&g.GroupName,
-			&g.UserId,
+			&nsUserID,
 			&nsMobile,
 			&nsEmail,
 			&nsTelegram,
@@ -71,6 +72,9 @@ func (s *Storage) GetPerGroupIds(group ...string) ([]cache_receptors.GroupWithMo
 		if err != nil {
 			s.logger.Errorw("Failed to scan row", "error", err)
 			return nil, err
+		}
+		if nsUserID.Valid {
+			g.UserId = nsUserID.String
 		}
 
 		if nsMobile.Valid {

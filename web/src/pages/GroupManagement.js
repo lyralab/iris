@@ -22,11 +22,6 @@ const GroupManagement = () => {
     const [confirm, setConfirm] = useState(null);
     const [actionError, setActionError] = useState('');
 
-    useEffect(() => {
-        fetchGroups();
-        fetchAllUsers();
-    }, []);
-
     const fetchGroups = async () => {
         setLoading(true);
         setError(null);
@@ -49,6 +44,11 @@ const GroupManagement = () => {
             setAllUsers([]);
         }
     };
+
+    useEffect(() => {
+        fetchGroups();
+        fetchAllUsers();
+    }, []);
 
     const fetchGroupMembers = async (groupId) => {
         try {

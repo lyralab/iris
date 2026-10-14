@@ -115,7 +115,7 @@ class APIService {
     }
 
     async getGroup(groupId) {
-        return this.fetch(`${config.api.groups}?id=${groupId}`);
+        return this.fetch(config.api.group(groupId));
     }
 
     async createGroup(groupData) {
@@ -185,6 +185,10 @@ class APIService {
     async getProvider(identifier, type = 'name') {
         const param = type === 'id' ? 'id' : 'name';
         return this.fetch(`${config.api.providers}?${param}=${identifier}`);
+    }
+
+    async getProviderMessages(name, limit = 10) {
+        return this.fetch(`${config.api.providers}/${encodeURIComponent(name)}/messages?limit=${limit}`);
     }
 
     async modifyProvider(providerData) {
