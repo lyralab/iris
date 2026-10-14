@@ -28,9 +28,10 @@ func (k *KavenegarService) Status(messageID string) (notifications.MessageStatus
 
 	status, err := k.API.Message.Status(messageIDs)
 	if err != nil {
-		return messageStatus, nil
+		k.Logger.Errorw("Kavenegar: cannot check delivery status", "messageID", messageID, "error", err)
+		return messageStatus, err
 	}
-	k.Logger.Infow("Kavenegar message status response", "status", status, "messageID", messageID)
+	k.Logger.Infow("Kavenegar: delivery status received", "status", status, "messageID", messageID)
 	for _, s := range status {
 		if s.Status == 10 {
 			messageStatus = notifications.TypeMessageStatusDelivered
@@ -42,7 +43,7 @@ func (k *KavenegarService) Status(messageID string) (notifications.MessageStatus
 			messageStatus = notifications.TypeMessageStatusSent
 		}
 	}
-	k.Logger.Infow("Kavenegar mapped message status",
+	k.Logger.Infow("Kavenegar: delivery status mapped",
 		"mappedStatus", messageStatus,
 		"messageID", messageID)
 	return messageStatus, nil
@@ -57,22 +58,24 @@ func (k *KavenegarService) kavenegarSend(_ string, messages notifications.Messag
 	}
 	resp, err := k.API.Message.Send("", messages.Receptors, text, nil)
 	if err != nil {
+		k.Logger.Errorw("Kavenegar: SMS request failed", "receptors", messages.Receptors, "error", err)
 		return nil, err
 	}
 	var messageIDs []string
 	for _, r := range resp {
 		messageIDs = append(messageIDs, strconv.Itoa(int(r.MessageID)))
 	}
+	k.Logger.Infow("Kavenegar: SMS accepted", "receptors", messages.Receptors, "messageIDs", messageIDs)
 	return messageIDs, nil
 }
 
 func (k *KavenegarService) Verify() (string, error) {
 	accInfo, err := k.API.Account.Info()
 	if err != nil {
-		k.Logger.Errorw("Failed to get account info", "error", err)
+		k.Logger.Errorw("Kavenegar: cannot get account info", "error", err)
 		return "", err
 	}
-	k.Logger.Infow("Kavenegar account info", "RemainAccount", accInfo.Remaincredit)
+	k.Logger.Infow("Kavenegar: account info", "remainingCredit", accInfo.Remaincredit)
 	return strconv.Itoa(accInfo.Remaincredit), nil
 }
 

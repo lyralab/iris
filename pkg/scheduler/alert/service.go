@@ -1,6 +1,7 @@
 package alert
 
 import (
+	"cmp"
 	"errors"
 	"slices"
 	"strings"
@@ -58,10 +59,10 @@ func (s *Scheduler) loop() {
 }
 
 func (s *Scheduler) fetchAndEnqueue() {
-	s.logger.Debug("Fetching unsent alerts...")
+	s.logger.Debug("Polling for unsent alerts")
 	unsent, err := s.repo.GetUnsentAlerts()
 	if err != nil {
-		s.logger.Errorw("Error getting unsent alerts", "error", err)
+		s.logger.Errorw("Cannot load unsent alerts from the database", "error", err)
 		return
 	}
 	for _, al := range unsent {
@@ -101,7 +102,8 @@ func (s *Scheduler) worker(id int) {
 			return s.handleAlert(al)
 		}()
 		if err != nil {
-			s.logger.Errorw("Failed processing alert", "worker", id, "alert", al, "error", err)
+			s.logger.Errorw("Alert was not delivered",
+				"worker", id, "alertID", al.Id, "name", al.Name, "methods", al.Method, "error", err)
 		}
 	}
 }
@@ -112,18 +114,14 @@ func (s *Scheduler) handleAlert(al alerts.Alert) error {
 
 	// Check if alert has method and receptor to set candidate fot sending alert
 	if len(al.Method) == 0 || len(al.Receptor) == 0 {
-		s.logger.Warnw("Alert has no method or no receptor defined, skipping", "alertID", al.Id)
+		s.logger.Warnw("Alert has no method or no receptor; marking it as sent without notifying",
+			"alertID", al.Id, "methods", al.Method, "receptors", al.Receptor)
 		err := s.repo.MarkAlertAsSent(al.Id)
 		if err != nil {
 			return err
 		}
 		return nil
 	}
-
-	// Prepare receptors list and mapping for receptor users
-	var receptors []string
-
-	userMessage := make(map[string]bool)
 
 	// Prepare Message
 	msg := notifications.Message{
@@ -137,61 +135,66 @@ func (s *Scheduler) handleAlert(al alerts.Alert) error {
 
 	provider, err := s.getProvider(al.Method, 0)
 	if err != nil {
-		s.logger.Errorw("Failed to get provider", "error", err)
+		s.logger.Errorw("Cannot send alert: no usable notification provider for its methods",
+			"alertID", al.Id, "methods", al.Method, "error", err)
 		return err
 	}
-
+	s.logger.Infow("Sending alert to providers", "alertID", al.Id, "methods", al.Method, "candidateProviders", len(provider))
 	var (
 		sent    bool // at least one Send succeeded
 		sendErr error
-		missed  []string // groups with no cached receptors
+		missed  []string                // groups with no cached receptors
+		skipped []string                // providers that already failed for this alert
+		done    = make(map[string]bool) // flags already delivered; lower priority providers of that flag are fallbacks
 	)
 
 	for _, p := range provider {
+		if done[p.GetFlag()] {
+			s.logger.Debugw("Skipping fallback provider: alert already delivered on this channel",
+				"alertID", al.Id, "provider", p.GetName(), "channel", p.GetFlag())
+			continue
+		}
+		if s.failed.has(al.Id, p.GetName()) {
+			s.logger.Warnw("Skipping provider: it already failed for this alert and is not retried",
+				"alertID", al.Id, "provider", p.GetName(), "channel", p.GetFlag())
+			skipped = append(skipped, p.GetName())
+			continue
+		}
+		var receptors []string
 		receptorIds := make(map[string]string)
-		s.logger.Infow("Using provider for alert",
+		s.logger.Infow("Trying provider to send alert",
 			"alertID", al.Id,
-			"provider", p.GetName())
+			"provider", p.GetName(),
+			"channel", p.GetFlag(),
+			"priority", p.GetPriority())
 
 		for _, r := range al.Receptor {
-			s.logger.Debugw("Getting receptors from cache", "method", al.Method, "receptor", r)
 			cacheReceptors, ok := s.receptorRepo.Get(p.GetFlag(), r)
-			s.logger.Debugw("Fetched receptors from cache",
-				"method", al.Method,
-				"receptor", r,
-				"cached Receptors", cacheReceptors,
+			s.logger.Debugw("Looked up group receptors in cache",
+				"alertID", al.Id,
+				"channel", p.GetFlag(),
+				"group", r,
+				"receptors", cacheReceptors,
 				"found", ok)
 			if !ok {
-				s.logger.Errorw("Failed to get receptors from group", "group", r)
+				s.logger.Errorw("Group has no cached receptors for this channel; alert will be retried",
+					"alertID", al.Id, "channel", p.GetFlag(), "group", r)
 				missed = append(missed, r)
 				continue
 			}
 			for k, v := range cacheReceptors {
-				if ok := userMessage[k]; ok {
-					s.logger.Debugw("User already has message prepared, skipping receptor",
-						"method", al.Method,
-						"user", k,
-						"receptor", v)
-					continue
-				}
 				if slices.Contains(receptors, v) {
-					s.logger.Debugw("Receptor already added, skipping",
-						"method", al.Method,
-						"receptor", v)
+					s.logger.Debugw("Skipping duplicate receptor",
+						"alertID", al.Id, "channel", p.GetFlag(), "receptor", v)
 					continue
 				}
 				receptorIds[k] = v
-				userMessage[k] = false
 				receptors = append(receptors, v)
 			}
-			s.logger.Debugw("Prepared receptors for alert",
-				"method", al.Method,
-				"receptors", receptors)
 		}
 		if len(receptors) == 0 {
-			s.logger.Warnw("No receptors found for alert and method, skipping",
-				"alertID", al.Id,
-				"method", al.Method)
+			s.logger.Warnw("Provider skipped: no receptors resolved for this channel",
+				"alertID", al.Id, "provider", p.GetName(), "channel", p.GetFlag(), "groups", al.Receptor)
 			continue
 		}
 		msg.Receptors = receptors
@@ -202,7 +205,9 @@ func (s *Scheduler) handleAlert(al alerts.Alert) error {
 		// shaped "r1;r2;...;" with one non-empty token per recipient (Telegram does this).
 		var results []string
 		if err != nil {
-			s.logger.Errorw("Failed to send notification", "provider", p.GetName(), "error", err)
+			s.logger.Errorw("Provider failed to send alert",
+				"alertID", al.Id, "provider", p.GetName(), "channel", p.GetFlag(),
+				"receptors", len(receptors), "error", err)
 			if sendErr == nil {
 				sendErr = err
 			}
@@ -212,10 +217,18 @@ func (s *Scheduler) handleAlert(al alerts.Alert) error {
 			}
 			// Partial delivery still counts as sent; retrying would resend to recipients who already got it.
 			if slices.Contains(results, "nil") {
-				sent = true
+				sent, done[p.GetFlag()] = true, true
+			}
+			if !done[p.GetFlag()] {
+				s.failed.add(al.Id, p.GetName())
+				s.logger.Warnw("Provider marked as failed for this alert; trying the next provider of the channel if any",
+					"alertID", al.Id, "provider", p.GetName(), "channel", p.GetFlag())
 			}
 		} else {
-			sent = true
+			sent, done[p.GetFlag()] = true, true
+			s.logger.Infow("Provider accepted alert",
+				"alertID", al.Id, "provider", p.GetName(), "channel", p.GetFlag(),
+				"receptors", len(receptors), "messageIDs", msgIds)
 		}
 
 		userIds := make(map[string]string, len(receptorIds))
@@ -229,9 +242,6 @@ func (s *Scheduler) handleAlert(al alerts.Alert) error {
 				if i < len(msgIds) {
 					senderId = msgIds[i]
 				}
-				if u, ok := userIds[v]; ok {
-					userMessage[u] = true
-				}
 				// Telegram has no delivery receipts: an accepted API call is final, skip status polling.
 				if p.GetFlag() == "telegram" {
 					response, status = "Delivered", message.TypeMessageStatusDelivered
@@ -244,7 +254,8 @@ func (s *Scheduler) handleAlert(al alerts.Alert) error {
 			m := message.NewMessage(senderId, saveTextMsg, v, p.GetName(), userIds[v], "",
 				response, []string{p.GetName()}, status)
 			if err := s.messageRepo.Add(m); err != nil {
-				s.logger.Errorw("Failed to save message", "receptor", v, "error", err)
+				s.logger.Errorw("Cannot save message record",
+					"alertID", al.Id, "provider", p.GetName(), "receptor", v, "error", err)
 			}
 		}
 	}
@@ -262,38 +273,44 @@ func (s *Scheduler) handleAlert(al alerts.Alert) error {
 		}
 	}
 	// Once any channel delivered, mark sent so a later poll does not deliver it again.
+	// Reaching here without delivery means every provider already failed once: give up instead of retrying forever.
+	if sent {
+		s.logger.Infow("Alert delivered, marking it as sent", "alertID", al.Id, "channels", done)
+	} else {
+		s.logger.Errorw("Alert not delivered by any provider; giving up (failed attempts are stored in message)",
+			"alertID", al.Id, "methods", al.Method, "alreadyFailedProviders", skipped)
+	}
+	s.failed.forget(al.Id)
 	return s.repo.MarkAlertAsSent(al.Id)
 }
 
+// getProvider returns every active, constructed provider for the given flags ordered by priority
+// then name, so the caller can fall back to the next provider of a flag when one fails.
 func (s *Scheduler) getProvider(flags []string, _ int) ([]notifications.NotificationInterface, error) {
 	providers, err := s.provider.GetProvidersPriority()
 	if err != nil {
-		s.logger.Errorw("Failed to get providers", "error", err)
+		s.logger.Errorw("Cannot load providers from the provider service", "error", err)
 		return nil, err
 	}
-	ni := make([]notifications.NotificationInterface, 0)
-	returnProviders := make([]string, 0)
-	for _, flag := range flags {
-		for _, p := range providers {
-			if slices.Contains(returnProviders, p.Flag) {
-				continue
-			}
-			if p.Status == true && p.Flag == flag {
-				s.logger.Debugw("Found active provider", "name", p.Name, "flag", flag)
-				ni = append(ni, p.Provider)
-				returnProviders = append(returnProviders, p.Flag)
-			}
+	var active []notifications.Providers
+	for _, p := range providers {
+		// Provider is nil when the row is active but the service is disabled in config.
+		if p.Status && p.Provider != nil && slices.Contains(flags, p.Flag) {
+			s.logger.Debugw("Candidate provider", "name", p.Name, "channel", p.Flag, "priority", p.Priority)
+			active = append(active, p)
 		}
 	}
-
-	// Sort providers by priority
-	slices.SortFunc(ni, func(a, b notifications.NotificationInterface) int {
-		return a.GetPriority() - b.GetPriority()
+	slices.SortFunc(active, func(a, b notifications.Providers) int {
+		return cmp.Or(a.Priority-b.Priority, strings.Compare(a.Name, b.Name))
 	})
 
+	ni := make([]notifications.NotificationInterface, 0, len(active))
+	for _, p := range active {
+		ni = append(ni, p.Provider)
+	}
 	if len(ni) > 0 {
 		return ni, nil
 	}
-	s.logger.Warnw("No active provider found for flag", "flag", flags)
+	s.logger.Warnw("No active provider with a working implementation for these methods", "methods", flags)
 	return nil, errors.New("no active provider found")
 }

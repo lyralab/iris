@@ -50,6 +50,41 @@ type Scheduler struct {
 	// ponytail: in-memory set. A second replica can still deliver the same alert. Upgrade: a claim column.
 	inflight   map[string]struct{}
 	inflightMu sync.Mutex
+
+	// providers that already failed to send an alert; each provider is tried once per alert.
+	// ponytail: in-memory, a restart forgets it and tries the providers once more.
+	failed failedProviders
+}
+
+// failedProviders remembers, per alert id, the providers whose send already failed.
+type failedProviders struct {
+	mu sync.Mutex
+	by map[string]map[string]struct{}
+}
+
+func (f *failedProviders) add(alertID, provider string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.by == nil {
+		f.by = make(map[string]map[string]struct{})
+	}
+	if f.by[alertID] == nil {
+		f.by[alertID] = make(map[string]struct{})
+	}
+	f.by[alertID][provider] = struct{}{}
+}
+
+func (f *failedProviders) has(alertID, provider string) bool {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	_, ok := f.by[alertID][provider]
+	return ok
+}
+
+func (f *failedProviders) forget(alertID string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	delete(f.by, alertID)
 }
 
 func NewScheduler(
