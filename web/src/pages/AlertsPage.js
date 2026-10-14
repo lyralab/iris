@@ -1,14 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import apiService from '../utils/apiService';
 import Layout from '../components/Layout';
-import useAutoRefresh, { REFRESH_OPTIONS, readRefreshMs, formatLastUpdated } from '../utils/useAutoRefresh';
+import useAutoRefresh, { REFRESH_OPTIONS, readRefreshMs, formatLastUpdated, latestOnly } from '../utils/useAutoRefresh';
+import { byNewest } from '../utils/alertSort';
 import './AlertsPage.css';
-
-function timeValue(value) {
-    const t = new Date(value).getTime();
-    return Number.isNaN(t) ? 0 : t;
-}
 
 const SEVERITIES = ['critical', 'high', 'warning', 'medium', 'low', 'page'];
 
@@ -22,9 +18,15 @@ const AlertsPage = () => {
     const [refreshMs, setRefreshMs] = useState(() => readRefreshMs('iris.alerts.refreshMs'));
     const [lastUpdated, setLastUpdated] = useState(null);
     const [refreshError, setRefreshError] = useState(null);
+    const [startRequest] = useState(latestOnly);
+    const manualPending = useRef(false);
 
     const load = useCallback(async (silent = false) => {
+        // A background refresh must not supersede a pending manual load and hide its error.
+        if (silent && manualPending.current) return;
+        const isLatest = startRequest();
         if (!silent) {
+            manualPending.current = true;
             setLoading(true);
             setError(null);
         } else {
@@ -37,10 +39,12 @@ const AlertsPage = () => {
                 limit: 100,
                 page: 1,
             });
+            if (!isLatest()) return;
             const list = data && data.alerts && Array.isArray(data.alerts) ? data.alerts : [];
             setAllAlerts(list);
             setLastUpdated(new Date());
         } catch (e) {
+            if (!isLatest()) return;
             if (silent) {
                 setRefreshError(e.message);
             } else {
@@ -48,17 +52,18 @@ const AlertsPage = () => {
                 setAllAlerts([]);
             }
         } finally {
-            if (!silent) {
+            if (isLatest()) {
+                manualPending.current = false;
                 setLoading(false);
             }
         }
-    }, [activeTab, severity]);
+    }, [activeTab, severity, startRequest]);
 
     useEffect(() => {
         load(false);
     }, [load]);
 
-    useAutoRefresh(() => load(true), refreshMs);
+    const refresh = useAutoRefresh(() => load(true), refreshMs);
 
     const onRefreshChange = (value) => {
         setRefreshMs(value);
@@ -94,7 +99,7 @@ const AlertsPage = () => {
     const timeLabel = activeTab === 'firing' ? 'Started At' : 'Resolved At';
     const timeField = activeTab === 'firing' ? 'starts_at' : 'ends_at';
     const rows = (Array.isArray(allAlerts) ? allAlerts.filter(alert => alert && alert.status === activeTab) : [])
-        .sort((a, b) => timeValue(b[timeField]) - timeValue(a[timeField]));
+        .sort(byNewest);
 
     return (
         <Layout>
@@ -132,7 +137,7 @@ const AlertsPage = () => {
                                 ))}
                             </select>
                         </label>
-                        <button className="btn-secondary" onClick={() => load(true)}>
+                        <button className="btn-secondary" onClick={refresh}>
                             Refresh
                         </button>
                     </div>

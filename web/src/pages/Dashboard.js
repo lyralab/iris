@@ -1,14 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import apiService from '../utils/apiService';
 import Layout from '../components/Layout';
-import useAutoRefresh, { REFRESH_OPTIONS, readRefreshMs, formatLastUpdated } from '../utils/useAutoRefresh';
+import useAutoRefresh, { REFRESH_OPTIONS, readRefreshMs, formatLastUpdated, latestOnly } from '../utils/useAutoRefresh';
+import { byNewest } from '../utils/alertSort';
 import './Dashboard.css';
-
-function timeValue(value) {
-    const t = new Date(value).getTime();
-    return Number.isNaN(t) ? 0 : t;
-}
 
 const SEVERITIES = [
     { key: 'critical', label: 'Critical' },
@@ -30,9 +26,15 @@ const Dashboard = () => {
     const [refreshMs, setRefreshMs] = useState(() => readRefreshMs('iris.dashboard.refreshMs'));
     const [lastUpdated, setLastUpdated] = useState(null);
     const [refreshError, setRefreshError] = useState(null);
+    const [startRequest] = useState(latestOnly);
+    const manualPending = useRef(false);
 
     const fetchDashboardData = useCallback(async (silent = false) => {
+        // A background refresh must not supersede a pending manual load and hide its error.
+        if (silent && manualPending.current) return;
+        const isLatest = startRequest();
         if (!silent) {
+            manualPending.current = true;
             setLoading(true);
             setError(null);
         } else {
@@ -40,10 +42,20 @@ const Dashboard = () => {
         }
 
         try {
-            // Fetch alert summary
             const alertData = await apiService.getAlertSummary();
-            const mappedData = {};
+            const detailedAlerts = await apiService.getAlerts({ status: 'firing', limit: firingLimit * 2, page: 1 })
+                .catch((e) => {
+                    console.log('Detailed alerts API error:', e);
+                    return null;
+                });
+            const resolvedData = await apiService.getAlerts({ status: 'resolved', limit: resolvedLimit, page: 1 })
+                .catch((e) => {
+                    console.log('Resolved alerts API error:', e);
+                    return null;
+                });
+            if (!isLatest()) return;
 
+            const mappedData = {};
             // Handle null or undefined severites array
             if (alertData && alertData.severites && Array.isArray(alertData.severites)) {
                 alertData.severites.forEach(item => {
@@ -52,58 +64,41 @@ const Dashboard = () => {
                     }
                 });
             }
-
             setAlerts(mappedData);
 
-            // Fetch detailed firing alerts for critical and warning
-            try {
-                const detailedAlerts = await apiService.getAlerts({ status: 'firing', limit: firingLimit * 2, page: 1 });
-                if (detailedAlerts && detailedAlerts.alerts && Array.isArray(detailedAlerts.alerts)) {
-                    const filteredAlerts = detailedAlerts.alerts
-                        .filter(alert => alert && (alert.severity === 'critical' || alert.severity === 'warning'))
-                        .sort((a, b) => timeValue(b.starts_at || b.created_at) - timeValue(a.starts_at || a.created_at))
-                        .slice(0, firingLimit);
-                    setTopAlerts(filteredAlerts);
-                }
-            } catch (e) {
-                console.log('Detailed alerts API error:', e);
-                setTopAlerts([]);
-            }
+            // Critical and warning firing alerts only
+            const firing = detailedAlerts && Array.isArray(detailedAlerts.alerts) ? detailedAlerts.alerts : [];
+            setTopAlerts(
+                firing
+                    .filter(alert => alert && (alert.severity === 'critical' || alert.severity === 'warning'))
+                    .sort(byNewest)
+                    .slice(0, firingLimit),
+            );
 
-            // Fetch resolved alerts
-            try {
-                const resolvedData = await apiService.getAlerts({ status: 'resolved', limit: resolvedLimit, page: 1 });
-                if (resolvedData && resolvedData.alerts && Array.isArray(resolvedData.alerts)) {
-                    setResolvedAlerts(
-                        [...resolvedData.alerts].sort(
-                            (a, b) => timeValue(b.ends_at || b.updated_at) - timeValue(a.ends_at || a.updated_at),
-                        ),
-                    );
-                }
-            } catch (e) {
-                console.log('Resolved alerts API error:', e);
-                setResolvedAlerts([]);
-            }
+            const resolved = resolvedData && Array.isArray(resolvedData.alerts) ? resolvedData.alerts : [];
+            setResolvedAlerts([...resolved].sort(byNewest));
 
             setLastUpdated(new Date());
         } catch (e) {
+            if (!isLatest()) return;
             if (silent) {
                 setRefreshError(e.message);
             } else {
                 setError(e.message);
             }
         } finally {
-            if (!silent) {
+            if (isLatest()) {
+                manualPending.current = false;
                 setLoading(false);
             }
         }
-    }, [firingLimit, resolvedLimit]);
+    }, [firingLimit, resolvedLimit, startRequest]);
 
     useEffect(() => {
         fetchDashboardData(false);
     }, [fetchDashboardData]);
 
-    useAutoRefresh(() => fetchDashboardData(true), refreshMs);
+    const refresh = useAutoRefresh(() => fetchDashboardData(true), refreshMs);
 
     const onRefreshChange = (value) => {
         setRefreshMs(value);
@@ -163,7 +158,7 @@ const Dashboard = () => {
                                 ))}
                             </select>
                         </label>
-                        <button className="btn-secondary" onClick={() => fetchDashboardData(true)}>
+                        <button className="btn-secondary" onClick={refresh}>
                             Refresh
                         </button>
                     </div>

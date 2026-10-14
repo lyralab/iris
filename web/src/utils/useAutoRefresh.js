@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 export const REFRESH_OPTIONS = [
     { value: 0, label: 'Off' },
@@ -21,21 +21,48 @@ export function readRefreshMs(key) {
     }
 }
 
+// Wraps an async fn so calls made while one is still pending are dropped.
+export function skipWhileRunning(fn) {
+    let running = false;
+    return async (...args) => {
+        if (running) return;
+        running = true;
+        try {
+            await fn(...args);
+        } finally {
+            running = false;
+        }
+    };
+}
+
+// Each call starts a request and returns isLatest(), false once a newer request has started.
+export function latestOnly() {
+    let seq = 0;
+    return () => {
+        const id = ++seq;
+        return () => id === seq;
+    };
+}
+
+// Returns the guarded refresh so manual Refresh buttons share the one-in-flight slot with the timer.
 // ponytail: fixed-interval polling ceiling; upgrade path is backoff/jitter if polling load becomes an issue.
 export default function useAutoRefresh(callback, intervalMs) {
     const saved = useRef(callback);
     useEffect(() => {
         saved.current = callback;
     });
+    const [tick] = useState(() => skipWhileRunning(() => saved.current()));
 
     useEffect(() => {
         if (!intervalMs || intervalMs <= 0) return undefined;
         const id = setInterval(() => {
             if (document.hidden) return;
-            saved.current();
+            tick();
         }, intervalMs);
         return () => clearInterval(id);
-    }, [intervalMs]);
+    }, [intervalMs, tick]);
+
+    return tick;
 }
 
 export function formatLastUpdated(date) {
