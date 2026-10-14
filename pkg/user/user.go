@@ -8,15 +8,17 @@ import (
 
 	"github.com/oklog/ulid/v2"
 	iris_error "github.com/root-ali/iris/pkg/errors"
+	"github.com/root-ali/iris/pkg/groups"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
-func NewUserService(repo UserInterfaceRepository, role UserRoleRepository, l *zap.SugaredLogger) UserInterfaceService {
+func NewUserService(repo UserInterfaceRepository, role UserRoleRepository, cache groups.ReceptorCache, l *zap.SugaredLogger) UserInterfaceService {
 	return &userServiceImpl{
 		repo:   repo,
 		role:   role,
+		cache:  cache,
 		logger: l,
 	}
 }
@@ -184,6 +186,10 @@ func (us *userServiceImpl) UpdateUser(u *User) error {
 	err := us.repo.UpdateUserData(u)
 	if err != nil {
 		return err
+	}
+	// Contact details live in the receptor cache; refill it so alerts use the new values.
+	if us.cache != nil {
+		us.cache.Refresh()
 	}
 	return nil
 }

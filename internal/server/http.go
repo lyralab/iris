@@ -31,7 +31,7 @@ func RegisterRoutes(d Deps) *gin.Engine {
 	alertService := alerts.NewAlertService(d.Logger, d.Repos)
 	healthService := health_check.NewHealthService(d.Logger, d.Repos)
 	roleService := roles.NewRolesService(d.Logger, d.Repos)
-	userService := user.NewUserService(d.Repos, roleService, d.Logger)
+	userService := user.NewUserService(d.Repos, roleService, d.GroupCache, d.Logger)
 	authService := auth.NewAuthService(d.JWTSecret, roleService, d.Logger)
 	groupService := groups.NewGroupService(d.Logger, d.Repos, d.GroupCache)
 	captchaSvc := captcha.NewCaptchaService(d.Logger)
