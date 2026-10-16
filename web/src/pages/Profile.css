@@ -11,7 +11,7 @@
 }
 
 .profile-card {
-    background: white;
+    background: var(--surface);
     border-radius: 16px;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
     display: flex;
@@ -20,6 +20,7 @@
 }
 
 .profile-left {
+    /* stylelint-disable-next-line color-no-hex -- brand gradient, same in both themes */
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     padding: 2.5rem 2rem;
     display: flex;
@@ -33,7 +34,7 @@
 .profile-avatar {
     width: 120px;
     height: 120px;
-    background: white;
+    background: var(--surface);
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -73,13 +74,13 @@
 }
 
 .profile-section h3 {
-    color: #2c3e50;
+    color: var(--text);
     margin: 0 0 1.5rem 0;
     font-size: 1rem;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    border-bottom: 2px solid #ecf0f1;
+    border-bottom: 2px solid var(--border);
     padding-bottom: 0.75rem;
 }
 
@@ -98,83 +99,35 @@
 .info-row label {
     font-size: 0.85rem;
     font-weight: 600;
-    color: #7f8c8d;
+    color: var(--muted);
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
 
 .info-row span {
     font-size: 1rem;
-    color: #2c3e50;
+    color: var(--text);
     font-weight: 500;
     padding: 0.75rem;
-    background-color: #f8f9fa;
+    background-color: var(--surface-alt);
     border-radius: 8px;
     word-wrap: break-word;
     transition: background-color 0.3s;
 }
 
 .info-row span:hover {
-    background-color: #e9ecef;
+    background-color: var(--border);
 }
 
 .role-badge {
     display: inline-block;
     padding: 0.4rem 1rem !important;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    background: var(--accent) !important;
     color: white !important;
     border-radius: 20px !important;
     font-weight: 600;
     font-size: 0.85rem !important;
     text-transform: capitalize;
-}
-
-.status-badge {
-    display: inline-block;
-    padding: 0.4rem 1rem;
-    border-radius: 20px;
-    font-size: 0.9rem;
-    font-weight: 600;
-    text-align: center;
-}
-
-.status-badge.status-active {
-    background-color: #d4edda;
-    color: #155724;
-}
-
-.status-badge.status-new {
-    background-color: #fff3cd;
-    color: #856404;
-}
-
-.status-badge.status-disable {
-    background-color: #f8d7da;
-    color: #721c24;
-}
-
-.status-badge.status-unknown {
-    background-color: #e2e3e5;
-    color: #383d41;
-}
-
-.loading {
-    text-align: center;
-    padding: 3rem;
-    font-size: 1.2rem;
-    color: #7f8c8d;
-}
-
-.error-message {
-    background-color: #f8d7da;
-    color: #721c24;
-    padding: 1.5rem;
-    border-radius: 8px;
-    border: 1px solid #f5c6cb;
-    text-align: center;
-    font-size: 1.1rem;
-    max-width: 500px;
-    margin: 2rem auto;
 }
 
 @media (max-width: 768px) {
@@ -220,23 +173,8 @@
     }
 }
 
-/* Edit Profile Button */
 .edit-profile-btn {
     margin-top: 1.5rem;
-    padding: 0.75rem 1.5rem;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    border: none;
-    border-radius: 8px;
-    font-size: 1rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.edit-profile-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
 }
 
 /* Modal Styles */
@@ -254,7 +192,7 @@
 }
 
 .modal-content {
-    background: white;
+    background: var(--surface);
     border-radius: 16px;
     width: 90%;
     max-width: 500px;
@@ -268,27 +206,27 @@
     justify-content: space-between;
     align-items: center;
     padding: 1.5rem;
-    border-bottom: 1px solid #ecf0f1;
+    border-bottom: 1px solid var(--border);
 }
 
 .modal-header h2 {
     margin: 0;
     font-size: 1.5rem;
-    color: #2c3e50;
+    color: var(--text);
 }
 
 .modal-close-btn {
     background: none;
     border: none;
     font-size: 2rem;
-    color: #7f8c8d;
+    color: var(--muted);
     cursor: pointer;
     line-height: 1;
     padding: 0;
 }
 
 .modal-close-btn:hover {
-    color: #2c3e50;
+    color: var(--text);
 }
 
 .modal-body {
@@ -296,46 +234,46 @@
 }
 
 .modal-error {
-    background-color: #f8d7da;
-    color: #721c24;
+    background-color: var(--sev-critical-bg);
+    color: var(--sev-critical-fg);
     padding: 0.75rem 1rem;
     border-radius: 8px;
     margin-bottom: 1rem;
     font-size: 0.9rem;
 }
 
-.form-group {
+.profile-page .form-group {
     margin-bottom: 1.25rem;
 }
 
-.form-group label {
+.profile-page .form-group label {
     display: block;
     font-size: 0.85rem;
     font-weight: 600;
-    color: #7f8c8d;
+    color: var(--muted);
     text-transform: uppercase;
     letter-spacing: 0.5px;
     margin-bottom: 0.5rem;
 }
 
-.form-group input {
+.profile-page .form-group input {
     width: 100%;
     padding: 0.75rem 1rem;
     font-size: 1rem;
-    border: 2px solid #ecf0f1;
+    border: 2px solid var(--border);
     border-radius: 8px;
     transition: border-color 0.2s, box-shadow 0.2s;
     box-sizing: border-box;
 }
 
-.form-group input:focus {
+.profile-page .form-group input:focus {
     outline: none;
-    border-color: #667eea;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(31, 111, 235, 0.15);
 }
 
-.form-group input::placeholder {
-    color: #bdc3c7;
+.profile-page .form-group input::placeholder {
+    color: var(--muted);
 }
 
 .modal-footer {
@@ -343,44 +281,6 @@
     justify-content: flex-end;
     gap: 1rem;
     padding: 1.5rem;
-    border-top: 1px solid #ecf0f1;
-}
-
-.modal-cancel-btn {
-    padding: 0.75rem 1.5rem;
-    background-color: #ecf0f1;
-    color: #2c3e50;
-    border: none;
-    border-radius: 8px;
-    font-size: 1rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background-color 0.2s;
-}
-
-.modal-cancel-btn:hover {
-    background-color: #bdc3c7;
-}
-
-.modal-save-btn {
-    padding: 0.75rem 1.5rem;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    border: none;
-    border-radius: 8px;
-    font-size: 1rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.modal-save-btn:hover:not(:disabled) {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-}
-
-.modal-save-btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
+    border-top: 1px solid var(--border);
 }
 

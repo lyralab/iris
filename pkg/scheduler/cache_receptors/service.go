@@ -142,7 +142,16 @@ func (s *CacheReceptor) safeRunJob() {
 	s.setOnCache()
 }
 
+// Refresh drops every cached receptor map and loads the current groups from the repository.
+// Group create, delete, and membership changes call this so lookups do not keep the previous snapshot.
+func (s *CacheReceptor) Refresh() {
+	s.setOnCache()
+}
+
 func (s *CacheReceptor) setOnCache() {
+	s.refreshMu.Lock()
+	defer s.refreshMu.Unlock()
+
 	s.Logger.Info("Starting Cache Receptors Job at %v", time.Now())
 
 	results, err := s.Repository.GetPerGroupIds()
@@ -156,6 +165,7 @@ func (s *CacheReceptor) setOnCache() {
 	emailCached := make(map[string]map[string]string)
 	telegramCached := make(map[string]map[string]string)
 	mattermostCached := make(map[string]map[string]string)
+	baleCached := make(map[string]map[string]string)
 	for _, group := range results {
 		if mobileCached[group.GroupName] == nil {
 			mobileCached[group.GroupName] = make(map[string]string)
@@ -169,6 +179,9 @@ func (s *CacheReceptor) setOnCache() {
 		if mattermostCached[group.GroupName] == nil {
 			mattermostCached[group.GroupName] = make(map[string]string)
 		}
+		if baleCached[group.GroupName] == nil {
+			baleCached[group.GroupName] = make(map[string]string)
+		}
 		if group.Mobile != "" {
 			mobileCached[group.GroupName][group.UserId] = group.Mobile
 		}
@@ -181,35 +194,46 @@ func (s *CacheReceptor) setOnCache() {
 		if group.MattermostID != "" {
 			mattermostCached[group.GroupName][group.UserId] = group.MattermostID
 		}
+		if group.BaleID != "" {
+			baleCached[group.GroupName][group.UserId] = group.BaleID
+		}
 	}
 
-	for groupName, _ := range mobileCached {
-		err := s.Cache.Set("mobiles_"+groupName, mobileCached[groupName], 0)
-		if err != nil {
-			return
-		}
+	// Miss first so a deleted group or a removed member cannot be served, then fill.
+	for _, key := range s.keys {
+		s.Cache.Delete(key)
 	}
-	for groupName, _ := range emailCached {
-		err := s.Cache.Set("emails_"+groupName, emailCached[groupName], 0)
-		if err != nil {
-			return
-		}
+	s.keys = nil
+
+	if err := s.store("mobiles_", mobileCached); err != nil {
+		return
 	}
-	for groupName, _ := range telegramCached {
-		err := s.Cache.Set("telegrams_"+groupName, telegramCached[groupName], 0)
-		if err != nil {
-			return
-		}
+	if err := s.store("emails_", emailCached); err != nil {
+		return
 	}
-	for groupName, _ := range mattermostCached {
-		err := s.Cache.Set("mattermost_"+groupName, mattermostCached[groupName], 0)
-		if err != nil {
-			return
-		}
+	if err := s.store("telegram_", telegramCached); err != nil {
+		return
+	}
+	if err := s.store("mattermost_", mattermostCached); err != nil {
+		return
+	}
+	if err := s.store("bale_", baleCached); err != nil {
+		return
 	}
 
 	s.Logger.Info("Finished Cache Receptors Job at %v", time.Now())
+}
 
+func (s *CacheReceptor) store(prefix string, data map[string]map[string]string) error {
+	for groupName, values := range data {
+		key := prefix + groupName
+		if err := s.Cache.Set(key, values, 0); err != nil {
+			s.Logger.Errorw("failed to set receptor cache", "key", key, "error", err)
+			return err
+		}
+		s.keys = append(s.keys, key)
+	}
+	return nil
 }
 
 func (s *CacheReceptor) GetNumbers(name string) (map[string]string, error) {
@@ -233,14 +257,19 @@ func (s *CacheReceptor) Get(model string, groupName string) (map[string]string, 
 	case "mail":
 		query = "emails_"
 	case "telegram":
-		query = "telegrams_"
+		query = "telegram_"
 	case "mattermost":
 		query = "mattermost_"
+	case "bale":
+		query = "bale_"
 	default:
 		return nil, false
 	}
+	s.Logger.Debugw("Getting receptors from cache", "model", model, "groupName", groupName, "query", query)
 	question := query + groupName
+	s.Logger.Debugw("Getting receptors from cache", "question", question)
 	resp, ok := s.Cache.Get(question)
+	s.Logger.Debugw("Getting receptors from cache", "resp", resp, "ok", ok)
 	if !ok {
 		s.setOnCache()
 		resp, ok = s.Cache.Get(question)

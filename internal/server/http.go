@@ -8,6 +8,7 @@ import (
 	"github.com/root-ali/iris/pkg/groups"
 	"github.com/root-ali/iris/pkg/health_check"
 	"github.com/root-ali/iris/pkg/http"
+	"github.com/root-ali/iris/pkg/message"
 	"github.com/root-ali/iris/pkg/notifications"
 	"github.com/root-ali/iris/pkg/roles"
 	"github.com/root-ali/iris/pkg/storage/postgresql"
@@ -23,15 +24,16 @@ type Deps struct {
 	ProviderService notifications.ProviderServiceInterface
 	AdminPass       string
 	GinMode         string
+	GroupCache      groups.ReceptorCache
 }
 
 func RegisterRoutes(d Deps) *gin.Engine {
 	alertService := alerts.NewAlertService(d.Logger, d.Repos)
 	healthService := health_check.NewHealthService(d.Logger, d.Repos)
 	roleService := roles.NewRolesService(d.Logger, d.Repos)
-	userService := user.NewUserService(d.Repos, roleService, d.Logger)
+	userService := user.NewUserService(d.Repos, roleService, d.GroupCache, d.Logger)
 	authService := auth.NewAuthService(d.JWTSecret, roleService, d.Logger)
-	groupService := groups.NewGroupService(d.Logger, d.Repos)
+	groupService := groups.NewGroupService(d.Logger, d.Repos, d.GroupCache)
 	captchaSvc := captcha.NewCaptchaService(d.Logger)
 
 	if err := roleService.InitiateDefaultRoles(); err != nil {
@@ -49,6 +51,7 @@ func RegisterRoutes(d Deps) *gin.Engine {
 		GR:            groupService,
 		CS:            captchaSvc,
 		PS:            d.ProviderService,
+		MS:            message.NewService(d.Repos, d.Logger),
 		AdminPassword: d.AdminPass,
 		GinMode:       d.GinMode,
 		SignupEnabled: d.SignupEnabled,

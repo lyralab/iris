@@ -70,6 +70,28 @@ func (s *Storage) ListMessages() ([]*message.Message, error) {
 	return msgs, nil
 }
 
+// ListMessagesBySender returns the latest messages sent through a provider, newest first.
+// users.deleted_at is deliberately ignored so the user name always resolves.
+func (s *Storage) ListMessagesBySender(sender string, limit int) ([]message.Sent, error) {
+	msgs := make([]message.Sent, 0, limit)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	result := s.db.WithContext(ctx).
+		Table("message m").
+		Select(`m.receptor, COALESCE(u.user_name, '') AS user_name, m.status,
+			COALESCE(m.response, '') AS response, m.message, m.created_at`).
+		Joins("LEFT JOIN users u ON u.id = m.user_id").
+		Where("m.sender = ?", sender).
+		Order("m.created_at DESC").
+		Limit(limit).
+		Scan(&msgs)
+
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return msgs, nil
+}
+
 func (s *Storage) ListNotFinishedMessages() ([]message.Message, error) {
 	var msgs []message.Message
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)

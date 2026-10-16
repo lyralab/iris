@@ -5,11 +5,11 @@ type Postgres struct {
 	Port string `env:"POSTGRES_PORT" koanf:"port"`
 	Name string `env:"POSTGRES_DATABASE_NAME" koanf:"db_name"`
 	User string `env:"POSTGRES_USER" koanf:"user"`
-	Pass string `env:"POSTGRES_PASS" koanf:"pass"`
+	Pass string `env:"POSTGRES_PASS" koanf:"password"`
 	SSL  bool   `env:"POSTGRES_SSL" envDefault:"false" koanf:"ssl"`
 }
 
-type HTTP struct {
+type Server struct {
 	Port      string `env:"HTTP_PORT" envDefault:"9090" koanf:"port"`
 	AdminPass string `env:"ADMIN_PASS" koanf:"admin_pass"`
 }
@@ -28,14 +28,20 @@ type Notifications struct {
 		Priority int    `env:"ASIATECH_PRIORITY" envDefault:"4" koanf:"priority"`
 		Enabled  bool   `env:"ASIATECH_ENABLED" envDefault:"false" koanf:"enabled"`
 	} `knoanf:"asiatech"`
+	Bale struct {
+		URL      string `env:"BALE_URL" koanf:"url"`
+		Token    string `env:"BALE_TOKEN" koanf:"token"`
+		Priority int    `env:"BALE_PRIORITY" envDefault:"5" koanf:"priority"`
+		Enabled  bool   `env:"BALE_ENABLED" envDefault:"false" koanf:"enabled"`
+	} `koanf:"bale"`
 	Smsir struct {
-		ApiKey     string `env:"SMSIR_API_TOKEN" koanf:"api_key"`
+		ApiKey     string `env:"SMSIR_API_TOKEN" koanf:"apikey"`
 		LineNumber string `env:"SMSIR_LINE_NUMBER" koanf:"line_number"`
 		Enabled    bool   `env:"SMSIR_ENABLED" envDefault:"false" koanf:"enabled"`
 		Priority   int    `env:"SMSIR_PRIORITY" envDefault:"2" koanf:"priority"`
 	} `koanf:"smsir"`
 	Kavenegar struct {
-		ApiToken string `env:"KAVENEGAR_API_TOKEN" koanf:"api_token"`
+		ApiToken string `env:"KAVENEGAR_API_TOKEN" koanf:"token"`
 		Sender   string `env:"KAVENEGAR_SENDER" envDefault:"" koanf:"sender"`
 		Enabled  bool   `env:"KAVENEGAR_ENABLED" envDefault:"true" koanf:"enabled"`
 		Priority int    `env:"KAVENEGAR_PRIORITY" envDefault:"1" koanf:"priority"`
@@ -77,7 +83,7 @@ type Scheduler struct {
 		Interval      string `env:"MOBILE_SCHEDULER_INTERVAL" envDefault:"600s" koanf:"interval"`
 		Workers       int    `env:"MOBILE_SCHEDULER_WORKERS" envDefault:"1" koanf:"workers"`
 		QueueSize     int    `env:"MOBILE_SCHEDULER_QUEUE_SIZE" envDefault:"1" koanf:"queue_size"`
-		CacheCapacity int    `env:"MOBILE_SCHEDULER_CACHE_CAPACITY" envDefault:"10" koanf:"cache_capacity"`
+		CacheCapacity int    `env:"MOBILE_SCHEDULER_CACHE_CAPACITY" envDefault:"100" koanf:"cache_capacity"`
 	} `koanf:"mobile_scheduler"`
 	AlertScheduler struct {
 		StartAt   string `env:"ALERT_SCHEDULER_START_AT" envDefault:"3s" koanf:"start_at"`
@@ -96,7 +102,7 @@ type Scheduler struct {
 
 type Config struct {
 	Postgres      Postgres      `koanf:"postgres"`
-	HTTP          HTTP          `koanf:"http"`
+	Server        Server        `koanf:"server"`
 	Go            GoEnv         `koanf:"go"`
 	Notifications Notifications `koanf:"notifications"`
 	Scheduler     Scheduler     `koanf:"scheduler"`

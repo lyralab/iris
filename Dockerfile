@@ -1,24 +1,24 @@
-FROM golang:1.25-alpine as build
+FROM harbor.jibit.cloud/library/chainguard/go:latest-dev AS build
 
-WORKDIR /go/src/app
+WORKDIR /app
 COPY . .
 
-env GOPROXY=https://nexus.jibit.cloud/repository/gobit/
+ENV GOPROXY=https://nexus.jibit.cloud/repository/gobit/
 RUN go mod download
-RUN CGO_ENABLED=0;GOEXPERIMENT=greenteagc go build -o /go/bin/app ./cmd/server/main.go
+RUN CGO_ENABLED=0 go build -o /usr/bin/app ./cmd/server/main.go
 
 
-FROM node:20-alpine as node_build
-WORKDIR /app/web
-COPY web/package*.json ./
+FROM harbor.jibit.cloud/library/chainguard/node:latest-dev AS node_build
+WORKDIR /app
+COPY --chown=node:node web/package*.json ./
 RUN npm install
-COPY web/ .
+COPY --chown=node:node web/ .
 RUN npm run build
 
 # Now copy it into our base image.
-FROM chainguard/wolfi-base:latest
-COPY --from=build /go/src/app/migrations /migrations
-COPY --from=build /go/src/app/assets /assets
-COPY --from=node_build /app/web/build /web/build
-COPY --from=build /go/bin/app /
+FROM harbor.jibit.cloud/library/chainguard/static:latest
+COPY --from=build /app/migrations /migrations
+COPY --from=build /app/assets /assets
+COPY --from=node_build /app/build /web/build
+COPY --from=build /usr/bin/app /app
 CMD ["/app"]

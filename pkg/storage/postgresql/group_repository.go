@@ -19,6 +19,9 @@ func (s *Storage) AddGroup(g *groups.Group) error {
 func (s *Storage) GetGroupById(id string) (*groups.Group, error) {
 	g := &groups.Group{ID: id}
 	result := s.db.First(g)
+	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		return nil, iris_error.ErrGroupNotFound
+	}
 	if result.Error != nil {
 		return nil, result.Error
 	}

@@ -29,8 +29,17 @@ go.work.sum
 .env
 
 # Editor/IDE
- .idea/
-# .vscode/
+.idea/
+.vscode/
+.cursor/
+
+# Local agent instructions
+.agents/
+.gemini/
+AGENTS.md
+CLAUDE.md
+SKILL.md
+
 # sample http files
 .http
 

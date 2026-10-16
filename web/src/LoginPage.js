@@ -16,14 +16,6 @@ const LoginPage = () => {
     const [captchaLoading, setCaptchaLoading] = useState(false);
     const navigate = useNavigate();
 
-    useEffect(() => {
-        if (isAuthenticated()) {
-            navigate('/dashboard');
-        } else {
-            fetchCaptcha();
-        }
-    }, [navigate]);
-
     const fetchCaptcha = async (clearError = true) => {
         setCaptchaLoading(true);
         if (clearError) {
@@ -43,6 +35,14 @@ const LoginPage = () => {
             setCaptchaLoading(false);
         }
     };
+
+    useEffect(() => {
+        if (isAuthenticated()) {
+            navigate('/dashboard');
+        } else {
+            fetchCaptcha();
+        }
+    }, [navigate]);
 
     const handleRefreshCaptcha = () => {
         setCaptchaAnswer('');

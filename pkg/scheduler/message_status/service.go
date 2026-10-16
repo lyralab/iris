@@ -182,7 +182,7 @@ func (s *Service) checkMessageStatus(msg message.Message) {
 		s.logger.Errorw("failed to get message status from provider",
 			"message", msg.Id, "error", err)
 		err = s.messageRepo.UpdateMessageStatus(&msg,
-			0,
+			message.TypeMessageStatusSent,
 			"Failed to get status from provider: "+err.Error())
 		if err != nil {
 			s.logger.Errorw("failed to update message status to Failed for message",
@@ -208,7 +208,7 @@ func (s *Service) checkMessageStatus(msg message.Message) {
 		}
 		return
 	} else {
-		err := s.messageRepo.UpdateMessageStatus(&msg, 0, "Sent")
+		err := s.messageRepo.UpdateMessageStatus(&msg, message.TypeMessageStatusSent, "Sent")
 		if err != nil {
 			s.logger.Errorw("failed to update message status to Sent for message",
 				"message", msg.Id, "error", err.Error())

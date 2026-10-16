@@ -1,7 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import apiService from '../utils/apiService';
 import Layout from '../components/Layout';
+import useAutoRefresh, { REFRESH_OPTIONS, readRefreshMs, formatLastUpdated, latestOnly } from '../utils/useAutoRefresh';
+import { byNewest } from '../utils/alertSort';
 import './Dashboard.css';
+
+const SEVERITIES = [
+    { key: 'critical', label: 'Critical' },
+    { key: 'high', label: 'High' },
+    { key: 'warning', label: 'Warning' },
+    { key: 'medium', label: 'Medium' },
+    { key: 'low', label: 'Low' },
+    { key: 'page', label: 'Page' },
+];
 
 const Dashboard = () => {
     const [alerts, setAlerts] = useState({ critical: 0, high: 0, medium: 0, low: 0, page: 0, warning: 0 });
@@ -11,64 +23,89 @@ const Dashboard = () => {
     const [resolvedLimit, setResolvedLimit] = useState(10);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [refreshMs, setRefreshMs] = useState(() => readRefreshMs('iris.dashboard.refreshMs'));
+    const [lastUpdated, setLastUpdated] = useState(null);
+    const [refreshError, setRefreshError] = useState(null);
+    const [startRequest] = useState(latestOnly);
+    const manualPending = useRef(false);
 
-    useEffect(() => {
-        fetchDashboardData();
-    }, [firingLimit, resolvedLimit]);
-
-    const fetchDashboardData = async () => {
-        setLoading(true);
-        setError(null);
+    const fetchDashboardData = useCallback(async (silent = false) => {
+        // A background refresh must not supersede a pending manual load and hide its error.
+        if (silent && manualPending.current) return;
+        const isLatest = startRequest();
+        if (!silent) {
+            manualPending.current = true;
+            setLoading(true);
+            setError(null);
+        } else {
+            setRefreshError(null);
+        }
 
         try {
-            // Fetch alert summary
             const alertData = await apiService.getAlertSummary();
-            const mappedData = {};
-            let totalActive = 0;
+            const detailedAlerts = await apiService.getAlerts({ status: 'firing', limit: firingLimit * 2, page: 1 })
+                .catch((e) => {
+                    console.log('Detailed alerts API error:', e);
+                    return null;
+                });
+            const resolvedData = await apiService.getAlerts({ status: 'resolved', limit: resolvedLimit, page: 1 })
+                .catch((e) => {
+                    console.log('Resolved alerts API error:', e);
+                    return null;
+                });
+            if (!isLatest()) return;
 
+            const mappedData = {};
             // Handle null or undefined severites array
             if (alertData && alertData.severites && Array.isArray(alertData.severites)) {
                 alertData.severites.forEach(item => {
                     if (item && item.severity && typeof item.count === 'number') {
                         mappedData[item.severity] = item.count;
-                        totalActive += item.count;
                     }
                 });
             }
-
             setAlerts(mappedData);
 
-            // Fetch detailed firing alerts for critical and warning
-            try {
-                const detailedAlerts = await apiService.getAlerts({ status: 'firing', limit: firingLimit * 2, page: 1 });
-                if (detailedAlerts && detailedAlerts.alerts && Array.isArray(detailedAlerts.alerts)) {
-                    // Filter for critical and warning, sort by created date
-                    const filteredAlerts = detailedAlerts.alerts
-                        .filter(alert => alert && (alert.severity === 'critical' || alert.severity === 'warning'))
-                        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-                        .slice(0, firingLimit);
-                    setTopAlerts(filteredAlerts);
-                }
-            } catch (e) {
-                console.log('Detailed alerts API error:', e);
-                setTopAlerts([]);
-            }
+            // Critical and warning firing alerts only
+            const firing = detailedAlerts && Array.isArray(detailedAlerts.alerts) ? detailedAlerts.alerts : [];
+            setTopAlerts(
+                firing
+                    .filter(alert => alert && (alert.severity === 'critical' || alert.severity === 'warning'))
+                    .sort(byNewest)
+                    .slice(0, firingLimit),
+            );
 
-            // Fetch resolved alerts
-            try {
-                const resolvedData = await apiService.getAlerts({ status: 'resolved', limit: resolvedLimit, page: 1 });
-                if (resolvedData && resolvedData.alerts && Array.isArray(resolvedData.alerts)) {
-                    setResolvedAlerts(resolvedData.alerts);
-                }
-            } catch (e) {
-                console.log('Resolved alerts API error:', e);
-                setResolvedAlerts([]);
-            }
+            const resolved = resolvedData && Array.isArray(resolvedData.alerts) ? resolvedData.alerts : [];
+            setResolvedAlerts([...resolved].sort(byNewest));
 
+            setLastUpdated(new Date());
         } catch (e) {
-            setError(e.message);
+            if (!isLatest()) return;
+            if (silent) {
+                setRefreshError(e.message);
+            } else {
+                setError(e.message);
+            }
         } finally {
-            setLoading(false);
+            if (isLatest()) {
+                manualPending.current = false;
+                setLoading(false);
+            }
+        }
+    }, [firingLimit, resolvedLimit, startRequest]);
+
+    useEffect(() => {
+        fetchDashboardData(false);
+    }, [fetchDashboardData]);
+
+    const refresh = useAutoRefresh(() => fetchDashboardData(true), refreshMs);
+
+    const onRefreshChange = (value) => {
+        setRefreshMs(value);
+        try {
+            localStorage.setItem('iris.dashboard.refreshMs', String(value));
+        } catch (e) {
+            // ignore persistence errors
         }
     };
 
@@ -103,58 +140,48 @@ const Dashboard = () => {
     return (
         <Layout>
             <div className="dashboard">
-                <h1>Dashboard</h1>
-
-                <div className="alert-summary">
-                    <h2>Alert Summary by Severity</h2>
-                    <div className="summary-items">
-                        <div className="summary-item critical">
-                            <div className="item-top">
-                                <div className="icon">🔥</div>
-                                <div className="count">{alerts.critical || 0}</div>
-                            </div>
-                            <div className="label">Critical</div>
-                        </div>
-                        <div className="summary-item high">
-                            <div className="item-top">
-                                <div className="icon">⚠️</div>
-                                <div className="count">{alerts.high || 0}</div>
-                            </div>
-                            <div className="label">High</div>
-                        </div>
-                        <div className="summary-item medium">
-                            <div className="item-top">
-                                <div className="icon">🟡</div>
-                                <div className="count">{alerts.medium || 0}</div>
-                            </div>
-                            <div className="label">Medium</div>
-                        </div>
-                        <div className="summary-item warning">
-                            <div className="item-top">
-                                <div className="icon">🟡</div>
-                                <div className="count">{alerts.warning || 0}</div>
-                            </div>
-                            <div className="label">Warning</div>
-                        </div>
-                        <div className="summary-item low">
-                            <div className="item-top">
-                                <div className="icon">🟢</div>
-                                <div className="count">{alerts.low || 0}</div>
-                            </div>
-                            <div className="label">Low</div>
-                        </div>
-                        <div className="summary-item page">
-                            <div className="item-top">
-                                <div className="icon">✉️</div>
-                                <div className="count">{alerts.page || 0}</div>
-                            </div>
-                            <div className="label">Page</div>
-                        </div>
+                <div className="page-header">
+                    <h1>Dashboard</h1>
+                    <div className="header-actions refresh-controls">
+                        {lastUpdated && (
+                            <span className="last-updated">Last updated {formatLastUpdated(lastUpdated)}</span>
+                        )}
+                        <label className="filter-field">
+                            Refresh
+                            <select
+                                className="select-input"
+                                value={refreshMs}
+                                onChange={(e) => onRefreshChange(Number(e.target.value))}
+                            >
+                                {REFRESH_OPTIONS.map((o) => (
+                                    <option key={o.value} value={o.value}>{o.label}</option>
+                                ))}
+                            </select>
+                        </label>
+                        <button className="btn-secondary" onClick={refresh}>
+                            Refresh
+                        </button>
                     </div>
                 </div>
+                {refreshError && <div className="refresh-hint">Background refresh failed: {refreshError}</div>}
 
-                {topAlerts.length > 0 && (
-                    <div className="top-alerts-section">
+                <section className="active-alerts">
+                    <h2>Active alerts</h2>
+                    <div className="stats-grid">
+                        {SEVERITIES.map((item) => (
+                            <Link
+                                key={item.key}
+                                to={`/alerts?severity=${item.key}`}
+                                className={`stat-card stat-${item.key}`}
+                            >
+                                <span className="stat-label">{item.label}</span>
+                                <span className="stat-value">{alerts[item.key] || 0}</span>
+                            </Link>
+                        ))}
+                    </div>
+                </section>
+
+                <div className="top-alerts-section">
                         <div className="section-header">
                             <h2>Latest Critical & Warning Alerts ({topAlerts.length})</h2>
                             <div className="alert-config">
@@ -172,41 +199,43 @@ const Dashboard = () => {
                                 </select>
                             </div>
                         </div>
-                        <div className="alerts-table-container">
-                            <table className="alerts-table">
-                                <thead>
-                                    <tr>
-                                        <th>Alert Name</th>
-                                        <th>Severity</th>
-                                        <th>Status</th>
-                                        <th>Started At</th>
-                                        <th>Description</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {topAlerts.map((alert, index) => (
-                                        <tr key={alert.id || index}>
-                                            <td className="alert-name">{alert.name || alert.alert_name || 'Unknown'}</td>
-                                            <td>
-                                                <span className={`severity-badge ${getSeverityClass(alert.severity)}`}>
-                                                    {alert.severity || 'N/A'}
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <span className="status-badge firing">Firing</span>
-                                            </td>
-                                            <td>{new Date(alert.starts_at || alert.created_at).toLocaleString()}</td>
-                                            <td className="alert-description">{alert.description || alert.summary || 'No description'}</td>
+                        {topAlerts.length === 0 ? (
+                            <p className="empty">No firing alerts</p>
+                        ) : (
+                            <div className="alerts-table-container">
+                                <table className="alerts-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Alert Name</th>
+                                            <th>Severity</th>
+                                            <th>Status</th>
+                                            <th>Started At</th>
+                                            <th>Description</th>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                )}
+                                    </thead>
+                                    <tbody>
+                                        {topAlerts.map((alert, index) => (
+                                            <tr key={alert.id || index}>
+                                                <td className="alert-name">{alert.name || alert.alert_name || 'Unknown'}</td>
+                                                <td>
+                                                    <span className={`severity-badge ${getSeverityClass(alert.severity)}`}>
+                                                        {alert.severity || 'N/A'}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <span className="status-badge firing">Firing</span>
+                                                </td>
+                                                <td>{new Date(alert.starts_at || alert.created_at).toLocaleString()}</td>
+                                                <td className="alert-description">{alert.description || alert.summary || 'No description'}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                </div>
 
-                {resolvedAlerts.length > 0 && (
-                    <div className="resolved-alerts-section">
+                <div className="resolved-alerts-section">
                         <div className="section-header">
                             <h2>Latest Resolved Alerts ({resolvedAlerts.length})</h2>
                             <div className="alert-config">
@@ -224,38 +253,41 @@ const Dashboard = () => {
                                 </select>
                             </div>
                         </div>
-                        <div className="alerts-table-container">
-                            <table className="alerts-table">
-                                <thead>
-                                    <tr>
-                                        <th>Alert Name</th>
-                                        <th>Severity</th>
-                                        <th>Status</th>
-                                        <th>Resolved At</th>
-                                        <th>Description</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {resolvedAlerts.map((alert, index) => (
-                                        <tr key={alert.id || index}>
-                                            <td className="alert-name">{alert.name || alert.alert_name || 'Unknown'}</td>
-                                            <td>
-                                                <span className={`severity-badge ${getSeverityClass(alert.severity)}`}>
-                                                    {alert.severity || 'N/A'}
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <span className="status-badge resolved">Resolved</span>
-                                            </td>
-                                            <td>{new Date(alert.ends_at || alert.updated_at).toLocaleString()}</td>
-                                            <td className="alert-description">{alert.description || alert.summary || 'No description'}</td>
+                        {resolvedAlerts.length === 0 ? (
+                            <p className="empty">No resolved alerts</p>
+                        ) : (
+                            <div className="alerts-table-container">
+                                <table className="alerts-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Alert Name</th>
+                                            <th>Severity</th>
+                                            <th>Status</th>
+                                            <th>Resolved At</th>
+                                            <th>Description</th>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                )}
+                                    </thead>
+                                    <tbody>
+                                        {resolvedAlerts.map((alert, index) => (
+                                            <tr key={alert.id || index}>
+                                                <td className="alert-name">{alert.name || alert.alert_name || 'Unknown'}</td>
+                                                <td>
+                                                    <span className={`severity-badge ${getSeverityClass(alert.severity)}`}>
+                                                        {alert.severity || 'N/A'}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <span className="status-badge resolved">Resolved</span>
+                                                </td>
+                                                <td>{new Date(alert.ends_at || alert.updated_at).toLocaleString()}</td>
+                                                <td className="alert-description">{alert.description || alert.summary || 'No description'}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                </div>
             </div>
         </Layout>
     );

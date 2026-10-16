@@ -21,6 +21,7 @@ type GroupRepositoryInterface interface {
 type GroupServiceInterface interface {
 	CreateGroup(*Group) error
 	GetGroup(string) (*Group, error)
+	GetGroupById(string) (*Group, error)
 	GetAllGroups() ([]*Group, error)
 	DeleteGroup(*Group) error
 	RemoveUser(*Group, string) error
@@ -29,9 +30,15 @@ type GroupServiceInterface interface {
 	ListGroupByUser(string) ([]*Group, error)
 }
 
+// ReceptorCache misses and refills notification receptors after a group change.
+type ReceptorCache interface {
+	Refresh()
+}
+
 type GroupService struct {
-	log *zap.SugaredLogger
-	gr  GroupRepositoryInterface
+	log   *zap.SugaredLogger
+	gr    GroupRepositoryInterface
+	cache ReceptorCache
 }
 type Group struct {
 	ID          string    `json:"id,omitempty" gorm:"column:id;primary_key" binding:"-"`
@@ -39,7 +46,8 @@ type Group struct {
 	Description string    `json:"description" gorm:"column:description" binding:"-"`
 	CreatedAt   time.Time `json:"-" gorm:"created_at" binding:"-"`
 	ModifiedAt  time.Time `json:"-" gorm:"modified_at" binding:"-"`
-	gorm.DeletedAt
+	// Named, not embedded: an embedded DeletedAt promotes its MarshalJSON and the whole Group encodes as null.
+	DeletedAt gorm.DeletedAt `json:"-"`
 }
 
 type UserGroup struct {

@@ -36,6 +36,11 @@ type CacheReceptor struct {
 	taskCh chan struct{}
 	wg     sync.WaitGroup
 
+	// refreshMu serializes scheduler ticks and group-change refills.
+	refreshMu sync.Mutex
+	// keys are the receptor entries written by the last successful fill.
+	keys []string
+
 	Logger *zap.SugaredLogger
 }
 
@@ -47,6 +52,7 @@ type GroupWithMobiles struct {
 	Email        string `gorm:"column:email,type:varchar"`
 	TelegramID   string `gorm:"column:telegram_id,type:varchar"`
 	MattermostID string `gorm:"column:mattermost_id,type:varchar"`
+	BaleID       string `gorm:"column:bale_id,type:varchar"`
 }
 
 type Config struct {

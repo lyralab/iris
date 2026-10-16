@@ -14,14 +14,12 @@ const Profile = () => {
         lastname: '',
         email: '',
         mobile_number: '',
-        telegram_id: ''
+        telegram_id: '',
+        mattermost_id: '',
+        bale_id: ''
     });
     const [saving, setSaving] = useState(false);
     const [saveError, setSaveError] = useState(null);
-
-    useEffect(() => {
-        fetchUserProfile();
-    }, []);
 
     const fetchUserProfile = async () => {
         setLoading(true);
@@ -36,6 +34,10 @@ const Profile = () => {
         }
     };
 
+    useEffect(() => {
+        fetchUserProfile();
+    }, []);
+
     const openEditModal = () => {
         setEditForm({
             username: user.username || '',
@@ -43,7 +45,9 @@ const Profile = () => {
             lastname: user.lastName || user.lastname || '',
             email: user.email || '',
             mobile_number: user.mobile || user.mobile_number || '',
-            telegram_id: user.telegramID || user.telegram_id || ''
+            telegram_id: user.telegramID || user.telegram_id || '',
+            mattermost_id: user.mattermostID || user.mattermost_id || '',
+            bale_id: user.baleID || user.bale_id || ''
         });
         setSaveError(null);
         setShowEditModal(true);
@@ -170,6 +174,14 @@ const Profile = () => {
                                         <label>Telegram ID</label>
                                         <span>{user.telegramID || user.telegram_id || '-'}</span>
                                     </div>
+                                    <div className="info-row">
+                                        <label>Mattermost ID</label>
+                                        <span>{user.mattermostID || user.mattermost_id || '-'}</span>
+                                    </div>
+                                    <div className="info-row">
+                                        <label>Bale ID</label>
+                                        <span>{user.baleID || user.bale_id || '-'}</span>
+                                    </div>
                                 </div>
                             </div>
 
@@ -191,8 +203,8 @@ const Profile = () => {
                                         }) : '-'}</span>
                                     </div>
                                 </div>
-                                <button className="edit-profile-btn" onClick={openEditModal}>
-                                    ✏️ Edit Profile
+                                <button className="btn-primary edit-profile-btn" onClick={openEditModal}>
+                                    Edit Profile
                                 </button>
                             </div>
                         </div>
@@ -258,16 +270,41 @@ const Profile = () => {
                                         name="telegram_id"
                                         value={editForm.telegram_id}
                                         onChange={handleInputChange}
-                                        placeholder="Enter Telegram ID"
+                                        pattern="-?[0-9]+"
+                                        maxLength="50"
+                                        placeholder="User or channel ID"
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label>Mattermost ID</label>
+                                    <input
+                                        type="text"
+                                        name="mattermost_id"
+                                        value={editForm.mattermost_id}
+                                        onChange={handleInputChange}
+                                        maxLength="50"
+                                        placeholder="Mattermost user or channel ID"
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label>Bale ID</label>
+                                    <input
+                                        type="text"
+                                        name="bale_id"
+                                        value={editForm.bale_id}
+                                        onChange={handleInputChange}
+                                        pattern="-?[0-9]+"
+                                        maxLength="50"
+                                        placeholder="User or channel ID"
                                     />
                                 </div>
                             </div>
                             <div className="modal-footer">
-                                <button className="modal-cancel-btn" onClick={closeEditModal}>
+                                <button className="btn-secondary" onClick={closeEditModal}>
                                     Cancel
                                 </button>
                                 <button
-                                    className="modal-save-btn"
+                                    className="btn-primary"
                                     onClick={handleSave}
                                     disabled={saving}
                                 >

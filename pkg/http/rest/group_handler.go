@@ -2,18 +2,21 @@ package rest
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	iris_error "github.com/root-ali/iris/pkg/errors"
 	"github.com/root-ali/iris/pkg/groups"
 	"github.com/root-ali/iris/pkg/user"
 	"go.uber.org/zap"
 )
 
 type GroupsResponse struct {
-	GroupID   string `json:"group_id"`
-	GroupName string `json:"group_name"`
+	GroupID     string `json:"group_id"`
+	GroupName   string `json:"group_name"`
+	Description string `json:"description"`
 }
 
 type CreateGroupRequestBody struct {
@@ -80,8 +83,16 @@ func DeleteGroupHandler(gr groups.GroupServiceInterface, logger *zap.SugaredLogg
 
 func GetGroupHandler(gr groups.GroupServiceInterface, logger *zap.SugaredLogger) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		groupId := c.Query("id")
-		g, err := gr.GetGroup(groupId)
+		groupId := c.Param("group_id")
+		if groupId == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "group_id is required"})
+			return
+		}
+		g, err := gr.GetGroupById(groupId)
+		if errors.Is(err, iris_error.ErrGroupNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "group not found"})
+			return
+		}
 		if err != nil {
 			logger.Errorw("Failed to get group", "error", err)
 			c.JSON(400, gin.H{"error": "Failed to get group"})
@@ -101,7 +112,7 @@ func GetAllGroupHandler(gr groups.GroupServiceInterface, logger *zap.SugaredLogg
 		}
 		var response []GroupsResponse
 		for _, g := range groupIDs {
-			response = append(response, GroupsResponse{GroupID: g.ID, GroupName: g.Name})
+			response = append(response, GroupsResponse{GroupID: g.ID, GroupName: g.Name, Description: g.Description})
 		}
 		c.JSON(200, gin.H{"data": response, "status": "success"})
 	}
@@ -119,7 +130,7 @@ func GetUserGroupsHandler(gr groups.GroupServiceInterface, logger *zap.SugaredLo
 		}
 		var response []GroupsResponse
 		for _, g := range groupIDs {
-			response = append(response, GroupsResponse{GroupID: g.ID, GroupName: g.Name})
+			response = append(response, GroupsResponse{GroupID: g.ID, GroupName: g.Name, Description: g.Description})
 		}
 		c.JSON(200, gin.H{"groups": response, "status": "success"})
 		return
@@ -149,6 +160,25 @@ func AddUserToGroupHandler(gr groups.GroupServiceInterface, logger *zap.SugaredL
 			c.AbortWithStatusJSON(400, gin.H{"error": "Failed to add user to group"})
 			return
 		}
+		c.JSON(http.StatusOK, gin.H{"status": "success"})
+	}
+}
+
+func RemoveUserFromGroupHandler(gr groups.GroupServiceInterface, logger *zap.SugaredLogger) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		groupId := c.Param("group_id")
+		userId := c.Param("user_id")
+		if userId == "" {
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "user_id is required"})
+			return
+		}
+		err := gr.RemoveUser(&groups.Group{ID: groupId}, userId)
+		if err != nil {
+			logger.Errorw("Failed to remove user from group", "error", err)
+			c.AbortWithStatusJSON(400, gin.H{"error": "Failed to remove user from group"})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"status": "success"})
 	}
 }
 

@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"testing"
 	"time"
 
@@ -180,10 +181,10 @@ func TestSend_FiringAlert_MockServer(t *testing.T) {
 
 	service := &Service{
 		host:     server.URL,
-		username: "testuser",
-		password: "testpass",
-		scope:    "testscope",
-		sender:   "testsender",
+		username: "jibit",
+		password: "LrThD@?rbz3F",
+		scope:    "ApiAccess",
+		sender:   "9890000476",
 		priority: 1,
 		c:        mockCache,
 		logger:   logger,
@@ -218,10 +219,11 @@ func TestSend_ResolvedAlert_MockServer(t *testing.T) {
 		case "/api/1/message/send":
 			// Verify the message format for resolved alert
 			body, _ := io.ReadAll(r.Body)
-			var msgBody SendMessage
-			json.Unmarshal(body, &msgBody)
-
-			assert.Contains(t, msgBody.Text, "✅ Resolved")
+			var msgBody []SendMessage
+			assert.NoError(t, json.Unmarshal(body, &msgBody))
+			if assert.Len(t, msgBody, 1) {
+				assert.Contains(t, msgBody[0].Text, "✅ Resolved")
+			}
 
 			w.Header().Set("Content-Type", "application/json")
 			response := SendMessageResponse{
@@ -294,15 +296,16 @@ func TestSend_MessageFormatting_MockServer(t *testing.T) {
 				case "/api/1/message/send":
 					// Verify the message format
 					body, _ := io.ReadAll(r.Body)
-					var msgBody SendMessage
-					json.Unmarshal(body, &msgBody)
-
-					assert.Contains(t, msgBody.Text, tt.expectedText)
-					assert.Contains(t, msgBody.Text, "Test Alert")
-					assert.Contains(t, msgBody.Text, "Test message content")
-					assert.Contains(t, msgBody.Text, "Time: 2023-12-14 10:00:00")
-					assert.Equal(t, "testsender", msgBody.Sender)
-					assert.Equal(t, []string{"09123456789"}, msgBody.Receptor)
+					var msgBody []SendMessage
+					assert.NoError(t, json.Unmarshal(body, &msgBody))
+					if assert.Len(t, msgBody, 1) {
+						assert.Contains(t, msgBody[0].Text, tt.expectedText)
+						assert.Contains(t, msgBody[0].Text, "Test Alert")
+						assert.Contains(t, msgBody[0].Text, "Test message content")
+						assert.Contains(t, msgBody[0].Text, "Time: 2023-12-14 10:00:00")
+						assert.Equal(t, "testsender", msgBody[0].Sender)
+						assert.Equal(t, "989123456789", msgBody[0].Receptor) // leading 0 becomes the 98 country code
+					}
 
 					w.Header().Set("Content-Type", "application/json")
 					response := SendMessageResponse{
@@ -495,12 +498,33 @@ func TestGetStatus_FromAPI_GetRejectedStatus(t *testing.T) {
 }
 
 func TestStatus(t *testing.T) {
-	service := &Service{}
+	tests := []struct {
+		name           string
+		deliveryStatus int
+		want           notifications.MessageStatusType
+	}{
+		{"delivered", 1, notifications.TypeMessageStatusDelivered},
+		{"rejected", 5, notifications.TypeMessageStatusFailed},
+		{"still in progress", 2, notifications.TypeMessageStatusSent},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(`{"resultCode":100,"data":[{"id":"m1","deliveryStatus":` +
+					strconv.Itoa(tt.deliveryStatus) + `}]}`))
+			}))
+			defer server.Close()
+			mockCache := &MockCache{}
+			mockCache.On("Get", "asiatech_token").Return("test_token", true)
+			service := &Service{host: server.URL, c: mockCache, logger: zap.NewNop().Sugar()}
 
-	status, err := service.Status("test_message_id")
+			status, err := service.Status("m1")
 
-	assert.NoError(t, err)
-	assert.Equal(t, notifications.TypeMessageStatusDelivered, status)
+			assert.NoError(t, err)
+			assert.Equal(t, tt.want, status)
+		})
+	}
 }
 
 func TestVerify(t *testing.T) {

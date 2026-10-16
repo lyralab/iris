@@ -11,9 +11,11 @@ import (
 	"github.com/root-ali/iris/internal/server"
 	"github.com/root-ali/iris/internal/storage"
 	"github.com/root-ali/iris/pkg/cache"
+	"github.com/root-ali/iris/pkg/errors"
 	"github.com/root-ali/iris/pkg/message"
 	"github.com/root-ali/iris/pkg/notifications"
 	"github.com/root-ali/iris/pkg/notifications/asiatech"
+	"github.com/root-ali/iris/pkg/notifications/bale"
 	"github.com/root-ali/iris/pkg/notifications/kavenegar"
 	"github.com/root-ali/iris/pkg/notifications/mail"
 	"github.com/root-ali/iris/pkg/notifications/mattermost"
@@ -83,6 +85,24 @@ func Init(cfg *config.Config) (*App, error) {
 		logger.Errorw("cache receptors start failed", "error", err)
 		return nil, err
 	}
+
+	// bale notification provider
+	if cfg.Notifications.Bale.Enabled {
+		baleSvc := bale.NewBaleService(
+			cfg.Notifications.Bale.URL,
+			cfg.Notifications.Bale.Token,
+			cfg.Notifications.Bale.Priority,
+			logger)
+		allServices = append(allServices, baleSvc)
+		if v, err := baleSvc.Verify(); err != nil {
+			logger.Errorw("bale verify failed", "error", err)
+		} else {
+			logger.Infow("bale verify success", "v", v)
+		}
+	} else {
+		deactiveProviders = append(deactiveProviders, "Bale")
+	}
+
 	// smsir notification provider
 	if cfg.Notifications.Smsir.Enabled {
 		smsirSvc := smsir.NewSmsirService(
@@ -221,9 +241,12 @@ func Init(cfg *config.Config) (*App, error) {
 	// Disable deactive providers
 	for _, p := range deactiveProviders {
 		err := providerService.DisableProvider(p)
-		if err != nil {
-			logger.Errorw("disable provider failed", "provider", p, "error", err)
-			panic(err)
+		if err == errors.ErrProviderNotFound {
+			logger.Warnw("provider not found to disable", "provider", p)
+		} else if err != nil {
+			logger.Errorw("provider disable failed", "provider", p, "error", err)
+		} else {
+			logger.Infow("provider disabled", "provider", p)
 		}
 	}
 
@@ -274,8 +297,9 @@ func Init(cfg *config.Config) (*App, error) {
 		JWTSecret:       []byte(cfg.JwtSecret),
 		SignupEnabled:   cfg.SignupEnabled,
 		ProviderService: providerService,
-		AdminPass:       cfg.HTTP.AdminPass,
+		AdminPass:       cfg.Server.AdminPass,
 		GinMode:         cfg.Go.Mode, // reuse
+		GroupCache:      cr,
 	})
 
 	return &App{

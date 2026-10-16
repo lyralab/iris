@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -26,8 +27,9 @@ type UserSignupBody struct {
 	Password        string `json:"password" validate:"required,passwordStrength,min=8,max=30"`
 	ConfirmPassword string `json:"confirm-password" validate:"required,eqfield=Password"`
 	Mobile          string `json:"mobile_number,omitempty" validate:"omitempty,len=11,numeric"`
-	TelegramID      string `json:"telegram_id,omitempty" validate:"omitempty,numeric"`
+	TelegramID      string `json:"telegram_id,omitempty" validate:"omitempty,signednumeric"`
 	MattermostID    string `json:"mattermost_id,omitempty" validate:"omitempty"`
+	BaleID          string `json:"bale_id,omitempty" validate:"omitempty,signednumeric"`
 	Email           string `json:"email,omitempty" validate:"omitempty,email"`
 }
 
@@ -37,8 +39,9 @@ type UserUpdateBody struct {
 	LastName     string `json:"lastname,omitempty" validate:"omitempty,min=3,max=30"`
 	Mobile       string `json:"mobile_number,omitempty" validate:"omitempty,len=11,numeric"`
 	Email        string `json:"email,omitempty" validate:"omitempty,email"`
-	TelegramID   string `json:"telegram_id,omitempty" validate:"omitempty,numeric"`
+	TelegramID   string `json:"telegram_id,omitempty" validate:"omitempty,signednumeric"`
 	MattermostID string `json:"mattermost_id,omitempty" validate:"omitempty"`
+	BaleID       string `json:"bale_id,omitempty" validate:"omitempty,signednumeric"`
 }
 
 type UserVerifyBody struct {
@@ -52,7 +55,18 @@ type UserSigninBody struct {
 
 func init() {
 	validate = validator.New()
-	validate.RegisterValidation("passwordStrength", PasswordValidation)
+	if err := validate.RegisterValidation("passwordStrength", PasswordValidation); err != nil {
+		panic(err)
+	}
+	if err := validate.RegisterValidation("signednumeric", signedNumeric); err != nil {
+		panic(err)
+	}
+}
+
+// signedNumeric accepts a user id or a channel id. Telegram channel ids are negative.
+func signedNumeric(fl validator.FieldLevel) bool {
+	_, err := strconv.ParseInt(fl.Field().String(), 10, 64)
+	return err == nil
 }
 
 func PasswordValidation(fl validator.FieldLevel) bool {
@@ -412,13 +426,16 @@ func GetAllUsersHandler(us user.UserInterfaceService, logger *zap.SugaredLogger)
 		userResponse := make([]map[string]interface{}, count)
 		for i, u := range users {
 			userResponse[i] = map[string]interface{}{
-				"id":        u.ID,
-				"username":  u.UserName,
-				"firstName": u.FirstName,
-				"lastName":  u.LastName,
-				"email":     u.Email,
-				"mobile":    u.Mobile,
-				"status":    u.Status,
+				"id":            u.ID,
+				"username":      u.UserName,
+				"firstName":     u.FirstName,
+				"lastName":      u.LastName,
+				"email":         u.Email,
+				"mobile":        u.Mobile,
+				"telegram_id":   u.TelegramID,
+				"mattermost_id": u.MattermostId,
+				"bale_id":       u.BaleID,
+				"status":        u.Status,
 			}
 		}
 		c.JSON(200, gin.H{"status": "OK", "users": userResponse, "count": count})
@@ -441,12 +458,14 @@ func GetUserInfoHandler(us user.UserInterfaceService, logger *zap.SugaredLogger)
 			return
 		}
 		userResponse := map[string]string{
-			"username":   u.UserName,
-			"firstName":  u.FirstName,
-			"lastName":   u.LastName,
-			"email":      u.Email,
-			"mobile":     u.Mobile,
-			"telegramID": u.TelegramID,
+			"username":     u.UserName,
+			"firstName":    u.FirstName,
+			"lastName":     u.LastName,
+			"email":        u.Email,
+			"mobile":       u.Mobile,
+			"telegramID":   u.TelegramID,
+			"mattermostID": u.MattermostId,
+			"bale_id":      u.BaleID,
 		}
 		c.JSON(200, gin.H{"status": "OK", "user": userResponse, "user_id": u.ID})
 	}
@@ -462,11 +481,14 @@ func GetUserByIDHandler(us user.UserInterfaceService, logger *zap.SugaredLogger)
 			return
 		}
 		userResponse := map[string]string{
-			"username":  u.UserName,
-			"firstName": u.FirstName,
-			"lastName":  u.LastName,
-			"email":     u.Email,
-			"mobile":    u.Mobile,
+			"username":      u.UserName,
+			"firstName":     u.FirstName,
+			"lastName":      u.LastName,
+			"email":         u.Email,
+			"mobile":        u.Mobile,
+			"telegram_id":   u.TelegramID,
+			"mattermost_id": u.MattermostId,
+			"bale_id":       u.BaleID,
 		}
 		c.JSON(200, gin.H{"status": "OK", "user": userResponse, "user_id": u.ID})
 	}
@@ -482,33 +504,19 @@ func (ub *UserSignupBody) toUser() *user.User {
 		Mobile:       ub.Mobile,
 		MattermostId: ub.MattermostID,
 		TelegramID:   ub.TelegramID,
+		BaleID:       ub.BaleID,
 	}
 }
 
 func (ub *UserUpdateBody) toUser() *user.User {
-	u := &user.User{
-		UserName: ub.UserName, // UserName is always required
+	return &user.User{
+		UserName:     ub.UserName,
+		FirstName:    ub.FirstName,
+		LastName:     ub.LastName,
+		Email:        ub.Email,
+		Mobile:       ub.Mobile,
+		TelegramID:   ub.TelegramID,
+		MattermostId: ub.MattermostID,
+		BaleID:       ub.BaleID,
 	}
-
-	// Only set fields that are not empty
-	if ub.FirstName != "" {
-		u.FirstName = ub.FirstName
-	}
-	if ub.LastName != "" {
-		u.LastName = ub.LastName
-	}
-	if ub.Mobile != "" {
-		u.Mobile = ub.Mobile
-	}
-	if ub.Email != "" {
-		u.Email = ub.Email
-	}
-	if ub.TelegramID != "" {
-		u.TelegramID = ub.TelegramID
-	}
-	if ub.MattermostID != "" {
-		u.MattermostId = ub.MattermostID
-	}
-
-	return u
 }

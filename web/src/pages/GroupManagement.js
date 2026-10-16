@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import apiService from '../utils/apiService';
 import Layout from '../components/Layout';
+import ConfirmDialog from '../components/ConfirmDialog';
 import './GroupManagement.css';
 
 const GroupManagement = () => {
@@ -18,11 +19,8 @@ const GroupManagement = () => {
         name: '',
         description: ''
     });
-
-    useEffect(() => {
-        fetchGroups();
-        fetchAllUsers();
-    }, []);
+    const [confirm, setConfirm] = useState(null);
+    const [actionError, setActionError] = useState('');
 
     const fetchGroups = async () => {
         setLoading(true);
@@ -47,6 +45,11 @@ const GroupManagement = () => {
         }
     };
 
+    useEffect(() => {
+        fetchGroups();
+        fetchAllUsers();
+    }, []);
+
     const fetchGroupMembers = async (groupId) => {
         try {
             const data = await apiService.getGroupUsers(groupId);
@@ -57,56 +60,76 @@ const GroupManagement = () => {
         }
     };
 
+    const askConfirm = (title, message, confirmLabel, action) => {
+        setActionError('');
+        setConfirm({
+            title,
+            message,
+            confirmLabel,
+            onConfirm: async () => {
+                setConfirm(null);
+                try {
+                    await action();
+                } catch (err) {
+                    setActionError(err.message);
+                }
+            },
+        });
+    };
+
     const handleAddGroup = async (e) => {
         e.preventDefault();
+        setActionError('');
         try {
             await apiService.createGroup(newGroup);
             setShowAddModal(false);
             setNewGroup({ name: '', description: '' });
             fetchGroups();
-            alert('Group created successfully');
-        } catch (e) {
-            alert('Error creating group: ' + e.message);
+        } catch (err) {
+            setActionError(err.message);
         }
     };
 
-    const handleDeleteGroup = async (group) => {
-        if (!window.confirm(`Are you sure you want to delete group: ${group.group_name}?`)) return;
-
-        try {
+    const handleDeleteGroup = (group) => {
+        askConfirm('Delete group', `Delete ${group.group_name}?`, 'Delete', async () => {
             await apiService.deleteGroup({ id: group.group_id });
             fetchGroups();
-            alert('Group deleted successfully');
-        } catch (e) {
-            alert('Error deleting group: ' + e.message);
-        }
+        });
     };
 
     const handleViewMembers = async (group) => {
         setSelectedGroup(group);
         await fetchGroupMembers(group.group_id);
+        setActionError('');
         setShowMembersModal(true);
         setShowAddUserSection(false);
         setSelectedUserId('');
     };
 
     const handleAddUserToGroup = async () => {
-        if (!selectedUserId) {
-            alert('Please select a user');
-            return;
-        }
+        if (!selectedUserId) return;
 
+        setActionError('');
         try {
             await apiService.addUserToGroup(selectedGroup.group_id, selectedUserId);
-            alert('User added to group successfully');
-            // Refresh the group members list
             await fetchGroupMembers(selectedGroup.group_id);
-            // Reset the selection
             setSelectedUserId('');
             setShowAddUserSection(false);
-        } catch (e) {
-            alert('Error adding user to group: ' + e.message);
+        } catch (err) {
+            setActionError(err.message);
         }
+    };
+
+    const handleRemoveUserFromGroup = (userId, username) => {
+        askConfirm(
+            'Remove member',
+            `Remove ${username} from ${selectedGroup.group_name}?`,
+            'Remove',
+            async () => {
+                await apiService.removeUserFromGroup(selectedGroup.group_id, userId);
+                await fetchGroupMembers(selectedGroup.group_id);
+            },
+        );
     };
 
     if (loading) {
@@ -130,42 +153,50 @@ const GroupManagement = () => {
             <div className="group-management">
                 <div className="page-header">
                     <h1>Group Management</h1>
-                    <button className="btn-primary" onClick={() => setShowAddModal(true)}>
+                    <button className="btn-primary" onClick={() => { setActionError(''); setShowAddModal(true); }}>
                         + Add Group
                     </button>
                 </div>
 
-                <div className="groups-grid">
-                    {groups.map((group) => (
-                        <div key={group.group_id} className="group-card">
-                            <div
-                                className="group-header clickable"
-                                onClick={() => handleViewMembers(group)}
-                                title="Click to view members"
-                            >
-                                <h3>{group.group_name}</h3>
-                                <span className="member-count-hint">👥 Click to view members</span>
+                {actionError && !showAddModal && !showMembersModal && (
+                    <div className="error-message">{actionError}</div>
+                )}
+
+                {groups.length === 0 ? (
+                    <p className="empty">No groups yet</p>
+                ) : (
+                    <div className="groups-grid">
+                        {groups.map((group) => (
+                            <div key={group.group_id} className="group-card">
+                                <div className="group-body">
+                                    <h3>{group.group_name}</h3>
+                                    <p className="group-description">{group.description || 'No description'}</p>
+                                </div>
+                                <div className="group-actions">
+                                    <button
+                                        className="btn-primary"
+                                        onClick={() => handleViewMembers(group)}
+                                    >
+                                        Members
+                                    </button>
+                                    <button
+                                        className="btn-danger"
+                                        onClick={() => handleDeleteGroup(group)}
+                                    >
+                                        Delete
+                                    </button>
+                                </div>
                             </div>
-                            <div className="group-actions">
-                                <button
-                                    className="btn-delete"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleDeleteGroup(group);
-                                    }}
-                                >
-                                    Delete
-                                </button>
-                            </div>
-                        </div>
-                    ))}
-                </div>
+                        ))}
+                    </div>
+                )}
 
                 {/* Add Group Modal */}
                 {showAddModal && (
-                    <div className="modal-overlay" onClick={() => setShowAddModal(false)}>
+                    <div className="modal-overlay" onClick={() => { setShowAddModal(false); setActionError(''); }}>
                         <div className="modal" onClick={(e) => e.stopPropagation()}>
                             <h2>Add New Group</h2>
+                            {actionError && <div className="error-message">{actionError}</div>}
                             <form onSubmit={handleAddGroup}>
                                 <div className="form-group">
                                     <label>Group Name:</label>
@@ -187,7 +218,7 @@ const GroupManagement = () => {
                                 </div>
                                 <div className="modal-actions">
                                     <button type="submit" className="btn-primary">Add Group</button>
-                                    <button type="button" className="btn-secondary" onClick={() => setShowAddModal(false)}>
+                                    <button type="button" className="btn-secondary" onClick={() => { setShowAddModal(false); setActionError(''); }}>
                                         Cancel
                                     </button>
                                 </div>
@@ -198,15 +229,16 @@ const GroupManagement = () => {
 
                 {/* Group Members Modal */}
                 {showMembersModal && selectedGroup && (
-                    <div className="modal-overlay" onClick={() => setShowMembersModal(false)}>
+                    <div className="modal-overlay" onClick={() => { setShowMembersModal(false); setActionError(''); }}>
                         <div className="modal modal-large" onClick={(e) => e.stopPropagation()}>
                             <h2>Members of {selectedGroup.group_name}</h2>
+                            {actionError && <div className="error-message">{actionError}</div>}
 
                             {/* Add User Section */}
                             <div className="add-user-section">
                                 {!showAddUserSection ? (
                                     <button
-                                        className="btn-add-user"
+                                        className="btn-primary btn-add-user"
                                         onClick={() => setShowAddUserSection(true)}
                                     >
                                         + Add User to Group
@@ -263,6 +295,7 @@ const GroupManagement = () => {
                                                 <th>Username</th>
                                                 <th>Email</th>
                                                 <th>Mobile</th>
+                                                <th></th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -271,6 +304,14 @@ const GroupManagement = () => {
                                                     <td>{member.username}</td>
                                                     <td>{member.email || '-'}</td>
                                                     <td>{member.mobile || '-'}</td>
+                                                    <td>
+                                                        <button
+                                                            className="btn-delete"
+                                                            onClick={() => handleRemoveUserFromGroup(member.id, member.username)}
+                                                        >
+                                                            Remove
+                                                        </button>
+                                                    </td>
                                                 </tr>
                                             ))}
                                         </tbody>
@@ -278,12 +319,22 @@ const GroupManagement = () => {
                                 )}
                             </div>
                             <div className="modal-actions">
-                                <button className="btn-secondary" onClick={() => setShowMembersModal(false)}>
+                                <button className="btn-secondary" onClick={() => { setShowMembersModal(false); setActionError(''); }}>
                                     Close
                                 </button>
                             </div>
                         </div>
                     </div>
+                )}
+
+                {confirm && (
+                    <ConfirmDialog
+                        title={confirm.title}
+                        message={confirm.message}
+                        confirmLabel={confirm.confirmLabel}
+                        onConfirm={confirm.onConfirm}
+                        onCancel={() => setConfirm(null)}
+                    />
                 )}
             </div>
         </Layout>

@@ -88,12 +88,17 @@ func (s *service) Send(message notifications.Message) ([]string, error) {
 		errStack = append(errStack, nil)
 		responses = append(responses, strconv.Itoa(resp.ID))
 	}
-	if len(errStack) > 0 {
-		return responses, errStack
+	// errStack holds one entry per receptor ("nil" = delivered); only report it when something failed,
+	// otherwise callers treat a fully delivered alert as failed and resend it.
+	for _, err := range errStack {
+		if err != nil {
+			return responses, errStack
+		}
 	}
 	return responses, nil
 }
 
+// ponytail: Telegram has no delivery-receipt API; a successful SendMessage is the final confirmation.
 func (s *service) Status(_ string) (notifications.MessageStatusType, error) {
-	return notifications.TypeMessageStatusFailed, nil
+	return notifications.TypeMessageStatusDelivered, nil
 }

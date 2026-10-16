@@ -1,64 +1,90 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import apiService from '../utils/apiService';
 import Layout from '../components/Layout';
+import useAutoRefresh, { REFRESH_OPTIONS, readRefreshMs, formatLastUpdated, latestOnly } from '../utils/useAutoRefresh';
+import { byNewest } from '../utils/alertSort';
 import './AlertsPage.css';
 
+const SEVERITIES = ['critical', 'high', 'warning', 'medium', 'low', 'page'];
+
 const AlertsPage = () => {
-    const [alerts, setAlerts] = useState({ critical: 0, high: 0, medium: 0, low: 0, page: 0, warning: 0 });
+    const [searchParams, setSearchParams] = useSearchParams();
     const [allAlerts, setAllAlerts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [activeTab, setActiveTab] = useState('summary');
+    const [activeTab, setActiveTab] = useState('firing');
+    const severity = searchParams.get('severity') || '';
+    const [refreshMs, setRefreshMs] = useState(() => readRefreshMs('iris.alerts.refreshMs'));
+    const [lastUpdated, setLastUpdated] = useState(null);
+    const [refreshError, setRefreshError] = useState(null);
+    const [startRequest] = useState(latestOnly);
+    const manualPending = useRef(false);
+
+    const load = useCallback(async (silent = false) => {
+        // A background refresh must not supersede a pending manual load and hide its error.
+        if (silent && manualPending.current) return;
+        const isLatest = startRequest();
+        if (!silent) {
+            manualPending.current = true;
+            setLoading(true);
+            setError(null);
+        } else {
+            setRefreshError(null);
+        }
+        try {
+            const data = await apiService.getAlerts({
+                status: activeTab,
+                severity,
+                limit: 100,
+                page: 1,
+            });
+            if (!isLatest()) return;
+            const list = data && data.alerts && Array.isArray(data.alerts) ? data.alerts : [];
+            setAllAlerts(list);
+            setLastUpdated(new Date());
+        } catch (e) {
+            if (!isLatest()) return;
+            if (silent) {
+                setRefreshError(e.message);
+            } else {
+                setError(e.message);
+                setAllAlerts([]);
+            }
+        } finally {
+            if (isLatest()) {
+                manualPending.current = false;
+                setLoading(false);
+            }
+        }
+    }, [activeTab, severity, startRequest]);
 
     useEffect(() => {
-        fetchAllAlertData();
-    }, []);
+        load(false);
+    }, [load]);
 
-    const fetchAllAlertData = async () => {
-        setLoading(true);
-        setError(null);
+    const refresh = useAutoRefresh(() => load(true), refreshMs);
 
+    const onRefreshChange = (value) => {
+        setRefreshMs(value);
         try {
-            // Fetch alert summary
-            const summaryData = await apiService.getAlertSummary();
-            const mappedData = {};
-
-            // Handle null or undefined severites array
-            if (summaryData && summaryData.severites && Array.isArray(summaryData.severites)) {
-                summaryData.severites.forEach(item => {
-                    if (item && item.severity && typeof item.count === 'number') {
-                        mappedData[item.severity] = item.count;
-                    }
-                });
-            }
-            setAlerts(mappedData);
-
-            // Fetch all alerts - handle null response
-            const alertsData = await apiService.getAlerts({ limit: 100, page: 1 });
-            setAllAlerts(alertsData && alertsData.alerts && Array.isArray(alertsData.alerts) ? alertsData.alerts : []);
-
+            localStorage.setItem('iris.alerts.refreshMs', String(value));
         } catch (e) {
-            setError(e.message);
-            // Set empty arrays on error to prevent crashes
-            setAllAlerts([]);
-        } finally {
-            setLoading(false);
+            // ignore persistence errors
         }
     };
 
-    const fetchFilteredAlerts = async (status, severity = '') => {
-        try {
-            const data = await apiService.getAlerts({ status, severity, limit: 100, page: 1 });
-            // Handle null or missing alerts array
-            setAllAlerts(data && data.alerts && Array.isArray(data.alerts) ? data.alerts : []);
-        } catch (e) {
-            console.error('Error fetching filtered alerts:', e);
-            // Set empty array on error
-            setAllAlerts([]);
+    const onSeverityChange = (value) => {
+        const next = new URLSearchParams(searchParams);
+        if (value) {
+            next.set('severity', value);
+        } else {
+            next.delete('severity');
         }
+        setSearchParams(next);
     };
 
-    const getSeverityClass = (severity) => {
+    const getSeverityClass = (level) => {
         const classes = {
             critical: 'severity-critical',
             high: 'severity-high',
@@ -67,181 +93,115 @@ const AlertsPage = () => {
             low: 'severity-low',
             page: 'severity-page',
         };
-        return classes[severity?.toLowerCase()] || 'severity-default';
+        return classes[level?.toLowerCase()] || 'severity-default';
     };
 
-    if (loading) {
-        return (
-            <Layout>
-                <div className="loading">Loading alerts...</div>
-            </Layout>
-        );
-    }
-
-    if (error) {
-        return (
-            <Layout>
-                <div className="error-message">Error loading alerts: {error}</div>
-            </Layout>
-        );
-    }
-
-    const firingAlerts = Array.isArray(allAlerts) ? allAlerts.filter(a => a && a.status === 'firing') : [];
-    const resolvedAlerts = Array.isArray(allAlerts) ? allAlerts.filter(a => a && a.status === 'resolved') : [];
+    const timeLabel = activeTab === 'firing' ? 'Started At' : 'Resolved At';
+    const timeField = activeTab === 'firing' ? 'starts_at' : 'ends_at';
+    const rows = (Array.isArray(allAlerts) ? allAlerts.filter(alert => alert && alert.status === activeTab) : [])
+        .sort(byNewest);
 
     return (
         <Layout>
             <div className="alerts-page">
-                <h1>Alerts Dashboard</h1>
+                <div className="page-header">
+                    <h1>Alerts</h1>
+                    <div className="header-actions refresh-controls">
+                        {lastUpdated && (
+                            <span className="last-updated">Last updated {formatLastUpdated(lastUpdated)}</span>
+                        )}
+                        <label className="filter-field">
+                            Severity
+                            <select
+                                className="select-input"
+                                value={severity}
+                                onChange={(e) => onSeverityChange(e.target.value)}
+                            >
+                                <option value="">All</option>
+                                {SEVERITIES.map((level) => (
+                                    <option key={level} value={level}>
+                                        {level.charAt(0).toUpperCase() + level.slice(1)}
+                                    </option>
+                                ))}
+                            </select>
+                        </label>
+                        <label className="filter-field">
+                            Refresh
+                            <select
+                                className="select-input"
+                                value={refreshMs}
+                                onChange={(e) => onRefreshChange(Number(e.target.value))}
+                            >
+                                {REFRESH_OPTIONS.map((o) => (
+                                    <option key={o.value} value={o.value}>{o.label}</option>
+                                ))}
+                            </select>
+                        </label>
+                        <button className="btn-secondary" onClick={refresh}>
+                            Refresh
+                        </button>
+                    </div>
+                </div>
+                {refreshError && <div className="refresh-hint">Background refresh failed: {refreshError}</div>}
 
                 <div className="tabs">
                     <button
-                        className={`tab ${activeTab === 'summary' ? 'active' : ''}`}
-                        onClick={() => setActiveTab('summary')}
-                    >
-                        Summary
-                    </button>
-                    <button
                         className={`tab ${activeTab === 'firing' ? 'active' : ''}`}
-                        onClick={() => {
-                            setActiveTab('firing');
-                            fetchFilteredAlerts('firing');
-                        }}
+                        onClick={() => setActiveTab('firing')}
                     >
-                        Firing Alerts ({firingAlerts.length})
+                        Firing
                     </button>
                     <button
                         className={`tab ${activeTab === 'resolved' ? 'active' : ''}`}
-                        onClick={() => {
-                            setActiveTab('resolved');
-                            fetchFilteredAlerts('resolved');
-                        }}
+                        onClick={() => setActiveTab('resolved')}
                     >
-                        Resolved Alerts ({resolvedAlerts.length})
+                        Resolved
                     </button>
                 </div>
 
-                {activeTab === 'summary' && (
-                    <div className="alert-summary">
-                        <h2>Alert Summary by Severity</h2>
-                        <div className="summary-items">
-                            <div className="summary-item critical">
-                                <div className="icon">🔥</div>
-                                <div className="count">{alerts.critical || 0}</div>
-                                <div className="label">Critical</div>
-                            </div>
-                            <div className="summary-item high">
-                                <div className="icon">⚠️</div>
-                                <div className="count">{alerts.high || 0}</div>
-                                <div className="label">High</div>
-                            </div>
-                            <div className="summary-item medium">
-                                <div className="icon">🟡</div>
-                                <div className="count">{alerts.medium || 0}</div>
-                                <div className="label">Medium</div>
-                            </div>
-                            <div className="summary-item warning">
-                                <div className="icon">🟡</div>
-                                <div className="count">{alerts.warning || 0}</div>
-                                <div className="label">Warning</div>
-                            </div>
-                            <div className="summary-item low">
-                                <div className="icon">🟢</div>
-                                <div className="count">{alerts.low || 0}</div>
-                                <div className="label">Low</div>
-                            </div>
-                            <div className="summary-item page">
-                                <div className="icon">✉️</div>
-                                <div className="count">{alerts.page || 0}</div>
-                                <div className="label">Page</div>
-                            </div>
+                {error && <div className="error-message">Error loading alerts: {error}</div>}
+
+                <div className="alerts-list">
+                    {loading ? (
+                        <div className="loading">Loading alerts...</div>
+                    ) : rows.length === 0 ? (
+                        <p className="empty">No {activeTab} alerts</p>
+                    ) : (
+                        <div className="alerts-table-container">
+                            <table className="alerts-table">
+                                <thead>
+                                    <tr>
+                                        <th>Alert Name</th>
+                                        <th>Severity</th>
+                                        <th>Status</th>
+                                        <th>{timeLabel}</th>
+                                        <th>Description</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {rows.map((alert, index) => (
+                                        <tr key={alert.id || index}>
+                                            <td className="alert-name">{alert.alert_name || alert.name || 'Unknown'}</td>
+                                            <td>
+                                                <span className={`severity-badge ${getSeverityClass(alert.severity)}`}>
+                                                    {alert.severity || 'N/A'}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span className={`status-badge ${activeTab}`}>{activeTab}</span>
+                                            </td>
+                                            <td>{alert[timeField] ? new Date(alert[timeField]).toLocaleString() : '-'}</td>
+                                            <td className="alert-description">{alert.summary || alert.description || 'No description'}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
                         </div>
-                    </div>
-                )}
-
-                {activeTab === 'firing' && (
-                    <div className="alerts-list">
-                        <h2>Firing Alerts</h2>
-                        {firingAlerts.length === 0 ? (
-                            <p className="no-alerts">No firing alerts</p>
-                        ) : (
-                            <div className="alerts-table-container">
-                                <table className="alerts-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Alert Name</th>
-                                            <th>Severity</th>
-                                            <th>Status</th>
-                                            <th>Started At</th>
-                                            <th>Description</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {firingAlerts.map((alert, index) => (
-                                            <tr key={index}>
-                                                <td className="alert-name">{alert.name || 'Unknown'}</td>
-                                                <td>
-                                                    <span className={`severity-badge ${getSeverityClass(alert.severity)}`}>
-                                                        {alert.severity || 'N/A'}
-                                                    </span>
-                                                </td>
-                                                <td>
-                                                    <span className="status-badge firing">Firing</span>
-                                                </td>
-                                                <td>{new Date(alert.starts_at).toLocaleString()}</td>
-                                                <td className="alert-description">{alert.description || 'No description'}</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                {activeTab === 'resolved' && (
-                    <div className="alerts-list">
-                        <h2>Resolved Alerts</h2>
-                        {resolvedAlerts.length === 0 ? (
-                            <p className="no-alerts">No resolved alerts</p>
-                        ) : (
-                            <div className="alerts-table-container">
-                                <table className="alerts-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Alert Name</th>
-                                            <th>Severity</th>
-                                            <th>Status</th>
-                                            <th>Resolved At</th>
-                                            <th>Description</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {resolvedAlerts.map((alert, index) => (
-                                            <tr key={index}>
-                                                <td className="alert-name">{alert.name || 'Unknown'}</td>
-                                                <td>
-                                                    <span className={`severity-badge ${getSeverityClass(alert.severity)}`}>
-                                                        {alert.severity || 'N/A'}
-                                                    </span>
-                                                </td>
-                                                <td>
-                                                    <span className="status-badge resolved">Resolved</span>
-                                                </td>
-                                                <td>{new Date(alert.ends_at).toLocaleString()}</td>
-                                                <td className="alert-description">{alert.description || 'No description'}</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
-                    </div>
-                )}
+                    )}
+                </div>
             </div>
         </Layout>
     );
 };
 
 export default AlertsPage;
-

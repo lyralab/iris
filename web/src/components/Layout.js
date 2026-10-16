@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { logout, getUserFromToken, isAdmin } from '../utils/auth';
+import ThemeToggle from './ThemeToggle';
 import './Layout.css';
 
 const Layout = ({ children }) => {
@@ -54,6 +55,7 @@ const Layout = ({ children }) => {
                     >
                         👤 {user?.username || 'User'}
                     </span>
+                    <ThemeToggle />
                     <button onClick={handleLogout} className="logout-btn">Logout</button>
                 </div>
             </nav>

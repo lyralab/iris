@@ -1,7 +1,116 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import apiService from '../utils/apiService';
 import Layout from '../components/Layout';
 import './ProvidersPage.css';
+
+const MESSAGE_LIMITS = [10, 25, 50];
+const MESSAGE_LIMIT_KEY = 'iris.providers.messagesLimit';
+const MESSAGE_STATUS_CLASS = { Delivered: 'status-active', Sent: 'status-new', Failed: 'status-disable' };
+
+function readMessageLimit() {
+    try {
+        const n = Number(localStorage.getItem(MESSAGE_LIMIT_KEY));
+        return MESSAGE_LIMITS.includes(n) ? n : MESSAGE_LIMITS[0];
+    } catch {
+        return MESSAGE_LIMITS[0];
+    }
+}
+
+const ProviderMessagesModal = ({ provider, onClose }) => {
+    const [limit, setLimit] = useState(readMessageLimit);
+    const [messages, setMessages] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
+    const load = useCallback(async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const data = await apiService.getProviderMessages(provider.name, limit);
+            setMessages(data.messages || []);
+        } catch (e) {
+            setError(e.message);
+        } finally {
+            setLoading(false);
+        }
+    }, [provider.name, limit]);
+
+    useEffect(() => {
+        load();
+    }, [load]);
+
+    const changeLimit = (value) => {
+        setLimit(value);
+        try {
+            localStorage.setItem(MESSAGE_LIMIT_KEY, String(value));
+        } catch {
+            // ignore unavailable storage
+        }
+    };
+
+    return (
+        <div className="modal-overlay" onClick={onClose}>
+            <div className="modal messages-modal" onClick={(e) => e.stopPropagation()}>
+                <div className="messages-header">
+                    <h2>Latest Messages: {provider.name}</h2>
+                    <div className="messages-controls">
+                        <select
+                            value={limit}
+                            onChange={(e) => changeLimit(Number(e.target.value))}
+                            aria-label="Number of messages"
+                        >
+                            {MESSAGE_LIMITS.map((n) => (
+                                <option key={n} value={n}>Last {n}</option>
+                            ))}
+                        </select>
+                        <button className="btn-secondary" onClick={load} disabled={loading}>
+                            {loading ? 'Loading...' : 'Refresh'}
+                        </button>
+                    </div>
+                </div>
+                {error && <div className="error-message">{error}</div>}
+                {!error && !loading && messages.length === 0 && (
+                    <p className="subtitle">No messages sent through this provider yet.</p>
+                )}
+                {messages.length > 0 && (
+                    <div className="alerts-table-container">
+                        <table className="alerts-table">
+                            <thead>
+                                <tr>
+                                    <th>Time</th>
+                                    <th>Receptor</th>
+                                    <th>User</th>
+                                    <th>Status</th>
+                                    <th>Response</th>
+                                    <th>Message</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {messages.map((m, i) => (
+                                    <tr key={`${m.created_at}-${m.receptor}-${i}`}>
+                                        <td className="nowrap">{new Date(m.created_at).toLocaleString()}</td>
+                                        <td>{m.receptor}</td>
+                                        <td>{m.user_name || '—'}</td>
+                                        <td>
+                                            <span className={`status-badge ${MESSAGE_STATUS_CLASS[m.status] || 'status-unknown'}`}>
+                                                {m.status || 'Unknown'}
+                                            </span>
+                                        </td>
+                                        <td className="message-response">{m.response}</td>
+                                        <td className="alert-description" title={m.message}>{m.message}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+                <div className="modal-actions">
+                    <button type="button" className="btn-secondary" onClick={onClose}>Close</button>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 const ProvidersPage = () => {
     const [providers, setProviders] = useState([]);
@@ -10,10 +119,8 @@ const ProvidersPage = () => {
     const [showEditModal, setShowEditModal] = useState(false);
     const [selectedProvider, setSelectedProvider] = useState(null);
     const [editData, setEditData] = useState({ priority: '', status: true });
-
-    useEffect(() => {
-        fetchProviders();
-    }, []);
+    const [actionError, setActionError] = useState('');
+    const [messagesProvider, setMessagesProvider] = useState(null);
 
     const fetchProviders = async () => {
         setLoading(true);
@@ -28,6 +135,10 @@ const ProvidersPage = () => {
         }
     };
 
+    useEffect(() => {
+        fetchProviders();
+    }, []);
+
     const handleEditProvider = (provider) => {
         setSelectedProvider(provider);
         setEditData({
@@ -39,31 +150,31 @@ const ProvidersPage = () => {
 
     const handleUpdateProvider = async (e) => {
         e.preventDefault();
+        setActionError('');
         try {
             await apiService.modifyProvider({
                 name: selectedProvider.name,
                 priority: parseInt(editData.priority),
                 status: editData.status,
             });
-            
-            alert('Provider updated successfully');
             setShowEditModal(false);
             setSelectedProvider(null);
             fetchProviders();
-        } catch (e) {
-            alert('Error updating provider: ' + e.message);
+        } catch (err) {
+            setActionError(err.message);
         }
     };
 
     const handleToggleStatus = async (provider) => {
+        setActionError('');
         try {
             await apiService.modifyProvider({
                 name: provider.name,
                 status: !provider.enabled,
             });
             fetchProviders();
-        } catch (e) {
-            alert('Error toggling provider status: ' + e.message);
+        } catch (err) {
+            setActionError(err.message);
         }
     };
 
@@ -87,16 +198,22 @@ const ProvidersPage = () => {
         <Layout>
             <div className="providers-page">
                 <div className="page-header">
-                    <h1>Notification Providers</h1>
-                    <p className="subtitle">Manage notification providers and their priorities</p>
+                    <div>
+                        <h1>Notification Providers</h1>
+                        <p className="subtitle">Manage notification providers and their priorities</p>
+                    </div>
                 </div>
+
+                {actionError && !showEditModal && (
+                    <div className="error-message">{actionError}</div>
+                )}
 
                 <div className="providers-grid">
                     {providers.map((provider) => (
                         <div key={provider.id} className={`provider-card ${provider.enabled ? 'enabled' : 'disabled'}`}>
                             <div className="provider-header">
                                 <h3>{provider.name}</h3>
-                                <span className={`status-badge ${provider.enabled ? 'active' : 'inactive'}`}>
+                                <span className={`status-badge ${provider.enabled ? 'status-active' : 'status-disable'}`}>
                                     {provider.enabled ? 'Enabled' : 'Disabled'}
                                 </span>
                             </div>
@@ -119,13 +236,19 @@ const ProvidersPage = () => {
                             </div>
                             <div className="provider-actions">
                                 <button
-                                    className="btn-edit"
+                                    className="btn-secondary"
                                     onClick={() => handleEditProvider(provider)}
                                 >
                                     Edit Settings
                                 </button>
                                 <button
-                                    className={`btn-toggle ${provider.enabled ? 'disable' : 'enable'}`}
+                                    className="btn-secondary"
+                                    onClick={() => setMessagesProvider(provider)}
+                                >
+                                    Messages
+                                </button>
+                                <button
+                                    className={provider.enabled ? 'btn-danger' : 'btn-primary'}
                                     onClick={() => handleToggleStatus(provider)}
                                 >
                                     {provider.enabled ? 'Disable' : 'Enable'}
@@ -135,11 +258,19 @@ const ProvidersPage = () => {
                     ))}
                 </div>
 
+                {messagesProvider && (
+                    <ProviderMessagesModal
+                        provider={messagesProvider}
+                        onClose={() => setMessagesProvider(null)}
+                    />
+                )}
+
                 {/* Edit Provider Modal */}
                 {showEditModal && selectedProvider && (
                     <div className="modal-overlay" onClick={() => setShowEditModal(false)}>
                         <div className="modal" onClick={(e) => e.stopPropagation()}>
                             <h2>Edit Provider: {selectedProvider.name}</h2>
+                            {actionError && <div className="error-message">{actionError}</div>}
                             <form onSubmit={handleUpdateProvider}>
                                 <div className="form-group">
                                     <label>Priority (1-5):</label>

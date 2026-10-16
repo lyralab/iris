@@ -16,12 +16,16 @@
 // const base_url = 'http://127.0.0.1:9090';
 
 
+// Empty REACT_APP_API_BASE_URL means same-origin (dev proxy or the Go server
+// serving the built UI). Unset keeps the localhost:9090 dev default.
 const envBase = process.env.REACT_APP_API_BASE_URL;
-const base_url = envBase || (typeof window !== 'undefined'
-    ? (window.location.origin.includes('localhost')
-        ? `${window.location.protocol}//${window.location.hostname}:9090` // dev default port
-        : window.location.origin)
-    : 'http://127.0.0.1:9090');
+const base_url = envBase === ''
+    ? ''
+    : (envBase || (typeof window !== 'undefined'
+        ? (window.location.origin.includes('localhost')
+            ? `${window.location.protocol}//${window.location.hostname}:9090`
+            : window.location.origin)
+        : 'http://127.0.0.1:9090'));
 
 const config = {
     api: {

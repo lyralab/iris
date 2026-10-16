@@ -1,97 +1,171 @@
-/* web/src/LoginPage.css */
 .login-page {
+    min-height: 100vh;
     display: flex;
-    flex-direction: column;
     align-items: center;
     justify-content: center;
-    height: 100vh;
-    background-color: #f4f4f4;
-    font-family: Arial, sans-serif;
+    padding: 1.5rem;
+    background:
+        radial-gradient(circle at top, var(--login-glow) 0%, transparent 42%),
+        var(--bg);
 }
 
-.login-page h2 {
-    margin-bottom: 20px;
-    color: #333;
+.login-container {
+    width: min(420px, 100%);
+    background: var(--surface);
+    border-radius: 16px;
+    box-shadow: 0 16px 40px rgba(15, 23, 42, 0.12);
+    padding: 2rem 1.75rem 1.25rem;
+}
+
+.login-header {
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+
+.login-logo {
+    width: 64px;
+    height: 64px;
+    object-fit: contain;
+}
+
+.login-header h2 {
+    margin: 0.75rem 0 0.25rem;
+    font-size: 1.5rem;
+    color: var(--text);
+}
+
+.login-subtitle {
+    margin: 0;
+    color: var(--muted);
 }
 
 .login-page .error {
-    background-color: #f8d7da;
-    color: #721c24;
-    border: 1px solid #f5c6cb;
-    padding: 12px 16px;
-    margin-bottom: 20px;
-    border-radius: 6px;
-    width: 100%;
-    max-width: 350px;
-    text-align: left;
-    font-size: 14px;
-    line-height: 1.5;
-    box-sizing: border-box;
-    font-weight: 500;
-}
-
-.login-page .error-list {
-    background-color: #f8d7da;
-    border: 1px solid #f5c6cb;
-    padding: 15px;
-    margin-bottom: 20px;
-    border-radius: 4px;
-    width: 300px;
-}
-
-.login-page .error-item {
-    color: #721c24;
-    padding: 5px 0;
-    border-bottom: 1px solid #f5c6cb;
-    font-size: 14px;
-}
-
-.login-page .error-item:last-child {
-    border-bottom: none;
-    padding-bottom: 0;
+    background: var(--sev-critical-bg);
+    color: var(--sev-critical-fg);
+    padding: 0.75rem 0.9rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
 }
 
 .login-page form {
-    background-color: #fff;
-    padding: 30px;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    width: 350px;
     display: flex;
     flex-direction: column;
+    gap: 0.15rem;
 }
 
 .login-page .form-group {
-    margin-bottom: 15px;
-    display: flex;
-    flex-direction: column;
+    margin-bottom: 0.9rem;
 }
 
 .login-page label {
-    margin-bottom: 5px;
-    color: #555;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-bottom: 0.35rem;
+    font-weight: 600;
+    color: var(--text);
 }
 
 .login-page input[type="text"],
 .login-page input[type="password"] {
-    padding: 10px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    font-size: 16px;
-    color: #333;
+    width: 100%;
+    padding: 0.7rem 0.8rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font: inherit;
+    color: var(--text);
+    background: var(--surface);
 }
 
-.login-page button[type="submit"] {
-    background-color: #007bff;
-    color: #fff;
-    padding: 10px 15px;
-    border: none;
-    border-radius: 4px;
+.login-page input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(31, 111, 235, 0.15);
+}
+
+.captcha-container {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.6rem;
+}
+
+.captcha-image-wrapper {
+    flex: 1;
+    height: 72px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.captcha-image {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: fill;
+}
+
+.captcha-loading,
+.captcha-error {
+    color: var(--muted);
+    font-size: 0.9rem;
+}
+
+.captcha-refresh {
+    width: 44px;
+    height: 44px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
     cursor: pointer;
-    font-size: 16px;
-    transition: background-color 0.3s ease;
+    font-size: 1.1rem;
 }
 
-.login-page button[type="submit"]:hover {
-    background-color: #0056b3;
+.captcha-refresh:hover:not(:disabled) {
+    border-color: var(--accent);
+}
+
+.captcha-hint {
+    display: block;
+    margin-top: 0.35rem;
+    color: var(--muted);
+    font-size: 0.8rem;
+}
+
+.login-button {
+    width: 100%;
+    margin-top: 0.4rem;
+    padding: 0.75rem 1rem;
+    border: none;
+    border-radius: 8px;
+    background: var(--accent);
+    color: white;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.login-button:hover:not(:disabled) {
+    background: var(--accent-hover);
+}
+
+.login-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.login-footer {
+    margin-top: 1.25rem;
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.8rem;
+}
+
+.login-footer p {
+    margin: 0;
 }
