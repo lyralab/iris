@@ -44,3 +44,5 @@ SKILL.md
 .http
 
 config.yml
+# GitLab CI (kept local only)
+.gitlab-ci.yml
