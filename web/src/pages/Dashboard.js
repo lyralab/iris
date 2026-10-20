@@ -2,18 +2,42 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import apiService from '../utils/apiService';
 import Layout from '../components/Layout';
-import useAutoRefresh, { REFRESH_OPTIONS, readRefreshMs, formatLastUpdated, latestOnly } from '../utils/useAutoRefresh';
+import AlertList from '../components/AlertList';
+import EmptyState from '../components/EmptyState';
+import Icon from '../components/Icon';
+import RefreshControls from '../components/RefreshControls';
+import useAutoRefresh, { readRefreshMs, latestOnly } from '../utils/useAutoRefresh';
 import { byNewest } from '../utils/alertSort';
+import { SEVERITIES } from '../utils/format';
 import './Dashboard.css';
 
-const SEVERITIES = [
-    { key: 'critical', label: 'Critical' },
-    { key: 'high', label: 'High' },
-    { key: 'warning', label: 'Warning' },
-    { key: 'medium', label: 'Medium' },
-    { key: 'low', label: 'Low' },
-    { key: 'page', label: 'Page' },
-];
+const LIMITS = [5, 10, 15, 20];
+
+const LimitSelect = ({ id, value, onChange }) => (
+    <label className="field-inline" htmlFor={id}>
+        Show
+        <select id={id} className="select-input select-sm" value={value} onChange={(e) => onChange(Number(e.target.value))}>
+            {LIMITS.map((n) => <option key={n} value={n}>{n}</option>)}
+        </select>
+    </label>
+);
+
+const SeverityBar = ({ counts, total }) => (
+    <div className="severity-bar" role="img" aria-label={SEVERITIES.map((s) => `${s.label} ${counts[s.key] || 0}`).join(', ')}>
+        {total === 0 ? (
+            <span className="severity-bar-empty" />
+        ) : (
+            SEVERITIES.filter((s) => counts[s.key] > 0).map((s) => (
+                <span
+                    key={s.key}
+                    className={`severity-bar-seg sev-${s.key}`}
+                    style={{ flexGrow: counts[s.key] }}
+                    title={`${s.label}: ${counts[s.key]}`}
+                />
+            ))
+        )}
+    </div>
+);
 
 const Dashboard = () => {
     const [alerts, setAlerts] = useState({ critical: 0, high: 0, medium: 0, low: 0, page: 0, warning: 0 });
@@ -109,184 +133,111 @@ const Dashboard = () => {
         }
     };
 
-    const getSeverityClass = (severity) => {
-        const classes = {
-            critical: 'severity-critical',
-            high: 'severity-high',
-            medium: 'severity-medium',
-            warning: 'severity-warning',
-            low: 'severity-low',
-            page: 'severity-page',
-        };
-        return classes[severity?.toLowerCase()] || 'severity-default';
-    };
-
-    if (loading) {
-        return (
-            <Layout>
-                <div className="loading">Loading Dashboard...</div>
-            </Layout>
-        );
-    }
-
-    if (error) {
-        return (
-            <Layout>
-                <div className="error-message">Error loading dashboard: {error}</div>
-            </Layout>
-        );
-    }
+    const total = SEVERITIES.reduce((sum, s) => sum + (alerts[s.key] || 0), 0);
+    const urgent = (alerts.critical || 0) + (alerts.high || 0);
+    const health = total === 0 ? 'ok' : urgent > 0 ? 'critical' : 'warning';
 
     return (
         <Layout>
-            <div className="dashboard">
+            <div className="page dashboard">
                 <div className="page-header">
-                    <h1>Dashboard</h1>
-                    <div className="header-actions refresh-controls">
-                        {lastUpdated && (
-                            <span className="last-updated">Last updated {formatLastUpdated(lastUpdated)}</span>
-                        )}
-                        <label className="filter-field">
-                            Refresh
-                            <select
-                                className="select-input"
-                                value={refreshMs}
-                                onChange={(e) => onRefreshChange(Number(e.target.value))}
-                            >
-                                {REFRESH_OPTIONS.map((o) => (
-                                    <option key={o.value} value={o.value}>{o.label}</option>
-                                ))}
-                            </select>
-                        </label>
-                        <button className="btn-secondary" onClick={refresh}>
-                            Refresh
-                        </button>
+                    <div>
+                        <h1>Overview</h1>
+                        <p className="subtitle">Live state of firing alerts across all sources</p>
                     </div>
+                    <RefreshControls
+                        refreshMs={refreshMs}
+                        onRefreshMsChange={onRefreshChange}
+                        onRefresh={refresh}
+                        lastUpdated={lastUpdated}
+                    />
                 </div>
-                {refreshError && <div className="refresh-hint">Background refresh failed: {refreshError}</div>}
 
-                <section className="active-alerts">
-                    <h2>Active alerts</h2>
+                {refreshError && (
+                    <div className="refresh-hint"><Icon name="alert" />Background refresh failed: {refreshError}</div>
+                )}
+                {error && (
+                    <div className="error-message"><Icon name="alert" />Error loading dashboard: {error}</div>
+                )}
+
+                <section className="overview-grid" aria-label="Firing alerts by severity">
+                    <div className={`card health-card health-${loading ? 'loading' : health}`}>
+                        <div className="health-top">
+                            <span className="health-icon">
+                                <Icon name={health === 'ok' ? 'checkCircle' : 'flame'} size={18} />
+                            </span>
+                            <span className="health-label">
+                                {loading ? 'Checking…' : health === 'ok' ? 'All systems quiet' : `${urgent} critical or high`}
+                            </span>
+                        </div>
+                        <div className="health-total">
+                            {loading ? <span className="skeleton" style={{ width: 70, height: 44 }} /> : <span className="tabular">{total}</span>}
+                            <span className="health-total-label">firing {total === 1 ? 'alert' : 'alerts'}</span>
+                        </div>
+                        <SeverityBar counts={alerts} total={loading ? 0 : total} />
+                        <Link to="/alerts" className="health-link">
+                            View all alerts <Icon name="chevronRight" size={14} />
+                        </Link>
+                    </div>
+
                     <div className="stats-grid">
-                        {SEVERITIES.map((item) => (
-                            <Link
-                                key={item.key}
-                                to={`/alerts?severity=${item.key}`}
-                                className={`stat-card stat-${item.key}`}
-                            >
-                                <span className="stat-label">{item.label}</span>
-                                <span className="stat-value">{alerts[item.key] || 0}</span>
-                            </Link>
-                        ))}
+                        {SEVERITIES.map((item) => {
+                            const count = alerts[item.key] || 0;
+                            return (
+                                <Link
+                                    key={item.key}
+                                    to={`/alerts?severity=${item.key}`}
+                                    className={`stat-card sev-${item.key} ${count === 0 ? 'is-zero' : ''}`}
+                                >
+                                    <span className="stat-label">
+                                        <span className="sev-dot" />
+                                        {item.label}
+                                    </span>
+                                    <span className="stat-value tabular">
+                                        {loading ? <span className="skeleton" style={{ width: 32, height: 28 }} /> : count}
+                                    </span>
+                                </Link>
+                            );
+                        })}
                     </div>
                 </section>
 
-                <div className="top-alerts-section">
-                        <div className="section-header">
-                            <h2>Latest Critical & Warning Alerts ({topAlerts.length})</h2>
-                            <div className="alert-config">
-                                <label htmlFor="firing-limit">Show:</label>
-                                <select
-                                    id="firing-limit"
-                                    value={firingLimit}
-                                    onChange={(e) => setFiringLimit(Number(e.target.value))}
-                                    className="alert-limit-dropdown"
-                                >
-                                    <option value={5}>5</option>
-                                    <option value={10}>10</option>
-                                    <option value={15}>15</option>
-                                    <option value={20}>20</option>
-                                </select>
-                            </div>
+                <div className="dashboard-columns">
+                    <section className="card">
+                        <div className="card-header">
+                            <h2 className="card-title">
+                                <Icon name="flame" />
+                                Needs attention
+                                <span className="count">{loading ? '' : topAlerts.length}</span>
+                            </h2>
+                            <LimitSelect id="firing-limit" value={firingLimit} onChange={setFiringLimit} />
                         </div>
-                        {topAlerts.length === 0 ? (
-                            <p className="empty">No firing alerts</p>
-                        ) : (
-                            <div className="alerts-table-container">
-                                <table className="alerts-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Alert Name</th>
-                                            <th>Severity</th>
-                                            <th>Status</th>
-                                            <th>Started At</th>
-                                            <th>Description</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {topAlerts.map((alert, index) => (
-                                            <tr key={alert.id || index}>
-                                                <td className="alert-name">{alert.name || alert.alert_name || 'Unknown'}</td>
-                                                <td>
-                                                    <span className={`severity-badge ${getSeverityClass(alert.severity)}`}>
-                                                        {alert.severity || 'N/A'}
-                                                    </span>
-                                                </td>
-                                                <td>
-                                                    <span className="status-badge firing">Firing</span>
-                                                </td>
-                                                <td>{new Date(alert.starts_at || alert.created_at).toLocaleString()}</td>
-                                                <td className="alert-description">{alert.description || alert.summary || 'No description'}</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
-                </div>
+                        <AlertList
+                            alerts={topAlerts}
+                            loading={loading}
+                            empty={
+                                <EmptyState icon="checkCircle" tone="success" title="Nothing critical is firing">
+                                    Critical and warning alerts will show up here.
+                                </EmptyState>
+                            }
+                        />
+                    </section>
 
-                <div className="resolved-alerts-section">
-                        <div className="section-header">
-                            <h2>Latest Resolved Alerts ({resolvedAlerts.length})</h2>
-                            <div className="alert-config">
-                                <label htmlFor="resolved-limit">Show:</label>
-                                <select
-                                    id="resolved-limit"
-                                    value={resolvedLimit}
-                                    onChange={(e) => setResolvedLimit(Number(e.target.value))}
-                                    className="alert-limit-dropdown"
-                                >
-                                    <option value={5}>5</option>
-                                    <option value={10}>10</option>
-                                    <option value={15}>15</option>
-                                    <option value={20}>20</option>
-                                </select>
-                            </div>
+                    <section className="card">
+                        <div className="card-header">
+                            <h2 className="card-title">
+                                <Icon name="checkCircle" />
+                                Recently resolved
+                                <span className="count">{loading ? '' : resolvedAlerts.length}</span>
+                            </h2>
+                            <LimitSelect id="resolved-limit" value={resolvedLimit} onChange={setResolvedLimit} />
                         </div>
-                        {resolvedAlerts.length === 0 ? (
-                            <p className="empty">No resolved alerts</p>
-                        ) : (
-                            <div className="alerts-table-container">
-                                <table className="alerts-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Alert Name</th>
-                                            <th>Severity</th>
-                                            <th>Status</th>
-                                            <th>Resolved At</th>
-                                            <th>Description</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {resolvedAlerts.map((alert, index) => (
-                                            <tr key={alert.id || index}>
-                                                <td className="alert-name">{alert.name || alert.alert_name || 'Unknown'}</td>
-                                                <td>
-                                                    <span className={`severity-badge ${getSeverityClass(alert.severity)}`}>
-                                                        {alert.severity || 'N/A'}
-                                                    </span>
-                                                </td>
-                                                <td>
-                                                    <span className="status-badge resolved">Resolved</span>
-                                                </td>
-                                                <td>{new Date(alert.ends_at || alert.updated_at).toLocaleString()}</td>
-                                                <td className="alert-description">{alert.description || alert.summary || 'No description'}</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
+                        <AlertList
+                            alerts={resolvedAlerts}
+                            loading={loading}
+                            empty={<EmptyState icon="inbox" title="No resolved alerts yet" />}
+                        />
+                    </section>
                 </div>
             </div>
         </Layout>
@@ -294,4 +245,3 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
-

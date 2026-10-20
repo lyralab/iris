@@ -2,7 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { setCookie, isAuthenticated } from './utils/auth';
 import apiService from './utils/apiService';
+import Icon from './components/Icon';
+import Logo from './components/Logo';
+import ThemeToggle from './components/ThemeToggle';
 import './LoginPage.css';
+
+const FEATURES = [
+    { icon: 'bell', text: 'Receive alerts from Alertmanager and Grafana' },
+    { icon: 'send', text: 'Route them over SMS, email, Telegram, Mattermost and Bale' },
+    { icon: 'group', text: 'Notify the right on-call group, in priority order' },
+];
 
 
 const LoginPage = () => {
@@ -87,107 +96,136 @@ const LoginPage = () => {
 
     return (
         <div className="login-page">
-            <div className="login-container">
-                <div className="login-header">
-                    <img src="/iris.png" alt="Iris Logo" className="login-logo" />
-                    <h2>Iris Alert Manager</h2>
-                    <p className="login-subtitle">Sign in to continue</p>
+            <aside className="login-brand" aria-hidden="true">
+                <div className="login-brand-top">
+                    <Logo size={34} dotColor="currentColor" className="login-brand-logo" />
+                    <span>Iris</span>
                 </div>
-
-                {error && (
-                    <div className="error">
-                        {error}
-                    </div>
-                )}
-
-                <form onSubmit={handleLogin}>
-                    <div className="form-group">
-                        <label htmlFor="username">
-                            <span className="label-icon">👤</span>
-                            Username
-                        </label>
-                        <input
-                            type="text"
-                            id="username"
-                            value={username}
-                            onChange={(e) => setUsername(e.target.value)}
-                            placeholder="Enter your username"
-                            required
-                            disabled={loading}
-                        />
-                    </div>
-
-                    <div className="form-group">
-                        <label htmlFor="password">
-                            <span className="label-icon">🔒</span>
-                            Password
-                        </label>
-                        <input
-                            type="password"
-                            id="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            placeholder="Enter your password"
-                            required
-                            disabled={loading}
-                        />
-                    </div>
-
-                    <div className="form-group captcha-group">
-                        <label htmlFor="captcha">
-                            <span className="label-icon">🔐</span>
-                            Security Verification
-                        </label>
-                        <div className="captcha-container">
-                            <div className="captcha-image-wrapper">
-                                {captchaLoading ? (
-                                    <div className="captcha-loading">Loading...</div>
-                                ) : captchaImage ? (
-                                    <img
-                                        src={captchaImage}
-                                        alt="Captcha"
-                                        className="captcha-image"
-                                    />
-                                ) : (
-                                    <div className="captcha-error">Failed to load</div>
-                                )}
-                            </div>
-                            <button
-                                type="button"
-                                className="captcha-refresh"
-                                onClick={handleRefreshCaptcha}
-                                disabled={captchaLoading || loading}
-                                title="Refresh captcha"
-                            >
-                                🔄
-                            </button>
+                <div className="login-brand-copy">
+                    <h1>Every alert, to the right person, on time.</h1>
+                    <ul>
+                        {FEATURES.map((f) => (
+                            <li key={f.icon}>
+                                <span><Icon name={f.icon} size={16} /></span>
+                                {f.text}
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+                <div className="login-brand-preview">
+                    {[['critical', 'HighErrorRate', 'payments-api'], ['warning', 'DiskSpaceLow', 'db-replica-2'], ['low', 'CertificateRenewed', 'edge-proxy']].map(([sev, name, svc]) => (
+                        <div key={name} className={`preview-row sev-${sev}`}>
+                            <span className="sev-dot" />
+                            <span className="preview-name">{name}</span>
+                            <span className="preview-svc">{svc}</span>
                         </div>
-                        <input
-                            type="text"
-                            id="captcha"
-                            value={captchaAnswer}
-                            onChange={(e) => setCaptchaAnswer(e.target.value)}
-                            placeholder="Enter the answer"
-                            required
-                            disabled={loading || !captchaId}
-                            autoComplete="off"
-                        />
-                        <small className="captcha-hint">Solve the math problem shown in the image</small>
+                    ))}
+                </div>
+            </aside>
+
+            <main className="login-panel">
+                <div className="login-theme"><ThemeToggle /></div>
+                <div className="login-container">
+                    <div className="login-header">
+                        <Logo tile size={44} title="Iris" className="login-logo" />
+                        <h2>Sign in to Iris</h2>
+                        <p className="login-subtitle">Alert management console</p>
                     </div>
 
-                    <button
-                        type="submit"
-                        className="login-button"
-                        disabled={loading || captchaLoading || !captchaId}
-                    >
-                        {loading ? 'Signing in...' : 'Sign In'}
-                    </button>
-                </form>
+                    {error && (
+                        <div className="error" role="alert">
+                            <Icon name="alert" />
+                            {error}
+                        </div>
+                    )}
 
-                <div className="login-footer">
-                    <p>© 2025 Iris Alert Manager. All rights reserved.</p>
+                    <form onSubmit={handleLogin}>
+                        <div className="form-group">
+                            <label htmlFor="username">Username</label>
+                            <div className="input-with-icon">
+                                <Icon name="user" />
+                                <input
+                                    type="text"
+                                    id="username"
+                                    value={username}
+                                    onChange={(e) => setUsername(e.target.value)}
+                                    placeholder="Enter your username"
+                                    autoComplete="username"
+                                    required
+                                    disabled={loading}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="form-group">
+                            <label htmlFor="password">Password</label>
+                            <div className="input-with-icon">
+                                <Icon name="lock" />
+                                <input
+                                    type="password"
+                                    id="password"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    placeholder="Enter your password"
+                                    autoComplete="current-password"
+                                    required
+                                    disabled={loading}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="form-group captcha-group">
+                            <label htmlFor="captcha">Security check</label>
+                            <div className="captcha-container">
+                                <div className="captcha-image-wrapper">
+                                    {captchaLoading ? (
+                                        <span className="skeleton captcha-loading" />
+                                    ) : captchaImage ? (
+                                        <img
+                                            src={captchaImage}
+                                            alt="Captcha"
+                                            className="captcha-image"
+                                        />
+                                    ) : (
+                                        <div className="captcha-error">Failed to load</div>
+                                    )}
+                                </div>
+                                <button
+                                    type="button"
+                                    className="captcha-refresh"
+                                    onClick={handleRefreshCaptcha}
+                                    disabled={captchaLoading || loading}
+                                    title="New captcha"
+                                    aria-label="Load a new captcha"
+                                >
+                                    <Icon name="refresh" size={18} className={captchaLoading ? 'spin' : ''} />
+                                </button>
+                            </div>
+                            <input
+                                type="text"
+                                id="captcha"
+                                value={captchaAnswer}
+                                onChange={(e) => setCaptchaAnswer(e.target.value)}
+                                placeholder="Answer to the math problem"
+                                required
+                                disabled={loading || !captchaId}
+                                autoComplete="off"
+                                inputMode="numeric"
+                            />
+                        </div>
+
+                        <button
+                            type="submit"
+                            className="btn-primary login-button"
+                            disabled={loading || captchaLoading || !captchaId}
+                        >
+                            {loading ? 'Signing in…' : 'Sign in'}
+                        </button>
+                    </form>
+
+                    <p className="login-footer">© {new Date().getFullYear()} Iris Alert Manager</p>
                 </div>
-            </div>
+            </main>
         </div>
     );
 };
