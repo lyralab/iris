@@ -18,7 +18,6 @@ func ValidateJWTToken(aths auth.AuthServiceInterface, role string, logger *zap.S
 	return func(c *gin.Context) {
 		authHeader := c.Request.Header.Get("Authorization")
 		jwtToken := strings.TrimPrefix(authHeader, "Bearer ")
-		logger.Infow("token is ", "token", jwtToken)
 		extractedUsername, extractedRole, err := aths.ValidateToken(jwtToken)
 		if errors.Is(err, iriserror.ErrTokenExpired) {
 			logger.Error("Token expired")
