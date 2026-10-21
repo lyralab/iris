@@ -1,6 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import apiService from '../utils/apiService';
 import Layout from '../components/Layout';
+import EmptyState from '../components/EmptyState';
+import Icon from '../components/Icon';
+import Modal from '../components/Modal';
+import { formatDateTime } from '../utils/format';
 import './ProvidersPage.css';
 
 const MESSAGE_LIMITS = [10, 25, 50];
@@ -49,31 +53,30 @@ const ProviderMessagesModal = ({ provider, onClose }) => {
     };
 
     return (
-        <div className="modal-overlay" onClick={onClose}>
-            <div className="modal messages-modal" onClick={(e) => e.stopPropagation()}>
-                <div className="messages-header">
-                    <h2>Latest Messages: {provider.name}</h2>
-                    <div className="messages-controls">
-                        <select
-                            value={limit}
-                            onChange={(e) => changeLimit(Number(e.target.value))}
-                            aria-label="Number of messages"
-                        >
-                            {MESSAGE_LIMITS.map((n) => (
-                                <option key={n} value={n}>Last {n}</option>
-                            ))}
-                        </select>
-                        <button className="btn-secondary" onClick={load} disabled={loading}>
-                            {loading ? 'Loading...' : 'Refresh'}
-                        </button>
-                    </div>
+        <Modal title={`Messages · ${provider.name}`} subtitle="Latest notifications sent through this provider" size="modal-xl" onClose={onClose}>
+            <div className="modal-body">
+                <div className="messages-controls">
+                    <select
+                        className="select-input select-sm"
+                        value={limit}
+                        onChange={(e) => changeLimit(Number(e.target.value))}
+                        aria-label="Number of messages"
+                    >
+                        {MESSAGE_LIMITS.map((n) => (
+                            <option key={n} value={n}>Last {n}</option>
+                        ))}
+                    </select>
+                    <button className="btn-secondary btn-sm" onClick={load} disabled={loading}>
+                        <Icon name="refresh" size={14} className={loading ? 'spin' : ''} />
+                        Refresh
+                    </button>
                 </div>
-                {error && <div className="error-message">{error}</div>}
+                {error && <div className="error-message"><Icon name="alert" />{error}</div>}
                 {!error && !loading && messages.length === 0 && (
-                    <p className="subtitle">No messages sent through this provider yet.</p>
+                    <EmptyState icon="message" title="No messages yet">Nothing has been sent through this provider.</EmptyState>
                 )}
                 {messages.length > 0 && (
-                    <div className="alerts-table-container">
+                    <div className="alerts-table-container messages-table">
                         <table className="alerts-table">
                             <thead>
                                 <tr>
@@ -88,8 +91,8 @@ const ProviderMessagesModal = ({ provider, onClose }) => {
                             <tbody>
                                 {messages.map((m, i) => (
                                     <tr key={`${m.created_at}-${m.receptor}-${i}`}>
-                                        <td className="nowrap">{new Date(m.created_at).toLocaleString()}</td>
-                                        <td>{m.receptor}</td>
+                                        <td className="nowrap cell-muted tabular">{formatDateTime(m.created_at)}</td>
+                                        <td className="mono">{m.receptor}</td>
                                         <td>{m.user_name || '—'}</td>
                                         <td>
                                             <span className={`status-badge ${MESSAGE_STATUS_CLASS[m.status] || 'status-unknown'}`}>
@@ -104,11 +107,11 @@ const ProviderMessagesModal = ({ provider, onClose }) => {
                         </table>
                     </div>
                 )}
-                <div className="modal-actions">
-                    <button type="button" className="btn-secondary" onClick={onClose}>Close</button>
-                </div>
             </div>
-        </div>
+            <div className="modal-footer">
+                <button type="button" className="btn-secondary" onClick={onClose}>Close</button>
+            </div>
+        </Modal>
     );
 };
 
@@ -178,85 +181,84 @@ const ProvidersPage = () => {
         }
     };
 
-    if (loading) {
-        return (
-            <Layout>
-                <div className="loading">Loading providers...</div>
-            </Layout>
-        );
-    }
+    const sorted = [...providers].sort((x, y) => (x.priority ?? 99) - (y.priority ?? 99));
+    const enabledCount = providers.filter((p) => p.enabled).length;
 
-    if (error) {
-        return (
-            <Layout>
-                <div className="error-message">Error loading providers: {error}</div>
-            </Layout>
+    let content;
+    if (loading) {
+        content = <div className="loading">Loading providers…</div>;
+    } else if (error) {
+        content = <div className="error-message"><Icon name="alert" />Error loading providers: {error}</div>;
+    } else if (providers.length === 0) {
+        content = <div className="card"><EmptyState icon="send" title="No providers configured" /></div>;
+    } else {
+        content = (
+            <div className="providers-grid">
+                {sorted.map((provider) => (
+                    <article key={provider.id} className={`card provider-card ${provider.enabled ? 'enabled' : 'disabled'}`}>
+                        <div className="provider-header">
+                            <span className="provider-icon"><Icon name="send" size={17} /></span>
+                            <div className="provider-title">
+                                <h3>{provider.name}</h3>
+                                <span className={`status-badge ${provider.enabled ? 'status-active' : 'status-unknown'}`}>
+                                    {provider.enabled ? 'Enabled' : 'Disabled'}
+                                </span>
+                            </div>
+                            <label className="switch" title={provider.enabled ? 'Disable provider' : 'Enable provider'}>
+                                <input
+                                    type="checkbox"
+                                    checked={!!provider.enabled}
+                                    onChange={() => handleToggleStatus(provider)}
+                                    aria-label={`${provider.enabled ? 'Disable' : 'Enable'} ${provider.name}`}
+                                />
+                                <span className="switch-track" />
+                            </label>
+                        </div>
+                        <p className="description">{provider.description || 'No description'}</p>
+                        <dl className="provider-info">
+                            <div>
+                                <dt>Priority</dt>
+                                <dd><span className={`priority-badge priority-${provider.priority}`}>P{provider.priority}</span></dd>
+                            </div>
+                            <div>
+                                <dt>ID</dt>
+                                <dd className="mono provider-id" title={provider.id}>{provider.id}</dd>
+                            </div>
+                        </dl>
+                        <div className="provider-actions">
+                            <button className="btn-ghost btn-sm" onClick={() => setMessagesProvider(provider)}>
+                                <Icon name="message" size={14} />
+                                Messages
+                            </button>
+                            <button className="btn-secondary btn-sm" onClick={() => handleEditProvider(provider)}>
+                                <Icon name="sliders" size={14} />
+                                Settings
+                            </button>
+                        </div>
+                    </article>
+                ))}
+            </div>
         );
     }
 
     return (
         <Layout>
-            <div className="providers-page">
+            <div className="page providers-page">
                 <div className="page-header">
                     <div>
-                        <h1>Notification Providers</h1>
-                        <p className="subtitle">Manage notification providers and their priorities</p>
+                        <h1>Providers</h1>
+                        <p className="subtitle">
+                            Notification channels, tried in priority order (P1 first)
+                            {!loading && !error && providers.length > 0 && <> · {enabledCount} of {providers.length} enabled</>}
+                        </p>
                     </div>
                 </div>
 
                 {actionError && !showEditModal && (
-                    <div className="error-message">{actionError}</div>
+                    <div className="error-message"><Icon name="alert" />{actionError}</div>
                 )}
 
-                <div className="providers-grid">
-                    {providers.map((provider) => (
-                        <div key={provider.id} className={`provider-card ${provider.enabled ? 'enabled' : 'disabled'}`}>
-                            <div className="provider-header">
-                                <h3>{provider.name}</h3>
-                                <span className={`status-badge ${provider.enabled ? 'status-active' : 'status-disable'}`}>
-                                    {provider.enabled ? 'Enabled' : 'Disabled'}
-                                </span>
-                            </div>
-                            <div className="provider-body">
-                                <p className="description">{provider.description || 'No description'}</p>
-                                <div className="provider-info">
-                                    <div className="info-item">
-                                        <span className="label">Priority:</span>
-                                        <span className="value">
-                                            <span className={`priority-badge priority-${provider.priority}`}>
-                                                {provider.priority}
-                                            </span>
-                                        </span>
-                                    </div>
-                                    <div className="info-item">
-                                        <span className="label">ID:</span>
-                                        <span className="value small">{provider.id}</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="provider-actions">
-                                <button
-                                    className="btn-secondary"
-                                    onClick={() => handleEditProvider(provider)}
-                                >
-                                    Edit Settings
-                                </button>
-                                <button
-                                    className="btn-secondary"
-                                    onClick={() => setMessagesProvider(provider)}
-                                >
-                                    Messages
-                                </button>
-                                <button
-                                    className={provider.enabled ? 'btn-danger' : 'btn-primary'}
-                                    onClick={() => handleToggleStatus(provider)}
-                                >
-                                    {provider.enabled ? 'Disable' : 'Enable'}
-                                </button>
-                            </div>
-                        </div>
-                    ))}
-                </div>
+                {content}
 
                 {messagesProvider && (
                     <ProviderMessagesModal
@@ -265,16 +267,15 @@ const ProvidersPage = () => {
                     />
                 )}
 
-                {/* Edit Provider Modal */}
                 {showEditModal && selectedProvider && (
-                    <div className="modal-overlay" onClick={() => setShowEditModal(false)}>
-                        <div className="modal" onClick={(e) => e.stopPropagation()}>
-                            <h2>Edit Provider: {selectedProvider.name}</h2>
-                            {actionError && <div className="error-message">{actionError}</div>}
-                            <form onSubmit={handleUpdateProvider}>
+                    <Modal title="Provider settings" subtitle={selectedProvider.name} onClose={() => setShowEditModal(false)}>
+                        <form onSubmit={handleUpdateProvider}>
+                            <div className="modal-body">
+                                {actionError && <div className="error-message"><Icon name="alert" />{actionError}</div>}
                                 <div className="form-group">
-                                    <label>Priority (1-5):</label>
+                                    <label htmlFor="provider-priority">Priority</label>
                                     <input
+                                        id="provider-priority"
                                         type="number"
                                         min="1"
                                         max="5"
@@ -282,27 +283,24 @@ const ProvidersPage = () => {
                                         onChange={(e) => setEditData({ ...editData, priority: e.target.value })}
                                         required
                                     />
-                                    <small>Lower number = higher priority</small>
+                                    <small>1–5. Lower number = tried first.</small>
                                 </div>
-                                <div className="form-group checkbox-group">
-                                    <label>
-                                        <input
-                                            type="checkbox"
-                                            checked={editData.status}
-                                            onChange={(e) => setEditData({ ...editData, status: e.target.checked })}
-                                        />
-                                        <span>Enable Provider</span>
-                                    </label>
-                                </div>
-                                <div className="modal-actions">
-                                    <button type="submit" className="btn-primary">Update Provider</button>
-                                    <button type="button" className="btn-secondary" onClick={() => setShowEditModal(false)}>
-                                        Cancel
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
+                                <label className="switch">
+                                    <input
+                                        type="checkbox"
+                                        checked={editData.status}
+                                        onChange={(e) => setEditData({ ...editData, status: e.target.checked })}
+                                    />
+                                    <span className="switch-track" />
+                                    <span>Provider enabled</span>
+                                </label>
+                            </div>
+                            <div className="modal-footer">
+                                <button type="button" className="btn-secondary" onClick={() => setShowEditModal(false)}>Cancel</button>
+                                <button type="submit" className="btn-primary">Save</button>
+                            </div>
+                        </form>
+                    </Modal>
                 )}
             </div>
         </Layout>
@@ -310,4 +308,3 @@ const ProvidersPage = () => {
 };
 
 export default ProvidersPage;
-

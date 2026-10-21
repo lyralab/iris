@@ -2,11 +2,14 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import apiService from '../utils/apiService';
 import Layout from '../components/Layout';
-import useAutoRefresh, { REFRESH_OPTIONS, readRefreshMs, formatLastUpdated, latestOnly } from '../utils/useAutoRefresh';
+import AlertList from '../components/AlertList';
+import EmptyState from '../components/EmptyState';
+import Icon from '../components/Icon';
+import RefreshControls from '../components/RefreshControls';
+import useAutoRefresh, { readRefreshMs, latestOnly } from '../utils/useAutoRefresh';
 import { byNewest } from '../utils/alertSort';
+import { SEVERITIES } from '../utils/format';
 import './AlertsPage.css';
-
-const SEVERITIES = ['critical', 'high', 'warning', 'medium', 'low', 'page'];
 
 const AlertsPage = () => {
     const [searchParams, setSearchParams] = useSearchParams();
@@ -18,6 +21,7 @@ const AlertsPage = () => {
     const [refreshMs, setRefreshMs] = useState(() => readRefreshMs('iris.alerts.refreshMs'));
     const [lastUpdated, setLastUpdated] = useState(null);
     const [refreshError, setRefreshError] = useState(null);
+    const [query, setQuery] = useState('');
     const [startRequest] = useState(latestOnly);
     const manualPending = useRef(false);
 
@@ -84,121 +88,121 @@ const AlertsPage = () => {
         setSearchParams(next);
     };
 
-    const getSeverityClass = (level) => {
-        const classes = {
-            critical: 'severity-critical',
-            high: 'severity-high',
-            medium: 'severity-medium',
-            warning: 'severity-warning',
-            low: 'severity-low',
-            page: 'severity-page',
-        };
-        return classes[level?.toLowerCase()] || 'severity-default';
-    };
-
-    const timeLabel = activeTab === 'firing' ? 'Started At' : 'Resolved At';
-    const timeField = activeTab === 'firing' ? 'starts_at' : 'ends_at';
+    const needle = query.trim().toLowerCase();
     const rows = (Array.isArray(allAlerts) ? allAlerts.filter(alert => alert && alert.status === activeTab) : [])
+        .filter((alert) => !needle || [alert.name, alert.alert_name, alert.description, alert.summary]
+            .join(' ').toLowerCase().includes(needle))
         .sort(byNewest);
+    const severityLabel = SEVERITIES.find((s) => s.key === severity)?.label;
+
+    let empty;
+    if (needle) {
+        empty = <EmptyState icon="search" title="No matching alerts">Nothing matches “{query.trim()}”.</EmptyState>;
+    } else if (activeTab === 'firing') {
+        empty = (
+            <EmptyState icon="checkCircle" tone="success" title={`No ${severityLabel ? severityLabel.toLowerCase() + ' ' : ''}alerts firing`}>
+                Everything is quiet right now.
+            </EmptyState>
+        );
+    } else {
+        empty = <EmptyState icon="inbox" title={`No resolved ${severityLabel ? severityLabel.toLowerCase() + ' ' : ''}alerts`} />;
+    }
 
     return (
         <Layout>
-            <div className="alerts-page">
+            <div className="page alerts-page">
                 <div className="page-header">
-                    <h1>Alerts</h1>
-                    <div className="header-actions refresh-controls">
-                        {lastUpdated && (
-                            <span className="last-updated">Last updated {formatLastUpdated(lastUpdated)}</span>
-                        )}
-                        <label className="filter-field">
-                            Severity
-                            <select
-                                className="select-input"
-                                value={severity}
-                                onChange={(e) => onSeverityChange(e.target.value)}
-                            >
-                                <option value="">All</option>
-                                {SEVERITIES.map((level) => (
-                                    <option key={level} value={level}>
-                                        {level.charAt(0).toUpperCase() + level.slice(1)}
-                                    </option>
-                                ))}
-                            </select>
-                        </label>
-                        <label className="filter-field">
-                            Refresh
-                            <select
-                                className="select-input"
-                                value={refreshMs}
-                                onChange={(e) => onRefreshChange(Number(e.target.value))}
-                            >
-                                {REFRESH_OPTIONS.map((o) => (
-                                    <option key={o.value} value={o.value}>{o.label}</option>
-                                ))}
-                            </select>
-                        </label>
-                        <button className="btn-secondary" onClick={refresh}>
-                            Refresh
-                        </button>
+                    <div>
+                        <h1>Alerts</h1>
+                        <p className="subtitle">Everything received from Alertmanager and Grafana</p>
                     </div>
-                </div>
-                {refreshError && <div className="refresh-hint">Background refresh failed: {refreshError}</div>}
-
-                <div className="tabs">
-                    <button
-                        className={`tab ${activeTab === 'firing' ? 'active' : ''}`}
-                        onClick={() => setActiveTab('firing')}
-                    >
-                        Firing
-                    </button>
-                    <button
-                        className={`tab ${activeTab === 'resolved' ? 'active' : ''}`}
-                        onClick={() => setActiveTab('resolved')}
-                    >
-                        Resolved
-                    </button>
+                    <RefreshControls
+                        refreshMs={refreshMs}
+                        onRefreshMsChange={onRefreshChange}
+                        onRefresh={refresh}
+                        lastUpdated={lastUpdated}
+                    />
                 </div>
 
-                {error && <div className="error-message">Error loading alerts: {error}</div>}
+                {refreshError && (
+                    <div className="refresh-hint"><Icon name="alert" />Background refresh failed: {refreshError}</div>
+                )}
 
-                <div className="alerts-list">
-                    {loading ? (
-                        <div className="loading">Loading alerts...</div>
-                    ) : rows.length === 0 ? (
-                        <p className="empty">No {activeTab} alerts</p>
-                    ) : (
-                        <div className="alerts-table-container">
-                            <table className="alerts-table">
-                                <thead>
-                                    <tr>
-                                        <th>Alert Name</th>
-                                        <th>Severity</th>
-                                        <th>Status</th>
-                                        <th>{timeLabel}</th>
-                                        <th>Description</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {rows.map((alert, index) => (
-                                        <tr key={alert.id || index}>
-                                            <td className="alert-name">{alert.alert_name || alert.name || 'Unknown'}</td>
-                                            <td>
-                                                <span className={`severity-badge ${getSeverityClass(alert.severity)}`}>
-                                                    {alert.severity || 'N/A'}
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <span className={`status-badge ${activeTab}`}>{activeTab}</span>
-                                            </td>
-                                            <td>{alert[timeField] ? new Date(alert[timeField]).toLocaleString() : '-'}</td>
-                                            <td className="alert-description">{alert.summary || alert.description || 'No description'}</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                <section className="card alerts-card">
+                    <div className="alerts-toolbar">
+                        <div className="segmented" role="tablist" aria-label="Alert status">
+                            <button
+                                type="button"
+                                role="tab"
+                                aria-selected={activeTab === 'firing'}
+                                className={activeTab === 'firing' ? 'active' : ''}
+                                onClick={() => setActiveTab('firing')}
+                            >
+                                <Icon name="flame" size={14} />
+                                Firing
+                            </button>
+                            <button
+                                type="button"
+                                role="tab"
+                                aria-selected={activeTab === 'resolved'}
+                                className={activeTab === 'resolved' ? 'active' : ''}
+                                onClick={() => setActiveTab('resolved')}
+                            >
+                                <Icon name="checkCircle" size={14} />
+                                Resolved
+                            </button>
+                        </div>
+                        <div className="input-with-icon alerts-search">
+                            <Icon name="search" />
+                            <input
+                                className="search-input"
+                                type="search"
+                                value={query}
+                                onChange={(e) => setQuery(e.target.value)}
+                                placeholder="Search alerts"
+                                aria-label="Search alerts"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="alerts-filters">
+                        <div className="chips" role="group" aria-label="Filter by severity">
+                            <button
+                                type="button"
+                                className={`chip ${severity === '' ? 'active' : ''}`}
+                                aria-pressed={severity === ''}
+                                onClick={() => onSeverityChange('')}
+                            >
+                                All severities
+                            </button>
+                            {SEVERITIES.map((level) => (
+                                <button
+                                    type="button"
+                                    key={level.key}
+                                    className={`chip sev-${level.key} ${severity === level.key ? 'active' : ''}`}
+                                    aria-pressed={severity === level.key}
+                                    onClick={() => onSeverityChange(severity === level.key ? '' : level.key)}
+                                >
+                                    <span className="sev-dot" />
+                                    {level.label}
+                                </button>
+                            ))}
+                        </div>
+                        {!loading && !error && (
+                            <span className="alerts-count tabular">
+                                {rows.length} {rows.length === 1 ? 'alert' : 'alerts'}
+                            </span>
+                        )}
+                    </div>
+
+                    {error && (
+                        <div className="alerts-error">
+                            <div className="error-message"><Icon name="alert" />Error loading alerts: {error}</div>
                         </div>
                     )}
-                </div>
+
+                    {!error && <AlertList alerts={rows} loading={loading} empty={empty} />}
+                </section>
             </div>
         </Layout>
     );

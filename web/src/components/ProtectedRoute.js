@@ -1,6 +1,8 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { isAuthenticated, isAdmin } from '../utils/auth';
+import Layout from './Layout';
+import EmptyState from './EmptyState';
 
 const ProtectedRoute = ({ children, requireAdmin = false }) => {
     if (!isAuthenticated()) {
@@ -9,11 +11,15 @@ const ProtectedRoute = ({ children, requireAdmin = false }) => {
 
     if (requireAdmin && !isAdmin()) {
         return (
-            <div style={{ padding: '20px', textAlign: 'center' }}>
-                <h2>Access Denied</h2>
-                <p>You don't have permission to access this page.</p>
-                <p>Admin access required.</p>
-            </div>
+            <Layout>
+                <div className="page">
+                    <div className="card">
+                        <EmptyState icon="lock" title="Admin access required">
+                            You don't have permission to view this page.
+                        </EmptyState>
+                    </div>
+                </div>
+            </Layout>
         );
     }
 

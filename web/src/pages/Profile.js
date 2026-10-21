@@ -1,7 +1,31 @@
 import React, { useState, useEffect } from 'react';
 import apiService from '../utils/apiService';
 import Layout from '../components/Layout';
+import Icon from '../components/Icon';
+import Modal from '../components/Modal';
+import { initials, userStatusInfo } from '../utils/format';
 import './Profile.css';
+
+// Shows `value` (wrapped in `className`), or children for custom content; "Not set" when empty.
+const Field = ({ label, value, className, children }) => {
+    const content = children ?? (value ? <span className={className}>{value}</span> : null);
+    return (
+        <div className="info-row">
+            <dt>{label}</dt>
+            <dd>{content || <span className="cell-muted">Not set</span>}</dd>
+        </div>
+    );
+};
+
+const EDIT_FIELDS = [
+    { name: 'firstname', label: 'First name', type: 'text' },
+    { name: 'lastname', label: 'Last name', type: 'text' },
+    { name: 'email', label: 'Email', type: 'email' },
+    { name: 'mobile_number', label: 'Mobile', type: 'text', placeholder: '09xxxxxxxxx' },
+    { name: 'telegram_id', label: 'Telegram ID', type: 'text', pattern: '-?[0-9]+', maxLength: 50, placeholder: 'User or channel ID' },
+    { name: 'mattermost_id', label: 'Mattermost ID', type: 'text', maxLength: 50, placeholder: 'Mattermost user or channel ID' },
+    { name: 'bale_id', label: 'Bale ID', type: 'text', pattern: '-?[0-9]+', maxLength: 50, placeholder: 'User or channel ID' },
+];
 
 const Profile = () => {
     const [user, setUser] = useState(null);
@@ -80,239 +104,113 @@ const Profile = () => {
         }
     };
 
-    const getStatusInfo = (status) => {
-        const statusMap = {
-            'Verified': { label: 'Active', className: 'status-active' },
-            'verified': { label: 'Active', className: 'status-active' },
-            'New': { label: 'New', className: 'status-new' },
-            'new': { label: 'New', className: 'status-new' },
-            'Disable': { label: 'Disable', className: 'status-disable' },
-            'disable': { label: 'Disable', className: 'status-disable' },
-            'disabled': { label: 'Disable', className: 'status-disable' }
-        };
-        return statusMap[status] || { label: status || 'Unknown', className: 'status-unknown' };
-    };
-
+    let body;
     if (loading) {
-        return (
-            <Layout>
-                <div className="loading">Loading profile...</div>
-            </Layout>
+        body = <div className="loading">Loading profile…</div>;
+    } else if (error) {
+        body = <div className="error-message"><Icon name="alert" />Error loading profile: {error}</div>;
+    } else if (!user) {
+        body = <div className="error-message"><Icon name="alert" />User information not available</div>;
+    } else {
+        const statusInfo = userStatusInfo(user.status);
+        const first = user.firstName || user.firstname;
+        const last = user.lastName || user.lastname;
+        const fullName = [first, last].filter(Boolean).join(' ');
+        body = (
+            <>
+                <section className="card profile-hero">
+                    <span className="avatar avatar-lg">{fullName ? initials(first, last) : initials(user.username)}</span>
+                    <div className="profile-hero-text">
+                        <h1>{fullName || user.username}</h1>
+                        <div className="profile-hero-meta">
+                            <span className="cell-muted">@{user.username}</span>
+                            <span className="badge badge-outline">{user.role || 'member'}</span>
+                            <span className={`status-badge ${statusInfo.className}`}>{statusInfo.label}</span>
+                        </div>
+                    </div>
+                    <button className="btn-secondary" onClick={openEditModal}>
+                        <Icon name="edit" />
+                        Edit profile
+                    </button>
+                </section>
+
+                <div className="profile-grid">
+                    <section className="card">
+                        <div className="card-header"><h2 className="card-title"><Icon name="user" />Personal</h2></div>
+                        <dl className="info-list card-body">
+                            <Field label="Username" value={user.username} />
+                            <Field label="First name" value={first} />
+                            <Field label="Last name" value={last} />
+                            <Field label="Role" value={user.role} className="capitalize" />
+                        </dl>
+                    </section>
+
+                    <section className="card">
+                        <div className="card-header"><h2 className="card-title"><Icon name="bell" />Notification channels</h2></div>
+                        <dl className="info-list card-body">
+                            <Field label="Email" value={user.email} />
+                            <Field label="Mobile" value={user.mobile || user.mobile_number} className="tabular" />
+                            <Field label="Telegram ID" value={user.telegramID || user.telegram_id} className="mono" />
+                            <Field label="Mattermost ID" value={user.mattermostID || user.mattermost_id} className="mono" />
+                            <Field label="Bale ID" value={user.baleID || user.bale_id} className="mono" />
+                        </dl>
+                    </section>
+
+                    <section className="card">
+                        <div className="card-header"><h2 className="card-title"><Icon name="shield" />Account</h2></div>
+                        <dl className="info-list card-body">
+                            <Field label="Status"><span className={`status-badge ${statusInfo.className}`}>{statusInfo.label}</span></Field>
+                            <Field
+                                label="Member since"
+                                value={user.createdAt ? new Date(user.createdAt).toLocaleDateString('en-US', {
+                                    year: 'numeric',
+                                    month: 'long',
+                                    day: 'numeric'
+                                }) : null}
+                            />
+                        </dl>
+                    </section>
+                </div>
+            </>
         );
     }
-
-    if (error) {
-        return (
-            <Layout>
-                <div className="error-message">Error loading profile: {error}</div>
-            </Layout>
-        );
-    }
-
-    if (!user) {
-        return (
-            <Layout>
-                <div className="error-message">User information not available</div>
-            </Layout>
-        );
-    }
-
-    const statusInfo = getStatusInfo(user.status);
 
     return (
         <Layout>
-            <div className="profile-page">
-                <div className="profile-container">
-                    <div className="profile-card">
-                        <div className="profile-left">
-                            <div className="profile-avatar">
-                                <span className="avatar-icon">👤</span>
-                            </div>
-                            <div className="profile-user-info">
-                                <h1>{user.username}</h1>
-                                <span className={`status-badge ${statusInfo.className}`}>
-                                    {statusInfo.label}
-                                </span>
-                            </div>
-                        </div>
+            <div className="page profile-page">
+                {body}
 
-                        <div className="profile-right">
-                            <div className="profile-section">
-                                <h3>Personal Information</h3>
-                                <div className="info-list">
-                                    <div className="info-row">
-                                        <label>Username</label>
-                                        <span>{user.username}</span>
-                                    </div>
-                                    <div className="info-row">
-                                        <label>First Name</label>
-                                        <span>{user.firstName || user.firstname || '-'}</span>
-                                    </div>
-                                    <div className="info-row">
-                                        <label>Last Name</label>
-                                        <span>{user.lastName || user.lastname || '-'}</span>
-                                    </div>
-                                    <div className="info-row">
-                                        <label>Role</label>
-                                        <span className="role-badge">{user.role || '-'}</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="profile-section">
-                                <h3>Contact Information</h3>
-                                <div className="info-list">
-                                    <div className="info-row">
-                                        <label>Email</label>
-                                        <span>{user.email || '-'}</span>
-                                    </div>
-                                    <div className="info-row">
-                                        <label>Mobile</label>
-                                        <span>{user.mobile || user.mobile_number || '-'}</span>
-                                    </div>
-                                    <div className="info-row">
-                                        <label>Telegram ID</label>
-                                        <span>{user.telegramID || user.telegram_id || '-'}</span>
-                                    </div>
-                                    <div className="info-row">
-                                        <label>Mattermost ID</label>
-                                        <span>{user.mattermostID || user.mattermost_id || '-'}</span>
-                                    </div>
-                                    <div className="info-row">
-                                        <label>Bale ID</label>
-                                        <span>{user.baleID || user.bale_id || '-'}</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="profile-section">
-                                <h3>Account Information</h3>
-                                <div className="info-list">
-                                    <div className="info-row">
-                                        <label>Account Status</label>
-                                        <span className={`status-badge ${statusInfo.className}`}>
-                                            {statusInfo.label}
-                                        </span>
-                                    </div>
-                                    <div className="info-row">
-                                        <label>User Since</label>
-                                        <span>{user.createdAt ? new Date(user.createdAt).toLocaleDateString('en-US', {
-                                            year: 'numeric',
-                                            month: 'long',
-                                            day: 'numeric'
-                                        }) : '-'}</span>
-                                    </div>
-                                </div>
-                                <button className="btn-primary edit-profile-btn" onClick={openEditModal}>
-                                    Edit Profile
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Edit Profile Modal */}
                 {showEditModal && (
-                    <div className="modal-overlay" onClick={closeEditModal}>
-                        <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-                            <div className="modal-header">
-                                <h2>Edit Profile</h2>
-                                <button className="modal-close-btn" onClick={closeEditModal}>×</button>
-                            </div>
+                    <Modal title="Edit profile" onClose={closeEditModal}>
+                        <form onSubmit={(e) => { e.preventDefault(); handleSave(); }}>
                             <div className="modal-body">
-                                {saveError && (
-                                    <div className="modal-error">{saveError}</div>
-                                )}
-                                <div className="form-group">
-                                    <label>First Name</label>
-                                    <input
-                                        type="text"
-                                        name="firstname"
-                                        value={editForm.firstname}
-                                        onChange={handleInputChange}
-                                        placeholder="Enter first name"
-                                    />
-                                </div>
-                                <div className="form-group">
-                                    <label>Last Name</label>
-                                    <input
-                                        type="text"
-                                        name="lastname"
-                                        value={editForm.lastname}
-                                        onChange={handleInputChange}
-                                        placeholder="Enter last name"
-                                    />
-                                </div>
-                                <div className="form-group">
-                                    <label>Email</label>
-                                    <input
-                                        type="email"
-                                        name="email"
-                                        value={editForm.email}
-                                        onChange={handleInputChange}
-                                        placeholder="Enter email"
-                                    />
-                                </div>
-                                <div className="form-group">
-                                    <label>Mobile</label>
-                                    <input
-                                        type="text"
-                                        name="mobile_number"
-                                        value={editForm.mobile_number}
-                                        onChange={handleInputChange}
-                                        placeholder="Enter mobile number"
-                                    />
-                                </div>
-                                <div className="form-group">
-                                    <label>Telegram ID</label>
-                                    <input
-                                        type="text"
-                                        name="telegram_id"
-                                        value={editForm.telegram_id}
-                                        onChange={handleInputChange}
-                                        pattern="-?[0-9]+"
-                                        maxLength="50"
-                                        placeholder="User or channel ID"
-                                    />
-                                </div>
-                                <div className="form-group">
-                                    <label>Mattermost ID</label>
-                                    <input
-                                        type="text"
-                                        name="mattermost_id"
-                                        value={editForm.mattermost_id}
-                                        onChange={handleInputChange}
-                                        maxLength="50"
-                                        placeholder="Mattermost user or channel ID"
-                                    />
-                                </div>
-                                <div className="form-group">
-                                    <label>Bale ID</label>
-                                    <input
-                                        type="text"
-                                        name="bale_id"
-                                        value={editForm.bale_id}
-                                        onChange={handleInputChange}
-                                        pattern="-?[0-9]+"
-                                        maxLength="50"
-                                        placeholder="User or channel ID"
-                                    />
+                                {saveError && <div className="modal-error"><Icon name="alert" />{saveError}</div>}
+                                <div className="form-row">
+                                    {EDIT_FIELDS.map((f) => (
+                                        <div className="form-group" key={f.name}>
+                                            <label htmlFor={`profile-${f.name}`}>{f.label}</label>
+                                            <input
+                                                id={`profile-${f.name}`}
+                                                type={f.type}
+                                                name={f.name}
+                                                value={editForm[f.name]}
+                                                onChange={handleInputChange}
+                                                pattern={f.pattern}
+                                                maxLength={f.maxLength}
+                                                placeholder={f.placeholder}
+                                            />
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
                             <div className="modal-footer">
-                                <button className="btn-secondary" onClick={closeEditModal}>
-                                    Cancel
-                                </button>
-                                <button
-                                    className="btn-primary"
-                                    onClick={handleSave}
-                                    disabled={saving}
-                                >
-                                    {saving ? 'Saving...' : 'Save Changes'}
+                                <button type="button" className="btn-secondary" onClick={closeEditModal}>Cancel</button>
+                                <button type="submit" className="btn-primary" disabled={saving}>
+                                    {saving ? 'Saving…' : 'Save changes'}
                                 </button>
                             </div>
-                        </div>
-                    </div>
+                        </form>
+                    </Modal>
                 )}
             </div>
         </Layout>
@@ -320,4 +218,3 @@ const Profile = () => {
 };
 
 export default Profile;
-

@@ -1,6 +1,6 @@
 // The API sends Go's zero time ("0001-01-01 00:00:00 +0000 UTC") for a NULL column.
 // Match it by prefix: V8 parses that string as year 2001, not year 1.
-function timeOrNull(value) {
+export function timeOrNull(value) {
     if (!value || String(value).startsWith('0001-01-01')) return null;
     const t = new Date(value).getTime();
     return Number.isNaN(t) ? null : t;

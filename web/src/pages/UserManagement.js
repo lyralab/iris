@@ -2,7 +2,145 @@ import React, { useState, useEffect } from 'react';
 import apiService from '../utils/apiService';
 import Layout from '../components/Layout';
 import ConfirmDialog from '../components/ConfirmDialog';
+import EmptyState from '../components/EmptyState';
+import Icon from '../components/Icon';
+import Modal from '../components/Modal';
+import { initials, userStatusInfo } from '../utils/format';
 import './UserManagement.css';
+
+const CHANNELS = [
+    { key: 'mobile', label: 'SMS' },
+    { key: 'email', label: 'Email' },
+    { key: 'telegram_id', label: 'Telegram' },
+    { key: 'mattermost_id', label: 'Mattermost' },
+    { key: 'bale_id', label: 'Bale' },
+];
+
+// Fields shared by the add and edit forms. `isNew` adds the password fields and unlocks username.
+const UserFields = ({ value, onChange, isNew }) => {
+    const set = (field) => (e) => onChange({ ...value, [field]: e.target.value });
+    return (
+        <>
+            <div className="form-section">
+                <h3 className="form-section-title">Identity</h3>
+                <div className="form-group">
+                    <label htmlFor="user-username">Username</label>
+                    <input
+                        id="user-username"
+                        type="text"
+                        value={value.username}
+                        onChange={set('username')}
+                        required
+                        minLength="3"
+                        disabled={!isNew}
+                    />
+                </div>
+                <div className="form-row">
+                    <div className="form-group">
+                        <label htmlFor="user-firstname">First name</label>
+                        <input id="user-firstname" type="text" value={value.firstname || ''} onChange={set('firstname')} />
+                    </div>
+                    <div className="form-group">
+                        <label htmlFor="user-lastname">Last name</label>
+                        <input id="user-lastname" type="text" value={value.lastname || ''} onChange={set('lastname')} />
+                    </div>
+                </div>
+            </div>
+
+            <div className="form-section">
+                <h3 className="form-section-title">Notification channels</h3>
+                <div className="form-row">
+                    <div className="form-group">
+                        <label htmlFor="user-email">Email</label>
+                        <input id="user-email" type="email" value={value.email || ''} onChange={set('email')} />
+                    </div>
+                    <div className="form-group">
+                        <label htmlFor="user-mobile">Mobile number</label>
+                        <input
+                            id="user-mobile"
+                            type="text"
+                            value={value.mobile_number || ''}
+                            onChange={set('mobile_number')}
+                            pattern="[0-9]{11}"
+                            placeholder="09xxxxxxxxx"
+                        />
+                        <small>11 digits</small>
+                    </div>
+                </div>
+                <div className="form-row">
+                    <div className="form-group">
+                        <label htmlFor="user-telegram">Telegram ID</label>
+                        <input
+                            id="user-telegram"
+                            type="text"
+                            value={value.telegram_id || ''}
+                            onChange={set('telegram_id')}
+                            pattern="-?[0-9]+"
+                            maxLength="50"
+                            placeholder="User or channel ID"
+                        />
+                        <small>Channel IDs are negative, e.g. -1001234567890</small>
+                    </div>
+                    <div className="form-group">
+                        <label htmlFor="user-bale">Bale ID</label>
+                        <input
+                            id="user-bale"
+                            type="text"
+                            value={value.bale_id || ''}
+                            onChange={set('bale_id')}
+                            pattern="-?[0-9]+"
+                            maxLength="50"
+                            placeholder="User or channel ID"
+                        />
+                    </div>
+                </div>
+                <div className="form-group">
+                    <label htmlFor="user-mattermost">Mattermost ID</label>
+                    <input
+                        id="user-mattermost"
+                        type="text"
+                        value={value.mattermost_id || ''}
+                        onChange={set('mattermost_id')}
+                        maxLength="50"
+                        placeholder="Mattermost user or channel ID"
+                    />
+                </div>
+            </div>
+
+            {isNew && (
+                <div className="form-section">
+                    <h3 className="form-section-title">Password</h3>
+                    <div className="form-row">
+                        <div className="form-group">
+                            <label htmlFor="user-password">Password</label>
+                            <input
+                                id="user-password"
+                                type="password"
+                                value={value.password}
+                                onChange={set('password')}
+                                required
+                                minLength="8"
+                                autoComplete="new-password"
+                            />
+                        </div>
+                        <div className="form-group">
+                            <label htmlFor="user-password2">Confirm password</label>
+                            <input
+                                id="user-password2"
+                                type="password"
+                                value={value['confirm-password']}
+                                onChange={set('confirm-password')}
+                                required
+                                autoComplete="new-password"
+                            />
+                        </div>
+                    </div>
+                    <small className="form-hint">Min 8 characters, with uppercase, lowercase, a digit and a special character.</small>
+                </div>
+            )}
+        </>
+    );
+};
 
 const UserManagement = () => {
     const [users, setUsers] = useState([]);
@@ -29,20 +167,6 @@ const UserManagement = () => {
     const [confirm, setConfirm] = useState(null);
     const [actionError, setActionError] = useState('');
     const [query, setQuery] = useState('');
-
-    // Function to get status display info
-    const getStatusInfo = (status) => {
-        const statusMap = {
-            'Verified': { label: 'Active', className: 'status-active' },
-            'verified': { label: 'Active', className: 'status-active' },
-            'New': { label: 'New', className: 'status-new' },
-            'new': { label: 'New', className: 'status-new' },
-            'Disable': { label: 'Disable', className: 'status-disable' },
-            'disable': { label: 'Disable', className: 'status-disable' },
-            'disabled': { label: 'Disable', className: 'status-disable' }
-        };
-        return statusMap[status] || { label: status || 'Unknown', className: 'status-unknown' };
-    };
 
     const fetchUsers = async () => {
         setLoading(true);
@@ -153,374 +277,215 @@ const UserManagement = () => {
         }
     };
 
-    if (loading) {
-        return (
-            <Layout>
-                <div className="loading">Loading users...</div>
-            </Layout>
-        );
-    }
-
-    if (error) {
-        return (
-            <Layout>
-                <div className="error-message">Error loading users: {error}</div>
-            </Layout>
-        );
-    }
-
     const needle = query.trim().toLowerCase();
     const visibleUsers = users.filter((user) => {
         if (!needle) return true;
         const name = `${user.firstName || ''} ${user.lastName || ''}`;
         return [user.username, name, user.email].join(' ').toLowerCase().includes(needle);
     });
+    const pendingCount = users.filter((u) => String(u.status).toLowerCase() === 'new').length;
+
+    const openEdit = (user) => {
+        setActionError('');
+        setSelectedUser({
+            username: user.username,
+            firstname: user.firstName || '',
+            lastname: user.lastName || '',
+            email: user.email || '',
+            mobile_number: user.mobile || '',
+            telegram_id: user.telegram_id || '',
+            mattermost_id: user.mattermost_id || '',
+            bale_id: user.bale_id || '',
+        });
+        setShowEditModal(true);
+    };
+
+    let content;
+    if (loading) {
+        content = <div className="loading">Loading users…</div>;
+    } else if (error) {
+        content = <div className="card-body"><div className="error-message"><Icon name="alert" />Error loading users: {error}</div></div>;
+    } else if (visibleUsers.length === 0) {
+        content = users.length === 0
+            ? <EmptyState icon="users" title="No users yet">Add the first person who should receive alerts.</EmptyState>
+            : <EmptyState icon="search" title="No users match">Try a different name or email.</EmptyState>;
+    } else {
+        content = (
+            <div className="users-table-container">
+                <table className="users-table">
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>Contact</th>
+                            <th>Channels</th>
+                            <th>Status</th>
+                            <th className="cell-actions"><span className="visually-hidden">Actions</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {visibleUsers.map((user) => {
+                            const statusInfo = userStatusInfo(user.status);
+                            const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ');
+                            return (
+                                <tr key={user.id}>
+                                    <td>
+                                        <div className="user-name-cell">
+                                            <span className="avatar">{initials(user.firstName, user.lastName) !== '?' ? initials(user.firstName, user.lastName) : initials(user.username)}</span>
+                                            <div>
+                                                <strong>{user.username}</strong>
+                                                {fullName && <span>{fullName}</span>}
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div className="contact-cell">
+                                            <span>{user.email || <span className="cell-muted">No email</span>}</span>
+                                            {user.mobile && <span className="cell-muted tabular">{user.mobile}</span>}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div className="channel-list">
+                                            {CHANNELS.filter((c) => user[c.key]).map((c) => (
+                                                <span key={c.key} className="badge badge-outline">{c.label}</span>
+                                            ))}
+                                            {!CHANNELS.some((c) => user[c.key]) && <span className="cell-muted">None</span>}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span className={`status-badge ${statusInfo.className}`}>{statusInfo.label}</span>
+                                    </td>
+                                    <td className="cell-actions">
+                                        <div className="actions-cell">
+                                            {String(user.status).toLowerCase() === 'new' && (
+                                                <button className="btn-verify btn-sm" onClick={() => handleVerifyUser(user.username)}>
+                                                    <Icon name="check" size={14} />
+                                                    Verify
+                                                </button>
+                                            )}
+                                            <button className="btn-ghost btn-sm" onClick={() => openEdit(user)}>
+                                                <Icon name="edit" size={14} />
+                                                Edit
+                                            </button>
+                                            <button
+                                                className="btn-ghost btn-sm"
+                                                onClick={() => {
+                                                    setActionError('');
+                                                    setSelectedUserForGroup(user);
+                                                    setShowGroupModal(true);
+                                                }}
+                                            >
+                                                <Icon name="group" size={14} />
+                                                Groups
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            );
+                        })}
+                    </tbody>
+                </table>
+            </div>
+        );
+    }
 
     return (
         <Layout>
-            <div className="user-management">
+            <div className="page user-management">
                 <div className="page-header">
-                    <h1>User Management</h1>
+                    <div>
+                        <h1>Users</h1>
+                        <p className="subtitle">
+                            People who receive alert notifications
+                            {pendingCount > 0 && <> · <strong className="pending-note">{pendingCount} awaiting verification</strong></>}
+                        </p>
+                    </div>
                     <div className="header-actions">
-                        <input
-                            className="search-input"
-                            type="search"
-                            value={query}
-                            onChange={(e) => setQuery(e.target.value)}
-                            placeholder="Search name or email"
-                        />
-                        <button className="btn-primary" onClick={() => setShowAddModal(true)}>
-                            + Add User
+                        <div className="input-with-icon">
+                            <Icon name="search" />
+                            <input
+                                className="search-input"
+                                type="search"
+                                value={query}
+                                onChange={(e) => setQuery(e.target.value)}
+                                placeholder="Search name or email"
+                                aria-label="Search users"
+                            />
+                        </div>
+                        <button className="btn-primary" onClick={() => { setActionError(''); setShowAddModal(true); }}>
+                            <Icon name="userPlus" />
+                            Add user
                         </button>
                     </div>
                 </div>
 
                 {actionError && !showAddModal && !showEditModal && !showGroupModal && (
-                    <div className="error-message">{actionError}</div>
+                    <div className="error-message"><Icon name="alert" />{actionError}</div>
                 )}
 
-                {visibleUsers.length === 0 ? (
-                    <p className="empty">{users.length === 0 ? 'No users' : 'No users match'}</p>
-                ) : (
-                <div className="users-table-container">
-                    <table className="users-table">
-                        <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>Email</th>
-                                <th>Mobile</th>
-                                <th>Status</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {visibleUsers.map((user) => (
-                                <tr key={user.id}>
-                                    <td>
-                                        <div className="user-name-cell">
-                                            <strong>{user.username}</strong>
-                                            {(user.firstName || user.lastName) && (
-                                                <span>{[user.firstName, user.lastName].filter(Boolean).join(' ')}</span>
-                                            )}
-                                        </div>
-                                    </td>
-                                    <td>{user.email || '-'}</td>
-                                    <td>{user.mobile || '-'}</td>
-                                    <td>
-                                        {(() => {
-                                            const statusInfo = getStatusInfo(user.status);
-                                            return (
-                                                <span className={`status-badge ${statusInfo.className}`}>
-                                                    {statusInfo.label}
-                                                </span>
-                                            );
-                                        })()}
-                                    </td>
-                                    <td className="actions-cell">
-                                        <button
-                                            className="btn-edit"
-                                            onClick={() => {
-                                                setSelectedUser({
-                                                    username: user.username,
-                                                    firstname: user.firstName || '',
-                                                    lastname: user.lastName || '',
-                                                    email: user.email || '',
-                                                    mobile_number: user.mobile || '',
-                                                    telegram_id: user.telegram_id || '',
-                                                    mattermost_id: user.mattermost_id || '',
-                                                    bale_id: user.bale_id || '',
-                                                });
-                                                setShowEditModal(true);
-                                            }}
-                                        >
-                                            Edit
-                                        </button>
-                                        <button
-                                            className="btn-group"
-                                            onClick={() => {
-                                                setSelectedUserForGroup(user);
-                                                setShowGroupModal(true);
-                                            }}
-                                        >
-                                            Groups
-                                        </button>
-                                        {(user.status === 'New' || user.status === 'new') && (
-                                            <button
-                                                className="btn-verify"
-                                                onClick={() => handleVerifyUser(user.username)}
-                                            >
-                                                Verify
-                                            </button>
-                                        )}
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-                )}
+                <section className="card table-card">{content}</section>
 
-                {/* Add User Modal */}
                 {showAddModal && (
-                    <div className="modal-overlay" onClick={() => setShowAddModal(false)}>
-                        <div className="modal" onClick={(e) => e.stopPropagation()}>
-                            <h2>Add New User</h2>
-                            {actionError && <div className="error-message">{actionError}</div>}
-                            <form onSubmit={handleAddUser}>
-                                <div className="form-group">
-                                    <label>Username:</label>
-                                    <input
-                                        type="text"
-                                        value={newUser.username}
-                                        onChange={(e) => setNewUser({ ...newUser, username: e.target.value })}
-                                        required
-                                        minLength="3"
-                                    />
-                                </div>
-                                <div className="form-row">
-                                    <div className="form-group">
-                                        <label>First Name:</label>
-                                        <input
-                                            type="text"
-                                            value={newUser.firstname}
-                                            onChange={(e) => setNewUser({ ...newUser, firstname: e.target.value })}
-                                        />
-                                    </div>
-                                    <div className="form-group">
-                                        <label>Last Name:</label>
-                                        <input
-                                            type="text"
-                                            value={newUser.lastname}
-                                            onChange={(e) => setNewUser({ ...newUser, lastname: e.target.value })}
-                                        />
-                                    </div>
-                                </div>
-                                <div className="form-group">
-                                    <label>Email:</label>
-                                    <input
-                                        type="email"
-                                        value={newUser.email}
-                                        onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-                                    />
-                                </div>
-                                <div className="form-group">
-                                    <label>Mobile Number:</label>
-                                    <input
-                                        type="text"
-                                        value={newUser.mobile_number}
-                                        onChange={(e) => setNewUser({ ...newUser, mobile_number: e.target.value })}
-                                        pattern="[0-9]{11}"
-                                        placeholder="09xxxxxxxxx"
-                                    />
-                                    <small>11 digits required</small>
-                                </div>
-                                <div className="form-group">
-                                    <label>Telegram ID:</label>
-                                    <input
-                                        type="text"
-                                        value={newUser.telegram_id}
-                                        onChange={(e) => setNewUser({ ...newUser, telegram_id: e.target.value })}
-                                        pattern="-?[0-9]+"
-                                        maxLength="50"
-                                        placeholder="User or channel ID"
-                                    />
-                                    <small>Channel IDs are negative, for example -1001234567890</small>
-                                </div>
-                                <div className="form-group">
-                                    <label>Mattermost ID:</label>
-                                    <input
-                                        type="text"
-                                        value={newUser.mattermost_id}
-                                        onChange={(e) => setNewUser({ ...newUser, mattermost_id: e.target.value })}
-                                        maxLength="50"
-                                        placeholder="Mattermost user or channel ID"
-                                    />
-                                </div>
-                                <div className="form-group">
-                                    <label>Bale ID:</label>
-                                    <input
-                                        type="text"
-                                        value={newUser.bale_id}
-                                        onChange={(e) => setNewUser({ ...newUser, bale_id: e.target.value })}
-                                        pattern="-?[0-9]+"
-                                        maxLength="50"
-                                        placeholder="User or channel ID"
-                                    />
-                                </div>
-                                <div className="form-group">
-                                    <label>Password:</label>
-                                    <input
-                                        type="password"
-                                        value={newUser.password}
-                                        onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-                                        required
-                                        minLength="8"
-                                    />
-                                    <small>Min 8 characters, must include uppercase, lowercase, digit, and special character</small>
-                                </div>
-                                <div className="form-group">
-                                    <label>Confirm Password:</label>
-                                    <input
-                                        type="password"
-                                        value={newUser['confirm-password']}
-                                        onChange={(e) => setNewUser({ ...newUser, 'confirm-password': e.target.value })}
-                                        required
-                                    />
-                                </div>
-                                <div className="modal-actions">
-                                    <button type="submit" className="btn-primary">Add User</button>
-                                    <button type="button" className="btn-secondary" onClick={() => setShowAddModal(false)}>
-                                        Cancel
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
+                    <Modal title="Add user" subtitle="New users start unverified until an admin verifies them." onClose={() => setShowAddModal(false)}>
+                        <form onSubmit={handleAddUser}>
+                            <div className="modal-body">
+                                {actionError && <div className="error-message"><Icon name="alert" />{actionError}</div>}
+                                <UserFields value={newUser} onChange={setNewUser} isNew />
+                            </div>
+                            <div className="modal-footer">
+                                <button type="button" className="btn-secondary" onClick={() => setShowAddModal(false)}>Cancel</button>
+                                <button type="submit" className="btn-primary">Add user</button>
+                            </div>
+                        </form>
+                    </Modal>
                 )}
 
-                {/* Edit User Modal */}
                 {showEditModal && selectedUser && (
-                    <div className="modal-overlay" onClick={() => setShowEditModal(false)}>
-                        <div className="modal" onClick={(e) => e.stopPropagation()}>
-                            <h2>Edit User</h2>
-                            {actionError && <div className="error-message">{actionError}</div>}
-                            <form onSubmit={handleUpdateUser}>
-                                <div className="form-group">
-                                    <label>Username:</label>
-                                    <input
-                                        type="text"
-                                        value={selectedUser.username}
-                                        onChange={(e) => setSelectedUser({ ...selectedUser, username: e.target.value })}
-                                        required
-                                        disabled
-                                    />
-                                </div>
-                                <div className="form-row">
-                                    <div className="form-group">
-                                        <label>First Name:</label>
-                                        <input
-                                            type="text"
-                                            value={selectedUser.firstname || ''}
-                                            onChange={(e) => setSelectedUser({ ...selectedUser, firstname: e.target.value })}
-                                        />
-                                    </div>
-                                    <div className="form-group">
-                                        <label>Last Name:</label>
-                                        <input
-                                            type="text"
-                                            value={selectedUser.lastname || ''}
-                                            onChange={(e) => setSelectedUser({ ...selectedUser, lastname: e.target.value })}
-                                        />
-                                    </div>
-                                </div>
-                                <div className="form-group">
-                                    <label>Email:</label>
-                                    <input
-                                        type="email"
-                                        value={selectedUser.email || ''}
-                                        onChange={(e) => setSelectedUser({ ...selectedUser, email: e.target.value })}
-                                    />
-                                </div>
-                                <div className="form-group">
-                                    <label>Mobile Number:</label>
-                                    <input
-                                        type="text"
-                                        value={selectedUser.mobile_number || ''}
-                                        onChange={(e) => setSelectedUser({ ...selectedUser, mobile_number: e.target.value })}
-                                        pattern="[0-9]{11}"
-                                        placeholder="09xxxxxxxxx"
-                                    />
-                                </div>
-                                <div className="form-group">
-                                    <label>Telegram ID:</label>
-                                    <input
-                                        type="text"
-                                        value={selectedUser.telegram_id || ''}
-                                        onChange={(e) => setSelectedUser({ ...selectedUser, telegram_id: e.target.value })}
-                                        pattern="-?[0-9]+"
-                                        maxLength="50"
-                                        placeholder="User or channel ID"
-                                    />
-                                    <small>Channel IDs are negative, for example -1001234567890</small>
-                                </div>
-                                <div className="form-group">
-                                    <label>Mattermost ID:</label>
-                                    <input
-                                        type="text"
-                                        value={selectedUser.mattermost_id || ''}
-                                        onChange={(e) => setSelectedUser({ ...selectedUser, mattermost_id: e.target.value })}
-                                        maxLength="50"
-                                        placeholder="Mattermost user or channel ID"
-                                    />
-                                </div>
-                                <div className="form-group">
-                                    <label>Bale ID:</label>
-                                    <input
-                                        type="text"
-                                        value={selectedUser.bale_id || ''}
-                                        onChange={(e) => setSelectedUser({ ...selectedUser, bale_id: e.target.value })}
-                                        pattern="-?[0-9]+"
-                                        maxLength="50"
-                                        placeholder="User or channel ID"
-                                    />
-                                </div>
-                                <div className="modal-actions">
-                                    <button type="submit" className="btn-primary">Update User</button>
-                                    <button type="button" className="btn-secondary" onClick={() => setShowEditModal(false)}>
-                                        Cancel
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
+                    <Modal title="Edit user" subtitle={selectedUser.username} onClose={() => setShowEditModal(false)}>
+                        <form onSubmit={handleUpdateUser}>
+                            <div className="modal-body">
+                                {actionError && <div className="error-message"><Icon name="alert" />{actionError}</div>}
+                                <UserFields value={selectedUser} onChange={setSelectedUser} />
+                            </div>
+                            <div className="modal-footer">
+                                <button type="button" className="btn-secondary" onClick={() => setShowEditModal(false)}>Cancel</button>
+                                <button type="submit" className="btn-primary">Save changes</button>
+                            </div>
+                        </form>
+                    </Modal>
                 )}
 
-                {/* Add to Group Modal */}
                 {showGroupModal && selectedUserForGroup && (
-                    <div className="modal-overlay" onClick={() => setShowGroupModal(false)}>
-                        <div className="modal" onClick={(e) => e.stopPropagation()}>
-                            <h2>Add {selectedUserForGroup.username} to Group</h2>
-                            {actionError && <div className="error-message">{actionError}</div>}
-                            <div className="groups-list">
-                                {groups.map((group) => (
-                                    <div key={group.group_id} className="group-item">
-                                        <span>{group.group_name}</span>
-                                        <button
-                                            className="btn-primary"
-                                            onClick={() => handleAddUserToGroup(group.group_id)}
-                                        >
-                                            Add to Group
-                                        </button>
-                                    </div>
-                                ))}
-                            </div>
-                            <div className="modal-actions">
-                                <button className="btn-secondary" onClick={() => setShowGroupModal(false)}>
-                                    Close
-                                </button>
-                            </div>
+                    <Modal
+                        title="Add to group"
+                        subtitle={`Choose a group for ${selectedUserForGroup.username}`}
+                        onClose={() => setShowGroupModal(false)}
+                    >
+                        <div className="modal-body">
+                            {actionError && <div className="error-message"><Icon name="alert" />{actionError}</div>}
+                            {groups.length === 0 ? (
+                                <EmptyState icon="group" title="No groups yet">Create a group on the Groups page first.</EmptyState>
+                            ) : (
+                                <ul className="groups-list">
+                                    {groups.map((group) => (
+                                        <li key={group.group_id} className="group-item">
+                                            <span className="group-item-icon"><Icon name="group" /></span>
+                                            <span className="group-item-text">
+                                                <strong>{group.group_name}</strong>
+                                                {group.description && <span>{group.description}</span>}
+                                            </span>
+                                            <button className="btn-secondary btn-sm" onClick={() => handleAddUserToGroup(group.group_id)}>
+                                                <Icon name="plus" size={14} />
+                                                Add
+                                            </button>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
                         </div>
-                    </div>
+                        <div className="modal-footer">
+                            <button className="btn-secondary" onClick={() => setShowGroupModal(false)}>Close</button>
+                        </div>
+                    </Modal>
                 )}
 
                 {confirm && (
@@ -539,4 +504,3 @@ const UserManagement = () => {
 };
 
 export default UserManagement;
-
