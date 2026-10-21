@@ -1,5 +1,6 @@
 ARG REGISTRY=cgr.dev
 ARG GOPROXY=https://proxy.golang.org,direct
+ARG NPM_REGISTRY=https://registry.npmjs.org/
 
 FROM ${REGISTRY}/chainguard/go:latest-dev AS build
 ARG GOPROXY
@@ -13,6 +14,8 @@ RUN CGO_ENABLED=0 go build -o /usr/bin/app ./cmd/server/main.go
 
 
 FROM ${REGISTRY}/chainguard/node:latest-dev AS node_build
+ARG NPM_REGISTRY
+ENV npm_config_registry=${NPM_REGISTRY}
 WORKDIR /app
 COPY --chown=node:node web/package*.json ./
 RUN npm install
