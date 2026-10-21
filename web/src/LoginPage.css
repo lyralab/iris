@@ -71,18 +71,12 @@
 }
 
 .captcha-container {
-    display: flex;
-    align-items: stretch;
-    gap: 0.5rem;
     margin-bottom: 0.5rem;
 }
 
+/* The box takes the image's own shape, so the captcha fills it edge to edge. */
 .captcha-image-wrapper {
-    flex: 1;
-    height: 64px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    width: 100%;
     background: white;
     border: 1px solid var(--border-strong);
     border-radius: 8px;
@@ -92,13 +86,17 @@
 .captcha-image {
     display: block;
     width: 100%;
-    height: 100%;
-    object-fit: contain;
+    height: auto;
 }
 
-.captcha-loading {
+/* Placeholders while there is no image: same 240x100 shape the backend renders. */
+.captcha-loading,
+.captcha-error {
+    display: flex;
+    align-items: center;
+    justify-content: center;
     width: 100%;
-    height: 100%;
+    aspect-ratio: 12 / 5;
     border-radius: 0;
 }
 
@@ -107,22 +105,19 @@
     font-size: 0.85rem;
 }
 
-.captcha-refresh {
-    width: 48px;
-    flex: none;
-    display: inline-flex;
+.captcha-label-row {
+    display: flex;
+    justify-content: space-between;
     align-items: center;
-    justify-content: center;
-    border: 1px solid var(--border-strong);
-    border-radius: 8px;
-    background: var(--surface);
-    color: var(--muted);
-    cursor: pointer;
+    margin-bottom: 0.35rem;
 }
 
-.captcha-refresh:hover:not(:disabled) {
-    border-color: var(--accent);
-    color: var(--accent);
+.captcha-label-row label {
+    margin-bottom: 0;
+}
+
+.captcha-refresh {
+    margin-right: -0.4rem;
 }
 
 .login-button {

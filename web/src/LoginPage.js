@@ -142,7 +142,19 @@ const LoginPage = () => {
                         </div>
 
                         <div className="form-group captcha-group">
-                            <label htmlFor="captcha">Security check</label>
+                            <div className="captcha-label-row">
+                                <label htmlFor="captcha">Security check</label>
+                                <button
+                                    type="button"
+                                    className="btn-ghost btn-sm captcha-refresh"
+                                    onClick={handleRefreshCaptcha}
+                                    disabled={captchaLoading || loading}
+                                    aria-label="Load a new captcha"
+                                >
+                                    <Icon name="refresh" size={14} className={captchaLoading ? 'spin' : ''} />
+                                    New code
+                                </button>
+                            </div>
                             <div className="captcha-container">
                                 <div className="captcha-image-wrapper">
                                     {captchaLoading ? (
@@ -157,23 +169,13 @@ const LoginPage = () => {
                                         <div className="captcha-error">Failed to load</div>
                                     )}
                                 </div>
-                                <button
-                                    type="button"
-                                    className="captcha-refresh"
-                                    onClick={handleRefreshCaptcha}
-                                    disabled={captchaLoading || loading}
-                                    title="New captcha"
-                                    aria-label="Load a new captcha"
-                                >
-                                    <Icon name="refresh" size={18} className={captchaLoading ? 'spin' : ''} />
-                                </button>
                             </div>
                             <input
                                 type="text"
                                 id="captcha"
                                 value={captchaAnswer}
                                 onChange={(e) => setCaptchaAnswer(e.target.value)}
-                                placeholder="Answer to the math problem"
+                                placeholder="Enter the digits shown above"
                                 required
                                 disabled={loading || !captchaId}
                                 autoComplete="off"
