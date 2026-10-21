@@ -56,7 +56,7 @@ func AlertManagerHandler(as alerts.Service) gin.HandlerFunc {
 				"status":  "error",
 				"message": err,
 			})
-
+			return
 		}
 		var als []alerts.Alert
 		for _, a := range amr.Alerts {
@@ -81,6 +81,14 @@ func AlertManagerHandler(as alerts.Service) gin.HandlerFunc {
 }
 
 func (ar AlertRequest) convertAlertManagerToAlert(as alerts.Service) (alerts.Alert, error) {
+	startAt := time.Now()
+	if ar.StartsAt != nil {
+		startAt = *ar.StartsAt
+	}
+	endAt := time.Time{}
+	if ar.EndsAt != nil {
+		endAt = *ar.EndsAt
+	}
 	alert, err := as.NewAlert(
 		ar.Fingerprint,
 		ar.AlertLabels.AlertName,
@@ -88,8 +96,8 @@ func (ar AlertRequest) convertAlertManagerToAlert(as alerts.Service) (alerts.Ale
 		ar.AlertAnnotation.Summary,
 		ar.Status,
 		strings.Split(ar.AlertLabels.Method, ","),
-		*ar.StartsAt,
-		*ar.EndsAt,
+		startAt,
+		endAt,
 		strings.Split(ar.AlertLabels.Receptor, ","),
 	)
 	if err != nil {
