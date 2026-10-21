@@ -7,12 +7,6 @@ import Logo from './components/Logo';
 import ThemeToggle from './components/ThemeToggle';
 import './LoginPage.css';
 
-const FEATURES = [
-    { icon: 'bell', text: 'Receive alerts from Alertmanager and Grafana' },
-    { icon: 'send', text: 'Route them over SMS, email, Telegram, Mattermost and Bale' },
-    { icon: 'group', text: 'Notify the right on-call group, in priority order' },
-];
-
 
 const LoginPage = () => {
     const [username, setUsername] = useState('');
@@ -96,33 +90,6 @@ const LoginPage = () => {
 
     return (
         <div className="login-page">
-            <aside className="login-brand" aria-hidden="true">
-                <div className="login-brand-top">
-                    <Logo size={34} dotColor="currentColor" className="login-brand-logo" />
-                    <span>Iris</span>
-                </div>
-                <div className="login-brand-copy">
-                    <h1>Every alert, to the right person, on time.</h1>
-                    <ul>
-                        {FEATURES.map((f) => (
-                            <li key={f.icon}>
-                                <span><Icon name={f.icon} size={16} /></span>
-                                {f.text}
-                            </li>
-                        ))}
-                    </ul>
-                </div>
-                <div className="login-brand-preview">
-                    {[['critical', 'HighErrorRate', 'payments-api'], ['warning', 'DiskSpaceLow', 'db-replica-2'], ['low', 'CertificateRenewed', 'edge-proxy']].map(([sev, name, svc]) => (
-                        <div key={name} className={`preview-row sev-${sev}`}>
-                            <span className="sev-dot" />
-                            <span className="preview-name">{name}</span>
-                            <span className="preview-svc">{svc}</span>
-                        </div>
-                    ))}
-                </div>
-            </aside>
-
             <main className="login-panel">
                 <div className="login-theme"><ThemeToggle /></div>
                 <div className="login-container">
