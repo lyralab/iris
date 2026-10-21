@@ -149,10 +149,6 @@ func (us *userServiceImpl) ValidateUser(u *User) error {
 		us.logger.Infow("cannot get user from database", "username", u.UserName)
 		return err
 	}
-	if u.Status == "New" {
-		us.logger.Infow("user cannot login because not verified yet", u.UserName)
-		return iris_error.ErrUserNotVerified
-	}
 	err = bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(enteredPassword+u.Salt))
 	if err != nil {
 		us.logger.Errorw("cannot validate password", "error", err)
@@ -163,7 +159,6 @@ func (us *userServiceImpl) ValidateUser(u *User) error {
 		return iris_error.ErrUserNotVerified
 	}
 	return nil
-
 }
 
 func (us *userServiceImpl) GetUserRole(u *User) error {

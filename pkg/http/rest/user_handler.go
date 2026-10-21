@@ -287,6 +287,12 @@ func LoginUserHandler(us user.UserInterfaceService, aths auth.AuthServiceInterfa
 				"message": "Cannot continue the process",
 			})
 			return
+		} else if errors.Is(err, iris_error.ErrUserNotVerified) {
+			c.AbortWithStatusJSON(403, gin.H{
+				"status":  "error",
+				"message": "User is not verified yet",
+			})
+			return
 		} else if err != nil {
 			c.AbortWithStatusJSON(500, gin.H{
 				"status":  "error",
