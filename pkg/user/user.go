@@ -158,7 +158,12 @@ func (us *userServiceImpl) ValidateUser(u *User) error {
 		us.logger.Errorw("cannot validate password", "error", err)
 		return iris_error.ErrPasswordNotMatch
 	}
+	if u.Status != "Verified" {
+		us.logger.Infow("user cannot login because not verified yet", "username", u.UserName)
+		return iris_error.ErrUserNotVerified
+	}
 	return nil
+
 }
 
 func (us *userServiceImpl) GetUserRole(u *User) error {
