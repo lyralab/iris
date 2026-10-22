@@ -66,7 +66,7 @@ func ValidateJWTToken(aths auth.AuthServiceInterface, role string, logger *zap.S
 		}
 		c.Set("username", extractedUsername)
 		c.Set("role", extractedRole)
-		logger.Infow("Successfully validate jwtToken", "Token", jwtToken)
+		logger.Infow("Successfully validate jwtToken", "username", extractedUsername)
 		c.Next()
 	}
 }

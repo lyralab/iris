@@ -42,7 +42,6 @@ func (as *authService) GenerateToken(username string, role string) (string, erro
 			"user", username, "error", err)
 		return "", iriserror.ErrGenerateToken
 	}
-	as.logger.Info("token is ", tokenString)
 	return tokenString, nil
 }
 
