@@ -1,12 +1,16 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
-import { isAuthenticated, isAdmin } from '../utils/auth';
+import { isAuthenticated, isAdmin, mustChangePassword } from '../utils/auth';
 import Layout from './Layout';
 import EmptyState from './EmptyState';
 
 const ProtectedRoute = ({ children, requireAdmin = false }) => {
     if (!isAuthenticated()) {
         return <Navigate to="/" replace />;
+    }
+
+    if (mustChangePassword()) {
+        return <Navigate to="/change-password" replace />;
     }
 
     if (requireAdmin && !isAdmin()) {

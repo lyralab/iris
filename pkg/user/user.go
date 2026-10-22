@@ -3,7 +3,6 @@ package user
 import (
 	"errors"
 	"math/rand"
-	"regexp"
 	"time"
 
 	"github.com/oklog/ulid/v2"
@@ -38,6 +37,7 @@ func (us *userServiceImpl) AddUser(u *User) error {
 	u.CreatedAt = t
 	u.ModifiedAt = t
 	u.Status = "New"
+	u.MustChangePassword = true
 	roleId, err := us.role.GetRoleIDByName("viewer")
 	if err != nil {
 		us.logger.Infow("Cannot get role id from database", "error", err)
@@ -87,6 +87,7 @@ func (us *userServiceImpl) CreateDefaultAdminUser() error {
 		u.CreatedAt = t
 		u.ModifiedAt = t
 		u.Status = "Verified"
+		u.MustChangePassword = true
 		var generatedPassword string
 		for {
 			generatedPassword, err = generateRandomPassword(20)
@@ -94,15 +95,9 @@ func (us *userServiceImpl) CreateDefaultAdminUser() error {
 				us.logger.Info("cannot generate random password ", "error", err)
 				return err
 			}
-			matched, _ := regexp.MatchString(`[^a-zA-Z0-9]`, generatedPassword)
-			if matched {
-				us.logger.Info("Generated password contains special characters")
+			if meetsSigninPolicy(generatedPassword) {
 				break
-			} else {
-				us.logger.Infow("Generated password is not valid, retrying...", "password", generatedPassword)
-				continue
 			}
-
 		}
 
 		roleId, err := us.role.GetRoleIDByName("admin")
@@ -131,7 +126,8 @@ func (us *userServiceImpl) CreateDefaultAdminUser() error {
 			us.logger.Errorw("Failed to add user", "user", u.UserName, "error", err)
 			return err
 		}
-		us.logger.Infow("User added successfully", "user", u.UserName, "password", generatedPassword)
+		us.logger.Warnw("Default admin created with a generated password; it must be changed at first login",
+			"user", u.UserName, "password", generatedPassword)
 		return nil
 	} else if err == nil {
 		us.logger.Infow("Default admin user already exists nothing to do...")
@@ -158,6 +154,33 @@ func (us *userServiceImpl) ValidateUser(u *User) error {
 		us.logger.Infow("user cannot login because not verified yet", "username", u.UserName)
 		return iris_error.ErrUserNotVerified
 	}
+	return nil
+}
+
+// ChangePassword checks u.Password as the current password, then stores newPassword
+// and clears MustChangePassword. On return u holds the stored user.
+func (us *userServiceImpl) ChangePassword(u *User, newPassword string) error {
+	currentPassword := u.Password
+	if err := us.ValidateUser(u); err != nil {
+		return err
+	}
+	if newPassword == currentPassword {
+		return iris_error.ErrPasswordReused
+	}
+	salt, err := generateSalt()
+	if err != nil {
+		return err
+	}
+	hashedPassword, err := hashPassword(newPassword, salt)
+	if err != nil {
+		return err
+	}
+	if err := us.repo.UpdateUserPassword(u.ID, hashedPassword, salt); err != nil {
+		us.logger.Errorw("Failed to update password", "user", u.UserName, "error", err)
+		return err
+	}
+	u.Password, u.Salt, u.MustChangePassword = hashedPassword, salt, false
+	us.logger.Infow("Password changed", "user", u.UserName)
 	return nil
 }
 

@@ -9,22 +9,24 @@ import (
 )
 
 type User struct {
-	ID             string    `gorm:"column:id;primary_key"`
-	UserName       string    `gorm:"column:user_name;unique"`
-	FirstName      string    `gorm:"column:first_name;not null"`
-	LastName       string    `gorm:"column:last_name;not null"`
-	Password       string    `gorm:"column:password;not null"`
-	Salt           string    `gorm:"column:salt;not null"`
-	Email          string    `gorm:"column:email;unique"`
-	Status         string    `gorm:"column:status;not null"`
-	Mobile         string    `gorm:"column:mobile;null"`
-	TelegramID     string    `gorm:"column:telegram_id;null"`
-	MattermostId   string    `gorm:"column:mattermost_id;null"`
-	BaleID         string    `gorm:"column:bale_id;null"`
-	Role           string    `gorm:"column:role_id"`
-	CreatedAt      time.Time `gorm:"created_at"`
-	ModifiedAt     time.Time `gorm:"modified_at"`
-	gorm.DeletedAt `gorm:"deleted_at"`
+	ID           string `gorm:"column:id;primary_key"`
+	UserName     string `gorm:"column:user_name;unique"`
+	FirstName    string `gorm:"column:first_name;not null"`
+	LastName     string `gorm:"column:last_name;not null"`
+	Password     string `gorm:"column:password;not null"`
+	Salt         string `gorm:"column:salt;not null"`
+	Email        string `gorm:"column:email;unique"`
+	Status       string `gorm:"column:status;not null"`
+	Mobile       string `gorm:"column:mobile;null"`
+	TelegramID   string `gorm:"column:telegram_id;null"`
+	MattermostId string `gorm:"column:mattermost_id;null"`
+	BaleID       string `gorm:"column:bale_id;null"`
+	Role         string `gorm:"column:role_id"`
+	// MustChangePassword is set when someone other than the owner chose the password.
+	MustChangePassword bool      `gorm:"column:must_change_password;not null"`
+	CreatedAt          time.Time `gorm:"created_at"`
+	ModifiedAt         time.Time `gorm:"modified_at"`
+	gorm.DeletedAt     `gorm:"deleted_at"`
 }
 
 type userServiceImpl struct {
@@ -45,7 +47,7 @@ type UserInterfaceRepository interface {
 	GetUserByEmail(email string) (*User, error)
 	GetAllUsers() ([]*User, error)
 	DeleteUser(id string) error
-	UpdateUserPassword(id string, newPassword string) error
+	UpdateUserPassword(id string, hashedPassword string, salt string) error
 	GetRole(u *User) error
 	VerifyUser(u *User) error
 	UpdateUserData(u *User) error
@@ -56,6 +58,7 @@ type UserInterfaceService interface {
 	GetUserByEmail(email string) (*User, error)
 	CreateDefaultAdminUser() error
 	ValidateUser(*User) error
+	ChangePassword(u *User, newPassword string) error
 	GetUserRole(*User) error
 	VerifyUser(*User) error
 	UpdateUser(*User) error

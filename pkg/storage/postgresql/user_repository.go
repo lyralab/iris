@@ -1,6 +1,8 @@
 package postgresql
 
 import (
+	"time"
+
 	"github.com/root-ali/iris/pkg/user"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
@@ -54,7 +56,20 @@ func (s *Storage) GetAllUsers() ([]*user.User, error) {
 	return users, nil
 }
 
-func (s *Storage) UpdateUserPassword(_ string, _ string) error {
+func (s *Storage) UpdateUserPassword(id string, hashedPassword string, salt string) error {
+	result := s.db.Model(&user.User{}).Where("id = ?", id).Updates(map[string]interface{}{
+		"password":             hashedPassword,
+		"salt":                 salt,
+		"must_change_password": false,
+		"modified_at":          time.Now(),
+	})
+	if result.Error != nil {
+		s.logger.Error("Error updating user password", zap.Error(result.Error))
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
 	return nil
 }
 

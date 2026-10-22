@@ -97,6 +97,17 @@ class APIService {
         });
     }
 
+    async changePassword(currentPassword, newPassword, confirmPassword) {
+        return this.fetch(config.api.userPassword, {
+            method: 'PUT',
+            body: JSON.stringify({
+                current_password: currentPassword,
+                new_password: newPassword,
+                confirm_password: confirmPassword,
+            }),
+        });
+    }
+
     async getCurrentUser() {
         return this.fetch(config.api.userMe);
     }
