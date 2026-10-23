@@ -178,8 +178,6 @@ func Init(cfg *config.Config) (*App, error) {
 
 	// Initialize mattermost notification provider
 	if cfg.Notifications.Mattermost.Enabled {
-		logger.Infow("Initializing mattermost notification provider",
-			"bot token", cfg.Notifications.Mattermost.BotToken, "url", cfg.Notifications.Mattermost.Url)
 		mattermostSvc := mattermost.NewService(
 			mattermost.Config{
 				Url:      cfg.Notifications.Mattermost.Url,

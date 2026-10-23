@@ -113,6 +113,11 @@ func (ht *HttpHandler) Handler() *gin.Engine {
 		middlewares.CheckContentTypeHeader("application/json", ht.Logger),
 		rest.UpdateUserHandler(ht.US, ht.Logger),
 	)
+	userRouter.PUT("/password",
+		middlewares.ValidateJWTToken(ht.ATHS, "", ht.Logger),
+		middlewares.CheckContentTypeHeader("application/json", ht.Logger),
+		rest.ChangePasswordHandler(ht.US, ht.ATHS, ht.Logger),
+	)
 	userRouter.GET("",
 		middlewares.ValidateJWTToken(ht.ATHS, "admin", ht.Logger),
 		rest.GetAllUsersHandler(ht.US, ht.Logger),

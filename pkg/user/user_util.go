@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"math/big"
+	"strings"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -26,6 +27,15 @@ func hashPassword(password, salt string) (string, error) {
 	}
 	return string(hashedPassword), nil
 }
+
+// meetsSigninPolicy mirrors the signin passwordStrength rule, so a generated password can log in.
+func meetsSigninPolicy(p string) bool {
+	return strings.ContainsAny(p, "abcdefghijklmnopqrstuvwxyz") &&
+		strings.ContainsAny(p, "ABCDEFGHIJKLMNOPQRSTUVWXYZ") &&
+		strings.ContainsAny(p, "0123456789") &&
+		strings.ContainsAny(p, "@$!%*?&#^")
+}
+
 func generateRandomPassword(length int) (string, error) {
 	if length <= 0 {
 		return "", errors.New("password length must be greater than zero")

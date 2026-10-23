@@ -8,6 +8,7 @@ import GroupManagement from './pages/GroupManagement';
 import AlertsPage from './pages/AlertsPage';
 import ProvidersPage from './pages/ProvidersPage';
 import Profile from './pages/Profile';
+import ChangePassword from './pages/ChangePassword';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
@@ -15,6 +16,7 @@ function App() {
     <Router>
       <Routes>
         <Route path="/" element={<LoginPage />} />
+        <Route path="/change-password" element={<ChangePassword />} />
 
         <Route
           path="/dashboard"

@@ -2,7 +2,6 @@ package rest
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -54,9 +53,9 @@ func AlertManagerHandler(as alerts.Service) gin.HandlerFunc {
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusNotAcceptable, gin.H{
 				"status":  "error",
-				"message": err,
+				"message": err.Error(),
 			})
-
+			return
 		}
 		var als []alerts.Alert
 		for _, a := range amr.Alerts {
@@ -71,9 +70,9 @@ func AlertManagerHandler(as alerts.Service) gin.HandlerFunc {
 			return
 		}
 		n, err := as.AddAlertManagerAlerts(als)
-		fmt.Println("number of alerts is saved", n)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err})
+			return
 		}
 		c.JSON(http.StatusOK, gin.H{"status": "ok", "count": n})
 	}
@@ -81,6 +80,14 @@ func AlertManagerHandler(as alerts.Service) gin.HandlerFunc {
 }
 
 func (ar AlertRequest) convertAlertManagerToAlert(as alerts.Service) (alerts.Alert, error) {
+	startAt := time.Now()
+	if ar.StartsAt != nil {
+		startAt = *ar.StartsAt
+	}
+	endAt := time.Time{}
+	if ar.EndsAt != nil {
+		endAt = *ar.EndsAt
+	}
 	alert, err := as.NewAlert(
 		ar.Fingerprint,
 		ar.AlertLabels.AlertName,
@@ -88,8 +95,8 @@ func (ar AlertRequest) convertAlertManagerToAlert(as alerts.Service) (alerts.Ale
 		ar.AlertAnnotation.Summary,
 		ar.Status,
 		strings.Split(ar.AlertLabels.Method, ","),
-		*ar.StartsAt,
-		*ar.EndsAt,
+		startAt,
+		endAt,
 		strings.Split(ar.AlertLabels.Receptor, ","),
 	)
 	if err != nil {

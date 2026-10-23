@@ -13,6 +13,7 @@ var (
 	ErrInvalidToken             = errors.New("invalid token")
 	ErrUserNotVerified          = errors.New("user is not verified yet")
 	ErrRoleNotFound             = errors.New("role not found")
+	ErrPasswordReused           = errors.New("new password must differ from the current one")
 
 	ErrGroupAlreadyexisted = errors.New("group already exists")
 	ErrGroupNotFound       = errors.New("group not found")

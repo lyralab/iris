@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import apiService from '../utils/apiService';
 import Layout from '../components/Layout';
 import Icon from '../components/Icon';
@@ -28,6 +29,7 @@ const EDIT_FIELDS = [
 ];
 
 const Profile = () => {
+    const navigate = useNavigate();
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -128,6 +130,10 @@ const Profile = () => {
                             <span className={`status-badge ${statusInfo.className}`}>{statusInfo.label}</span>
                         </div>
                     </div>
+                    <button className="btn-secondary" onClick={() => navigate('/change-password')}>
+                        <Icon name="lock" />
+                        Change password
+                    </button>
                     <button className="btn-secondary" onClick={openEditModal}>
                         <Icon name="edit" />
                         Edit profile

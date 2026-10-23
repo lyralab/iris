@@ -2,7 +2,6 @@ package rest
 
 import (
 	"errors"
-	"fmt"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -36,7 +35,6 @@ func GetProvidersHandler(ps notifications.ProviderServiceInterface) gin.HandlerF
 			return
 		}
 		if name != "" {
-			fmt.Println("name:", name)
 			provider, err := ps.GetProviderByName(name)
 			if errors.Is(err, iriserror.ErrProviderNotFound) {
 				c.AbortWithStatusJSON(404, gin.H{"error": err.Error()})
@@ -60,7 +58,6 @@ func GetProvidersHandler(ps notifications.ProviderServiceInterface) gin.HandlerF
 			return
 		}
 		if id != "" {
-			fmt.Println("name:", name, " id:", id)
 			provider, err := ps.GetProviderByID(id)
 			if errors.Is(err, iriserror.ErrProviderNotFound) {
 				c.AbortWithStatusJSON(404, gin.H{"error": err.Error()})

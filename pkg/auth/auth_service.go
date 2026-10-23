@@ -21,7 +21,7 @@ func NewAuthService(secretKey []byte, rs AuthRoleRepository, logger *zap.Sugared
 	}
 }
 
-func (as *authService) GenerateToken(username string, role string) (string, error) {
+func (as *authService) GenerateToken(username string, role string, mustChangePassword bool) (string, error) {
 	roleName, roleAccess, err := as.rs.GetRoleByID(role)
 	as.logger.Infow("role information", "name", roleName, "access", roleAccess)
 	if err != nil {
@@ -30,10 +30,11 @@ func (as *authService) GenerateToken(username string, role string) (string, erro
 	}
 	expirationTime := time.Now().Add(72 * time.Hour)
 	claims := &jwt.MapClaims{
-		"username": username,
-		"role":     roleName,
-		"accesses": roleAccess,
-		"exp":      expirationTime.Unix(),
+		"username":             username,
+		"role":                 roleName,
+		"accesses":             roleAccess,
+		"exp":                  expirationTime.Unix(),
+		"must_change_password": mustChangePassword,
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	tokenString, err := token.SignedString(as.secretKey)
@@ -42,11 +43,10 @@ func (as *authService) GenerateToken(username string, role string) (string, erro
 			"user", username, "error", err)
 		return "", iriserror.ErrGenerateToken
 	}
-	as.logger.Info("token is ", tokenString)
 	return tokenString, nil
 }
 
-func (as *authService) ValidateToken(tokenString string) (string, string, error) {
+func (as *authService) ValidateToken(tokenString string) (string, string, bool, error) {
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
@@ -57,10 +57,10 @@ func (as *authService) ValidateToken(tokenString string) (string, string, error)
 	if err != nil {
 		if errors.Is(err, jwt.ErrTokenExpired) {
 			as.logger.Errorw("Token expired", "error", err)
-			return "", "", iriserror.ErrTokenExpired
+			return "", "", false, iriserror.ErrTokenExpired
 		} else {
 			as.logger.Errorw("Failed to parse token", "error", err)
-			return "", "", err
+			return "", "", false, err
 
 		}
 	}
@@ -69,22 +69,24 @@ func (as *authService) ValidateToken(tokenString string) (string, string, error)
 
 		if float64(time.Now().Unix()) > claims["exp"].(float64) {
 			as.logger.Errorw("Token expired", "error", err)
-			return "", "", iriserror.ErrTokenExpired
+			return "", "", false, iriserror.ErrTokenExpired
 		}
 		username, ok := claims["username"].(string)
 		if !ok {
 			as.logger.Errorw("Failed to get username from token")
-			return "", "", iriserror.ErrTokenFailedToGetUserName
+			return "", "", false, iriserror.ErrTokenFailedToGetUserName
 		}
 		role, ok := claims["role"].(string)
 		if !ok {
 			as.logger.Errorw("Failed to get role from token")
-			return "", "", iriserror.ErrTokenFailedToGetRole
+			return "", "", false, iriserror.ErrTokenFailedToGetRole
 		}
-		return username, role, nil
+		// Tokens issued before this claim existed carry no flag.
+		mustChangePassword, _ := claims["must_change_password"].(bool)
+		return username, role, mustChangePassword, nil
 	} else {
 		as.logger.Errorw("Invalid token")
-		return "", "", iriserror.ErrInvalidToken
+		return "", "", false, iriserror.ErrInvalidToken
 	}
 
 }

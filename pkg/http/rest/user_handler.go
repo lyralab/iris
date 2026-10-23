@@ -53,6 +53,12 @@ type UserSigninBody struct {
 	Password string `json:"password" validate:"required,passwordStrength,min=8,max=30"`
 }
 
+type UserChangePasswordBody struct {
+	CurrentPassword string `json:"current_password" validate:"required,max=30"`
+	NewPassword     string `json:"new_password" validate:"required,passwordStrength,min=8,max=30"`
+	ConfirmPassword string `json:"confirm_password" validate:"required,eqfield=NewPassword"`
+}
+
 func init() {
 	validate = validator.New()
 	if err := validate.RegisterValidation("passwordStrength", PasswordValidation); err != nil {
@@ -287,6 +293,12 @@ func LoginUserHandler(us user.UserInterfaceService, aths auth.AuthServiceInterfa
 				"message": "Cannot continue the process",
 			})
 			return
+		} else if errors.Is(err, iris_error.ErrUserNotVerified) {
+			c.AbortWithStatusJSON(403, gin.H{
+				"status":  "error",
+				"message": "User is not verified yet",
+			})
+			return
 		} else if err != nil {
 			c.AbortWithStatusJSON(500, gin.H{
 				"status":  "error",
@@ -299,7 +311,7 @@ func LoginUserHandler(us user.UserInterfaceService, aths auth.AuthServiceInterfa
 			logger.Errorw("cannot get user role", "user", reqUser.UserName)
 		}
 		logger.Infow("user role is ", "role", reqUser.Role, "username", reqUser.UserName)
-		token, err := aths.GenerateToken(reqUser.UserName, reqUser.Role)
+		token, err := aths.GenerateToken(reqUser.UserName, reqUser.Role, reqUser.MustChangePassword)
 		if err != nil {
 			logger.Errorw("cannot generate token for user",
 				"user", reqUser.UserName, "error", err)
@@ -307,6 +319,57 @@ func LoginUserHandler(us user.UserInterfaceService, aths auth.AuthServiceInterfa
 			return
 		}
 		//c.Cookie("jwt")
+		c.JSON(200, gin.H{"status": "OK", "token": token, "must_change_password": reqUser.MustChangePassword})
+	}
+}
+
+// ChangePasswordHandler changes the caller's own password and returns a fresh token
+// without the must_change_password flag.
+func ChangePasswordHandler(us user.UserInterfaceService, aths auth.AuthServiceInterface, logger *zap.SugaredLogger) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var body UserChangePasswordBody
+		if err := json.NewDecoder(c.Request.Body).Decode(&body); err != nil {
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid request body"})
+			return
+		}
+		if err := validate.Struct(body); err != nil {
+			errorMessages := make([]string, 0)
+			for _, e := range err.(validator.ValidationErrors) {
+				errorMessages = append(errorMessages, fmt.Sprintf("Field '%s' failed validation: %s",
+					e.Field(), e.Tag()))
+			}
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+				"status":  "error",
+				"message": "Validation failed",
+				"errors":  errorMessages,
+			})
+			return
+		}
+		userName, ok := c.Get("username")
+		if !ok {
+			logger.Errorw("cannot get username from context")
+			c.AbortWithStatusJSON(500, gin.H{"status": "error", "error": "token is invalid"})
+			return
+		}
+		u := user.User{UserName: userName.(string), Password: body.CurrentPassword}
+		err := us.ChangePassword(&u, body.NewPassword)
+		if errors.Is(err, iris_error.ErrPasswordNotMatch) {
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Current password is incorrect"})
+			return
+		} else if errors.Is(err, iris_error.ErrPasswordReused) {
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"status": "error", "message": err.Error()})
+			return
+		} else if err != nil {
+			logger.Errorw("cannot change password", "user", u.UserName, "error", err)
+			c.AbortWithStatusJSON(500, gin.H{"status": "error", "message": "Internal Server Error"})
+			return
+		}
+		token, err := aths.GenerateToken(u.UserName, u.Role, false)
+		if err != nil {
+			logger.Errorw("cannot generate token for user", "user", u.UserName, "error", err)
+			c.AbortWithStatusJSON(500, gin.H{"status": "error", "error": err})
+			return
+		}
 		c.JSON(200, gin.H{"status": "OK", "token": token})
 	}
 }

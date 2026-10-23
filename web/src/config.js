@@ -49,6 +49,7 @@ const config = {
         users: base_url + '/v0/users',
         userMe: base_url + '/v0/users/me',
         userVerify: base_url + '/v0/users/verify',
+        userPassword: base_url + '/v0/users/password',
         userGroups: (userId) => base_url + `/v0/users/${userId}/groups`,
 
         // Group endpoints

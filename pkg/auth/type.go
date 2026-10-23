@@ -11,6 +11,8 @@ type authService struct {
 }
 
 type AuthServiceInterface interface {
-	GenerateToken(string, string) (string, error)
-	ValidateToken(string) (string, string, error)
+	// GenerateToken takes username, role id and whether the password must be changed.
+	GenerateToken(string, string, bool) (string, error)
+	// ValidateToken returns username, role name and the must-change-password flag.
+	ValidateToken(string) (string, string, bool, error)
 }

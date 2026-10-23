@@ -1,7 +1,6 @@
 package rest
 
 import (
-	"fmt"
 	"net/http"
 	"strconv"
 
@@ -53,7 +52,6 @@ func GetAlerts(as alerts.Service) gin.HandlerFunc {
 		als, err := as.GetAlerts(status, severity, l, p)
 		alertResponses := toAlertResponse(als)
 		if err != nil {
-			fmt.Println(err)
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"status":  "error",
 				"message": err,

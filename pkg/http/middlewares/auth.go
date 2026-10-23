@@ -14,12 +14,17 @@ func BasicAuth(username, password string) gin.HandlerFunc {
 	return gin.BasicAuth(gin.Accounts{username: password})
 }
 
+// passwordChangeRoutes are the only routes a token flagged with must_change_password may reach.
+var passwordChangeRoutes = map[string]bool{
+	"PUT /v0/users/password": true,
+	"GET /v0/users/me":       true,
+}
+
 func ValidateJWTToken(aths auth.AuthServiceInterface, role string, logger *zap.SugaredLogger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.Request.Header.Get("Authorization")
 		jwtToken := strings.TrimPrefix(authHeader, "Bearer ")
-		logger.Infow("token is ", "token", jwtToken)
-		extractedUsername, extractedRole, err := aths.ValidateToken(jwtToken)
+		extractedUsername, extractedRole, mustChangePassword, err := aths.ValidateToken(jwtToken)
 		if errors.Is(err, iriserror.ErrTokenExpired) {
 			logger.Error("Token expired")
 			c.AbortWithStatusJSON(401, gin.H{
@@ -32,6 +37,15 @@ func ValidateJWTToken(aths auth.AuthServiceInterface, role string, logger *zap.S
 			c.AbortWithStatusJSON(401, gin.H{
 				"status":  "error",
 				"message": "invalid token",
+			})
+			return
+		}
+		if mustChangePassword && !passwordChangeRoutes[c.Request.Method+" "+c.FullPath()] {
+			logger.Infow("password change required before using this route",
+				"username", extractedUsername, "path", c.FullPath())
+			c.AbortWithStatusJSON(403, gin.H{
+				"status":  "error",
+				"message": "password change required",
 			})
 			return
 		}
@@ -67,7 +81,7 @@ func ValidateJWTToken(aths auth.AuthServiceInterface, role string, logger *zap.S
 		}
 		c.Set("username", extractedUsername)
 		c.Set("role", extractedRole)
-		logger.Infow("Successfully validate jwtToken", "Token", jwtToken)
+		logger.Infow("Successfully validate jwtToken", "username", extractedUsername)
 		c.Next()
 	}
 }

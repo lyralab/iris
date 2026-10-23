@@ -63,6 +63,11 @@ export const isAdmin = () => {
     return user && user.role === 'admin';
 };
 
+export const mustChangePassword = () => {
+    const user = getUserFromToken();
+    return !!(user && user.must_change_password);
+};
+
 export const logout = () => {
     deleteCookie('jwt');
 };

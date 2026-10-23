@@ -26,7 +26,7 @@ func (s *Scheduler) Start() error {
 	}
 
 	// start producer loop
-	s.ticker = time.NewTicker(5 * time.Second)
+	s.ticker = time.NewTicker(s.cfg.Interval)
 	s.wgLoop.Add(1)
 	go s.loop()
 
