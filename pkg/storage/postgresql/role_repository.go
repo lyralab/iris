@@ -1,9 +1,9 @@
 package postgresql
 
 import (
-	"errors"
 	"github.com/root-ali/iris/internal/apperr"
 	"github.com/root-ali/iris/pkg/roles"
+	"gorm.io/gorm"
 )
 
 func (s *Storage) AddRole(r roles.Role) error {
@@ -20,8 +20,8 @@ func (s *Storage) GetRoleByName(r *roles.Role) error {
 
 	result := s.db.First(r, "name = ?", r.Name)
 	if result.Error != nil {
-		if errors.Is(result.Error, errors.New("record not found")) {
-			s.logger.Info("cannot find a role with name ", r.Name)
+		if apperr.Is(result.Error, gorm.ErrRecordNotFound) {
+			s.logger.Infow("cannot find a role", "name", r.Name)
 			return apperr.ErrRoleNotFound
 		} else {
 			s.logger.Infow("Cannot get role from database",
@@ -36,7 +36,7 @@ func (s *Storage) GetRoleByName(r *roles.Role) error {
 func (s *Storage) GetRoleName(role *roles.Role) error {
 	result := s.db.Find(&role, "id = ?", role.ID)
 	if result.Error != nil {
-		s.logger.Error("cannot get role from database",
+		s.logger.Errorw("cannot get role from database",
 			"error", result.Error)
 		return result.Error
 	}

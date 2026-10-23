@@ -1,12 +1,12 @@
 package roles
 
 import (
-	"errors"
-	"github.com/oklog/ulid/v2"
-	"go.uber.org/zap"
-	"gorm.io/gorm/logger"
 	"math/rand"
 	"time"
+
+	"github.com/oklog/ulid/v2"
+	"github.com/root-ali/iris/internal/apperr"
+	"go.uber.org/zap"
 )
 
 type RolesInterfaceRepository interface {
@@ -37,7 +37,7 @@ func (r *roleServiceImpl) AddRoles([]Role) error {
 func (r *roleServiceImpl) InitiateDefaultRoles() error {
 	adminRole := Role{Name: "admin"}
 	err := r.rr.GetRoleByName(&adminRole)
-	if errors.Is(err, logger.ErrRecordNotFound) {
+	if apperr.Is(err, apperr.ErrRoleNotFound) {
 		t := time.Now()
 		entropy := rand.New(rand.NewSource(t.UnixNano()))
 		adminRole.ID = ulid.MustNew(ulid.Timestamp(t), entropy).String()
@@ -52,12 +52,12 @@ func (r *roleServiceImpl) InitiateDefaultRoles() error {
 	} else if err == nil {
 		r.logger.Info("Admin role already exist nothing to do... ")
 	} else {
-		r.logger.Error("Cannot create default admin role ", "error", err)
+		r.logger.Errorw("Cannot create default admin role", "error", err)
 		return err
 	}
 	viewerRole := Role{Name: "viewer"}
 	err = r.rr.GetRoleByName(&viewerRole)
-	if errors.Is(err, logger.ErrRecordNotFound) {
+	if apperr.Is(err, apperr.ErrRoleNotFound) {
 		t := time.Now()
 		entropy := rand.New(rand.NewSource(t.UnixNano()))
 		viewerRole.ID = ulid.MustNew(ulid.Timestamp(t), entropy).String()
@@ -72,7 +72,7 @@ func (r *roleServiceImpl) InitiateDefaultRoles() error {
 	} else if err == nil {
 		r.logger.Info("Viewer role already exist nothing to do... ")
 	} else {
-		r.logger.Error("Cannot create default viewer role ", "error", err)
+		r.logger.Errorw("Cannot create default viewer role", "error", err)
 		return err
 	}
 	return nil
@@ -91,7 +91,7 @@ func (r *roleServiceImpl) GetRoleIDByName(name string) (string, error) {
 	role := Role{Name: name}
 	err := r.rr.GetRoleByName(&role)
 	if err != nil {
-		return "", nil
+		return "", err
 	}
 	return role.ID, nil
 }

@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/root-ali/iris/internal/apperr"
 	"go.uber.org/zap"
-	"gorm.io/gorm"
 )
 
 // fakeAlertRepo implements only GetAlertByFingerPrintAndStatus; other methods panic via the nil embedded interface.
@@ -32,7 +32,7 @@ func newAlert(t *testing.T, repo *fakeAlertRepo, status string) Alert {
 }
 
 func TestNewAlertNoExistingFiringRow(t *testing.T) {
-	got := newAlert(t, &fakeAlertRepo{err: gorm.ErrRecordNotFound}, "firing")
+	got := newAlert(t, &fakeAlertRepo{err: apperr.ErrAlertNotFound}, "firing")
 
 	if got.Id == "" {
 		t.Fatal("Id is empty, want new uuid")

@@ -3,12 +3,12 @@ package bale
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"io"
 	"net/http"
 	"strconv"
 	"time"
 
+	"github.com/root-ali/iris/internal/apperr"
 	"github.com/root-ali/iris/pkg/notifications"
 	"go.uber.org/zap"
 )
@@ -77,7 +77,7 @@ func (s *Service) Send(message notifications.Message) ([]string, error) {
 		}(resp.Body)
 		if resp.StatusCode != http.StatusOK {
 			s.Logger.Errorw("Cannot send message", "message", sendMessage, "statusCode", resp.StatusCode)
-			errStack.Append(errors.New(resp.Status))
+			errStack.Append(apperr.New(resp.Status))
 			continue
 		}
 		var sendResponse SendMessageResponse
@@ -89,7 +89,7 @@ func (s *Service) Send(message notifications.Message) ([]string, error) {
 		}
 		if !sendResponse.OK {
 			s.Logger.Errorw("Cannot send message", "message", sendMessage)
-			errStack.Append(errors.New(sendResponse.Message))
+			errStack.Append(apperr.New(sendResponse.Message))
 			continue
 		}
 		responses = append(responses, sendResponse.Message)
@@ -131,7 +131,7 @@ func (s *Service) Verify() (string, error) {
 		return "", err
 	}
 	if !verifyResponse.OK {
-		return "Bot Not Active", errors.New("bot not active")
+		return "Bot Not Active", apperr.ErrBotNotActive
 	}
 	return "Evertything good to go", nil
 }

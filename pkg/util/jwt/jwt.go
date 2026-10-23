@@ -1,10 +1,10 @@
 package jwtvalidation
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/root-ali/iris/internal/apperr"
 	"github.com/root-ali/iris/pkg/user"
 	"go.uber.org/zap"
 )
@@ -41,14 +41,11 @@ func (ji *JWTIssue) ValidateToken(tokenString string, _ string) error {
 		return ji.SecretKey, nil
 	})
 	if err != nil {
-		ji.l.Error("jwt issuer parse token err: %v", err)
+		ji.l.Errorw("jwt issuer parse token err", "error", err)
 		return err
 	}
 	if !token.Valid {
-		return fmt.Errorf("jwt issuer invalid token")
+		return apperr.ErrInvalidToken
 	}
-	var u *user.User
-	u.UserName = token.Claims.(jwt.MapClaims)["sub"].(string)
-	u.Role = token.Claims.(jwt.MapClaims)["aud"].(string)
 	return nil
 }

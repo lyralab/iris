@@ -41,20 +41,14 @@ func AlertManagerHandler(as alerts.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		body, _ := c.GetRawData()
 		if len(body) == 0 {
-			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
-				"status":  "error",
-				"message": "request body is empty",
-			})
+			abortWithMessage(c, http.StatusBadRequest, "request body is empty")
 			return
 		}
 
 		amr := &AlertManagerRequest{}
 		err := json.Unmarshal(body, amr)
 		if err != nil {
-			c.AbortWithStatusJSON(http.StatusNotAcceptable, gin.H{
-				"status":  "error",
-				"message": err.Error(),
-			})
+			abortWithMessage(c, http.StatusBadRequest, "invalid request body")
 			return
 		}
 		var als []alerts.Alert
@@ -66,12 +60,12 @@ func AlertManagerHandler(as alerts.Service) gin.HandlerFunc {
 			als = append(als, alert)
 		}
 		if len(als) == 0 {
-			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{})
+			abortWithMessage(c, http.StatusBadRequest, "no valid alerts in request")
 			return
 		}
 		n, err := as.AddAlertManagerAlerts(als)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err})
+			abortWithError(c, err)
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"status": "ok", "count": n})

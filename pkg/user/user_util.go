@@ -3,10 +3,10 @@ package user
 import (
 	"crypto/rand"
 	"encoding/base64"
-	"errors"
 	"math/big"
 	"strings"
 
+	"github.com/root-ali/iris/internal/apperr"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -14,7 +14,7 @@ func generateSalt() (string, error) {
 	salt := make([]byte, 16)
 	_, err := rand.Read(salt)
 	if err != nil {
-		return "", errors.New("ERROR_GENERATING_SALT")
+		return "", apperr.New("ERROR_GENERATING_SALT")
 	}
 	return base64.StdEncoding.EncodeToString(salt), nil
 }
@@ -23,7 +23,7 @@ func hashPassword(password, salt string) (string, error) {
 	saltedPassword := []byte(password + salt)
 	hashedPassword, err := bcrypt.GenerateFromPassword(saltedPassword, bcrypt.DefaultCost)
 	if err != nil {
-		return "", errors.New("ERROR_GENERATING_HASH_PASSWORD")
+		return "", apperr.New("ERROR_GENERATING_HASH_PASSWORD")
 	}
 	return string(hashedPassword), nil
 }
@@ -38,7 +38,7 @@ func meetsSigninPolicy(p string) bool {
 
 func generateRandomPassword(length int) (string, error) {
 	if length <= 0 {
-		return "", errors.New("password length must be greater than zero")
+		return "", apperr.New("password length must be greater than zero")
 	}
 	const charSet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()"
 	password := make([]byte, length)

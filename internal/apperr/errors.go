@@ -9,24 +9,41 @@ import (
 	"net/http"
 )
 
+// Sentinels. Messages of non-internal kinds are safe to return to clients;
+// KindInternal messages are for logs only.
 var (
-	ErrPasswordNotMatch         = errors.New("password not valid")
-	ErrUserAlreadyExists        = errors.New("cannot signup new user because use already exists")
-	ErrUserAlreadyVerified      = errors.New("user already verified")
-	ErrGenerateToken            = errors.New("failed to Generate jwt token")
-	ErrTokenExpired             = errors.New("token Expired")
-	ErrTokenFailedToGetUserName = errors.New("failed to get username from token")
-	ErrTokenFailedToGetRole     = errors.New("failed to get role from token")
-	ErrInvalidToken             = errors.New("invalid token")
-	ErrUserNotVerified          = errors.New("user is not verified yet")
-	ErrRoleNotFound             = errors.New("role not found")
-	ErrPasswordReused           = errors.New("new password must differ from the current one")
+	ErrPasswordNotMatch    = sentinel(KindUnauthorized, "password_not_match", "password does not match")
+	ErrPasswordReused      = sentinel(KindInvalid, "password_reused", "new password must differ from the current one")
+	ErrUserAlreadyExists   = sentinel(KindConflict, "user_already_exists", "user already exists")
+	ErrUserAlreadyVerified = sentinel(KindConflict, "user_already_verified", "user already verified")
+	ErrUserNotVerified     = sentinel(KindForbidden, "user_not_verified", "user is not verified yet")
+	ErrUserNotFound        = sentinel(KindNotFound, "user_not_found", "user not found")
+	ErrUsernameRequired    = sentinel(KindInvalid, "username_required", "username is required")
+	ErrUserIDRequired      = sentinel(KindInvalid, "user_id_required", "user id is required")
+	ErrRoleNotFound        = sentinel(KindNotFound, "role_not_found", "role not found")
 
-	ErrGroupAlreadyexisted = errors.New("group already exists")
-	ErrGroupNotFound       = errors.New("group not found")
+	ErrGenerateToken            = sentinel(KindInternal, "generate_token", "failed to generate jwt token")
+	ErrTokenExpired             = sentinel(KindUnauthorized, "token_expired", "token expired")
+	ErrTokenFailedToGetUserName = sentinel(KindUnauthorized, "token_no_username", "failed to get username from token")
+	ErrTokenFailedToGetRole     = sentinel(KindUnauthorized, "token_no_role", "failed to get role from token")
+	ErrInvalidToken             = sentinel(KindUnauthorized, "invalid_token", "invalid token")
 
-	ErrProviderNotFound = errors.New("provider not found")
+	ErrGroupAlreadyExists = sentinel(KindConflict, "group_already_exists", "group already exists")
+	ErrGroupNotFound      = sentinel(KindNotFound, "group_not_found", "group not found")
+
+	ErrAlertNotFound = sentinel(KindNotFound, "alert_not_found", "alert not found")
+
+	ErrProviderNotFound      = sentinel(KindNotFound, "provider_not_found", "provider not found")
+	ErrNoActiveProvider      = sentinel(KindInternal, "no_active_provider", "no active provider found")
+	ErrNoAlternativeProvider = sentinel(KindInternal, "no_alternative_provider", "no alternative provider found")
+	ErrBotNotActive          = sentinel(KindInternal, "bot_not_active", "bot not active")
+
+	ErrServiceAlreadyStarted = sentinel(KindInternal, "service_already_started", "service already started")
 )
+
+func sentinel(kind Kind, code, msg string) error {
+	return &ASError{Kind: kind, Code: code, Message: msg}
+}
 
 func New(text string) error { return errors.New(text) }
 
@@ -86,6 +103,15 @@ func (e *ASError) Unwrap() error { return e.Err }
 func (e *ASError) Is(target error) bool {
 	t, ok := target.(*ASError)
 	return ok && e.Code != "" && e.Code == t.Code
+}
+
+// PublicMessage returns text safe to show a client: the Message of the first
+// non-internal ASError in err's chain, or a generic text otherwise.
+func PublicMessage(err error) string {
+	if e, ok := AsType[*ASError](err); ok && e.Kind != KindInternal && e.Message != "" {
+		return e.Message
+	}
+	return "internal server error"
 }
 
 // HTTPStatus maps the Kind of the first ASError in err's chain to a status code.

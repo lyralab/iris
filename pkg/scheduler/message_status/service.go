@@ -2,12 +2,12 @@ package message_status
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strconv"
 	"sync"
 	"time"
 
+	"github.com/root-ali/iris/internal/apperr"
 	"github.com/root-ali/iris/pkg/message"
 	"github.com/root-ali/iris/pkg/notifications"
 	"github.com/root-ali/iris/pkg/scheduler"
@@ -30,10 +30,10 @@ func NewMessageStatusMessageService(
 	s.mu = sync.Mutex{}
 	s.taskCh = make(chan message.Message, config.QueueSize)
 	if config.Interval <= 0 {
-		return nil, errors.New("interval must be > 0")
+		return nil, apperr.New("interval must be > 0")
 	}
 	if config.Workers < 1 {
-		return nil, errors.New("workers must be >= 1")
+		return nil, apperr.New("workers must be >= 1")
 	}
 	if config.QueueSize <= 0 {
 		config.QueueSize = config.Workers
@@ -52,7 +52,7 @@ func (s *Service) Start() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.started {
-		return errors.New("service already started")
+		return apperr.ErrServiceAlreadyStarted
 	}
 	s.started = true
 	s.ctx, s.cancel = context.WithCancel(context.Background())
@@ -301,13 +301,16 @@ func (s *Service) getNotificationProvider(providerName string) (notifications.No
 		return provider, fmt.Errorf("failed to get active providers: %w", err)
 	}
 	if len(providers) == 0 {
-		return provider, errors.New("no active providers found")
+		return provider, apperr.ErrNoActiveProvider
 	}
 
 	for _, p := range providers {
 		if p.Provider.GetName() == providerName {
 			provider = p.Provider
 		}
+	}
+	if provider == nil {
+		return nil, apperr.Wrap(apperr.ErrProviderNotFound, providerName)
 	}
 
 	s.logger.Infow("notification provider fetched for message status scheduler",
@@ -349,7 +352,7 @@ func (s *Service) getAlternativeProvider(flag string, providerName []string) (no
 		return provider, fmt.Errorf("failed to get active providers: %w", err)
 	}
 	if len(providers) == 0 {
-		return provider, errors.New("no active providers found")
+		return provider, apperr.ErrNoActiveProvider
 	}
 
 	for _, p := range providers {
@@ -381,8 +384,8 @@ func (s *Service) getAlternativeProvider(flag string, providerName []string) (no
 			}
 		}
 	} else {
-		return nil, fmt.Errorf("no alternative provider found")
+		return nil, apperr.ErrNoAlternativeProvider
 	}
 
-	return nil, fmt.Errorf("no alternative provider found")
+	return nil, apperr.ErrNoAlternativeProvider
 }

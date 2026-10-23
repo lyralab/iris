@@ -3,7 +3,6 @@ package asiatech
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -13,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/root-ali/iris/internal/apperr"
 	"github.com/root-ali/iris/pkg/cache"
 	"github.com/root-ali/iris/pkg/notifications"
 	"go.uber.org/zap"
@@ -128,7 +128,7 @@ func (s *Service) Send(message notifications.Message) ([]string, error) {
 		}
 	}
 	if rejected > 0 {
-		return msgResp.Data, errors.New(strings.Join(results, ";") + ";")
+		return msgResp.Data, apperr.New(strings.Join(results, ";") + ";")
 	}
 	s.logger.Infow("Asiatech: SMS accepted", "receptors", message.Receptors, "messageIDs", msgResp.Data)
 

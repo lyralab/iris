@@ -1,7 +1,6 @@
 package middlewares
 
 import (
-	"errors"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -25,7 +24,7 @@ func ValidateJWTToken(aths auth.AuthServiceInterface, role string, logger *zap.S
 		authHeader := c.Request.Header.Get("Authorization")
 		jwtToken := strings.TrimPrefix(authHeader, "Bearer ")
 		extractedUsername, extractedRole, mustChangePassword, err := aths.ValidateToken(jwtToken)
-		if errors.Is(err, apperr.ErrTokenExpired) {
+		if apperr.Is(err, apperr.ErrTokenExpired) {
 			logger.Error("Token expired")
 			c.AbortWithStatusJSON(401, gin.H{
 				"status":  "unauthorized",

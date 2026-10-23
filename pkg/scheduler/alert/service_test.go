@@ -1,11 +1,11 @@
 package alert
 
 import (
-	"errors"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/root-ali/iris/internal/apperr"
 	"github.com/root-ali/iris/pkg/alerts"
 	"github.com/root-ali/iris/pkg/message"
 	"github.com/root-ali/iris/pkg/notifications"
@@ -92,7 +92,7 @@ func providers(ns ...*fakeNotifier) stubProviders {
 }
 
 func TestHandleAlertGetProviderErrorStaysUnsent(t *testing.T) {
-	want := errors.New("providers down")
+	want := apperr.New("providers down")
 	repo := &fakeAlertRepo{}
 	ps := stubProviders{err: want}
 	s := handleScheduler(repo, nil, ps)
@@ -109,7 +109,7 @@ func TestHandleAlertGetProviderErrorStaysUnsent(t *testing.T) {
 
 func TestHandleAlertCacheMissStaysUnsent(t *testing.T) {
 	// g1 misses, g2 is cached but its Send fails: nothing delivered, so stay unsent.
-	n := &fakeNotifier{flag: "sms", err: errors.New("boom")}
+	n := &fakeNotifier{flag: "sms", err: apperr.New("boom")}
 	repo := &fakeAlertRepo{}
 	s := handleScheduler(repo, map[string]map[string]string{"g2": {"u2": "0912"}}, providers(n))
 
@@ -127,7 +127,7 @@ func TestHandleAlertCacheMissStaysUnsent(t *testing.T) {
 }
 
 func TestHandleAlertSendErrorStaysUnsent(t *testing.T) {
-	want := errors.New("send failed")
+	want := apperr.New("send failed")
 	n := &fakeNotifier{flag: "sms", err: want}
 	repo := &fakeAlertRepo{}
 	s := handleScheduler(repo, map[string]map[string]string{"g1": {"u1": "0912"}}, providers(n))
@@ -156,7 +156,7 @@ func TestHandleAlertEmptyMethodMarksSent(t *testing.T) {
 
 func TestHandleAlertPartialSuccessMarksSent(t *testing.T) {
 	ok := &fakeNotifier{flag: "sms", prio: 1}
-	bad := &fakeNotifier{flag: "email", prio: 2, err: errors.New("smtp down")}
+	bad := &fakeNotifier{flag: "email", prio: 2, err: apperr.New("smtp down")}
 	repo := &fakeAlertRepo{}
 	groups := map[string]map[string]string{"g1": {"u1": "0912"}}
 	s := handleScheduler(repo, groups, providers(ok, bad))
@@ -194,7 +194,7 @@ func TestHandleAlertTelegramNilErrorStoresDelivered(t *testing.T) {
 }
 
 func TestHandleAlertPerRecipientErrorsInSendOrder(t *testing.T) {
-	n := &fakeNotifier{flag: "telegram", name: "Telegram", ids: []string{"1", "2"}, err: errors.New("nil;boom;")}
+	n := &fakeNotifier{flag: "telegram", name: "Telegram", ids: []string{"1", "2"}, err: apperr.New("nil;boom;")}
 	repo := &fakeAlertRepo{}
 	users := map[string]string{"u1": "100", "u2": "200"}
 	s := handleScheduler(repo, map[string]map[string]string{"g1": users}, providers(n))
@@ -223,7 +223,7 @@ func TestHandleAlertPerRecipientErrorsInSendOrder(t *testing.T) {
 }
 
 func TestHandleAlertPlainErrorStoresFailed(t *testing.T) {
-	n := &fakeNotifier{flag: "sms", err: errors.New("gateway down")}
+	n := &fakeNotifier{flag: "sms", err: apperr.New("gateway down")}
 	repo := &fakeAlertRepo{}
 	s := handleScheduler(repo, map[string]map[string]string{"g1": {"u1": "0912"}}, providers(n))
 	log := &msgLog{}

@@ -2,12 +2,10 @@ package rest
 
 import (
 	"encoding/json"
-	"errors"
 	"io"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/root-ali/iris/internal/apperr"
 	"github.com/root-ali/iris/pkg/groups"
 	"github.com/root-ali/iris/pkg/user"
 	"go.uber.org/zap"
@@ -37,14 +35,14 @@ func CreateGroupHandler(gr groups.GroupServiceInterface, logger *zap.SugaredLogg
 		bodyBytes, err := io.ReadAll(c.Request.Body)
 		if err != nil {
 			logger.Errorw("Failed to read request body", "error", err)
-			c.JSON(400, gin.H{"error": "Failed to read request body"})
+			abortWithMessage(c, http.StatusBadRequest, "Failed to read request body")
 			return
 		}
 		var requestBody CreateGroupRequestBody
 		err = json.Unmarshal(bodyBytes, &requestBody)
 		if err != nil {
 			logger.Errorw("Failed to unmarshal request body", "error", err)
-			c.JSON(400, gin.H{"error": "Failed to unmarshal request body"})
+			abortWithMessage(c, http.StatusBadRequest, "Failed to unmarshal request body")
 			return
 		}
 		g := requestBody.toGroup()
@@ -52,7 +50,7 @@ func CreateGroupHandler(gr groups.GroupServiceInterface, logger *zap.SugaredLogg
 		err = gr.CreateGroup(g)
 		if err != nil {
 			logger.Errorw("Failed to create group", "error", err)
-			c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": err.Error()})
+			abortWithError(c, err)
 			return
 		}
 		c.JSON(http.StatusCreated, gin.H{"status": "created"})
@@ -64,20 +62,23 @@ func DeleteGroupHandler(gr groups.GroupServiceInterface, logger *zap.SugaredLogg
 		bodyBytes, err := io.ReadAll(c.Request.Body)
 		if err != nil {
 			logger.Errorw("Failed to read request body", "error", err)
-			c.JSON(400, gin.H{"error": "Failed to read request body"})
+			abortWithMessage(c, http.StatusBadRequest, "Failed to read request body")
 			return
 		}
-		var g *groups.Group
-		err = json.Unmarshal(bodyBytes, g)
+		var g groups.Group
+		err = json.Unmarshal(bodyBytes, &g)
 		if err != nil {
 			logger.Errorw("Cannot Parse request body", "error", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot Parse request body"})
+			abortWithMessage(c, http.StatusBadRequest, "Cannot Parse request body")
 			return
 		}
-		err = gr.DeleteGroup(g)
+		err = gr.DeleteGroup(&g)
 		if err != nil {
 			logger.Errorw("Failed to delete group", "error", err)
+			abortWithError(c, err)
+			return
 		}
+		c.JSON(http.StatusOK, gin.H{"status": "success"})
 	}
 }
 
@@ -85,17 +86,13 @@ func GetGroupHandler(gr groups.GroupServiceInterface, logger *zap.SugaredLogger)
 	return func(c *gin.Context) {
 		groupId := c.Param("group_id")
 		if groupId == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "group_id is required"})
+			abortWithMessage(c, http.StatusBadRequest, "group_id is required")
 			return
 		}
 		g, err := gr.GetGroupById(groupId)
-		if errors.Is(err, apperr.ErrGroupNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "group not found"})
-			return
-		}
 		if err != nil {
 			logger.Errorw("Failed to get group", "error", err)
-			c.JSON(400, gin.H{"error": "Failed to get group"})
+			abortWithError(c, err)
 			return
 		}
 		c.JSON(200, gin.H{"data": g, "status": "success"})
@@ -107,7 +104,7 @@ func GetAllGroupHandler(gr groups.GroupServiceInterface, logger *zap.SugaredLogg
 		groupIDs, err := gr.GetAllGroups()
 		if err != nil {
 			logger.Errorw("Failed to get all groups", "error", err)
-			c.AbortWithStatusJSON(400, gin.H{"error": "Failed to get all groups"})
+			abortWithError(c, err)
 			return
 		}
 		var response []GroupsResponse
@@ -125,7 +122,7 @@ func GetUserGroupsHandler(gr groups.GroupServiceInterface, logger *zap.SugaredLo
 		groupIDs, err := gr.ListGroupByUser(userId)
 		if err != nil {
 			logger.Errorw("Failed to get user groups", "error", err)
-			c.AbortWithStatusJSON(400, gin.H{"error": "Failed to get user groups"})
+			abortWithError(c, err)
 			return
 		}
 		var response []GroupsResponse
@@ -143,21 +140,21 @@ func AddUserToGroupHandler(gr groups.GroupServiceInterface, logger *zap.SugaredL
 		bodyBytes, err := io.ReadAll(c.Request.Body)
 		if err != nil {
 			logger.Errorw("Failed to read request body", "error", err)
-			c.AbortWithStatusJSON(400, gin.H{"error": "Failed to read request body"})
+			abortWithMessage(c, http.StatusBadRequest, "Failed to read request body")
 			return
 		}
 		var requestBody AddUserToGroupRequestBody
 		err = json.Unmarshal(bodyBytes, &requestBody)
 		if err != nil {
 			logger.Errorw("Failed to unmarshal request body", "error", err)
-			c.AbortWithStatusJSON(400, gin.H{"error": "Failed to unmarshal request body"})
+			abortWithMessage(c, http.StatusBadRequest, "Failed to unmarshal request body")
 			return
 		}
 		userId := requestBody.UserID
 		err = gr.AddUser(&groups.Group{ID: groupId}, userId)
 		if err != nil {
 			logger.Errorw("Failed to add user to group", "error", err)
-			c.AbortWithStatusJSON(400, gin.H{"error": "Failed to add user to group"})
+			abortWithError(c, err)
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"status": "success"})
@@ -169,13 +166,13 @@ func RemoveUserFromGroupHandler(gr groups.GroupServiceInterface, logger *zap.Sug
 		groupId := c.Param("group_id")
 		userId := c.Param("user_id")
 		if userId == "" {
-			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "user_id is required"})
+			abortWithMessage(c, http.StatusBadRequest, "user_id is required")
 			return
 		}
 		err := gr.RemoveUser(&groups.Group{ID: groupId}, userId)
 		if err != nil {
 			logger.Errorw("Failed to remove user from group", "error", err)
-			c.AbortWithStatusJSON(400, gin.H{"error": "Failed to remove user from group"})
+			abortWithError(c, err)
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"status": "success"})
@@ -190,7 +187,7 @@ func GetUsersInGroupHandler(gr groups.GroupServiceInterface, us user.UserInterfa
 		userIDs, err := gr.ListUsers(gp)
 		if err != nil {
 			logger.Errorw("Failed to get users in group", "error", err)
-			c.AbortWithStatusJSON(400, gin.H{"error": "Failed to get users in group"})
+			abortWithError(c, err)
 			return
 		}
 

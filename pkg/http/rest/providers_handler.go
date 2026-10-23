@@ -1,7 +1,7 @@
 package rest
 
 import (
-	"errors"
+	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -31,21 +31,17 @@ func GetProvidersHandler(ps notifications.ProviderServiceInterface) gin.HandlerF
 		name := c.Query("name")
 		var pr ProviderResponse
 		if id != "" && name != "" {
-			c.AbortWithStatusJSON(400, gin.H{"error": "provide either id or name, not both"})
+			abortWithMessage(c, http.StatusBadRequest, "provide either id or name, not both")
 			return
 		}
 		if name != "" {
 			provider, err := ps.GetProviderByName(name)
-			if errors.Is(err, apperr.ErrProviderNotFound) {
-				c.AbortWithStatusJSON(404, gin.H{"error": err.Error()})
-				return
-			}
 			if err != nil {
-				c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
+				abortWithError(c, err)
 				return
 			}
 			if provider == nil {
-				c.AbortWithStatusJSON(404, gin.H{"error": "provider not found"})
+				abortWithError(c, apperr.ErrProviderNotFound)
 				return
 			}
 
@@ -59,15 +55,12 @@ func GetProvidersHandler(ps notifications.ProviderServiceInterface) gin.HandlerF
 		}
 		if id != "" {
 			provider, err := ps.GetProviderByID(id)
-			if errors.Is(err, apperr.ErrProviderNotFound) {
-				c.AbortWithStatusJSON(404, gin.H{"error": err.Error()})
-				return
-			} else if err != nil {
-				c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
+			if err != nil {
+				abortWithError(c, err)
 				return
 			}
 			if provider == nil {
-				c.AbortWithStatusJSON(404, gin.H{"error": "provider not found"})
+				abortWithError(c, apperr.ErrProviderNotFound)
 				return
 			}
 
@@ -93,7 +86,7 @@ func GetProvidersHandler(ps notifications.ProviderServiceInterface) gin.HandlerF
 				})
 			}
 			if err != nil {
-				c.JSON(500, gin.H{"error": err.Error()})
+				abortWithError(c, err)
 				return
 			}
 			c.JSON(200, gin.H{"providers": providerResponses, "status": "success"})
@@ -125,7 +118,7 @@ func GetProviderMessagesHandler(ml messageLister) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		msgs, err := ml.ListBySender(c.Param("name"), parseMessagesLimit(c.Query("limit")))
 		if err != nil {
-			c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
+			abortWithError(c, err)
 			return
 		}
 		c.JSON(200, gin.H{"messages": msgs, "status": "success"})
@@ -136,27 +129,27 @@ func ModifyProviderHandler(ps notifications.ProviderServiceInterface) gin.Handle
 	return func(c *gin.Context) {
 		var req modifyProviderRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.AbortWithStatusJSON(400, gin.H{"error": err.Error()})
+			abortWithMessage(c, http.StatusBadRequest, "invalid request body")
 			return
 		}
 		if *req.Name == "" {
-			c.AbortWithStatusJSON(400, gin.H{"error": "name is required"})
+			abortWithMessage(c, http.StatusBadRequest, "name is required")
 			return
 		}
 		if req.Status == nil && req.Priority == nil {
-			c.AbortWithStatusJSON(500, gin.H{"error": "either priority or status must be provided"})
+			abortWithMessage(c, http.StatusBadRequest, "either priority or status must be provided")
 			return
 		}
 
 		if req.Status == nil {
 
 			if *req.Priority < 1 || *req.Priority > 5 {
-				c.AbortWithStatusJSON(400, gin.H{"error": "priority must be between 1 and 5"})
+				abortWithMessage(c, http.StatusBadRequest, "priority must be between 1 and 5")
 				return
 			} else {
 				err := ps.ModifyProviderPriority(*req.Name, *req.Priority)
 				if err != nil {
-					c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
+					abortWithError(c, err)
 					return
 				}
 				c.AbortWithStatusJSON(200, gin.H{"status": "success"})
@@ -167,7 +160,7 @@ func ModifyProviderHandler(ps notifications.ProviderServiceInterface) gin.Handle
 			if *req.Status {
 				err := ps.EnableProvider(*req.Name)
 				if err != nil {
-					c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
+					abortWithError(c, err)
 					return
 				}
 				c.AbortWithStatusJSON(200, gin.H{"status": "success"})
@@ -175,7 +168,7 @@ func ModifyProviderHandler(ps notifications.ProviderServiceInterface) gin.Handle
 			} else if !*req.Status {
 				err := ps.DisableProvider(*req.Name)
 				if err != nil {
-					c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
+					abortWithError(c, err)
 					return
 				}
 				c.AbortWithStatusJSON(200, gin.H{"status": "success"})
@@ -184,18 +177,18 @@ func ModifyProviderHandler(ps notifications.ProviderServiceInterface) gin.Handle
 		}
 		if req.Status != nil && req.Priority != nil {
 			if *req.Priority < 1 || *req.Priority > 5 {
-				c.AbortWithStatusJSON(400, gin.H{"error": "priority must be between 1 and 5"})
+				abortWithMessage(c, http.StatusBadRequest, "priority must be between 1 and 5")
 				return
 			}
 			if *req.Status {
 				err := ps.EnableProvider(*req.Name)
 				if err != nil {
-					c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
+					abortWithError(c, err)
 					return
 				}
 				err = ps.ModifyProviderPriority(*req.Name, *req.Priority)
 				if err != nil {
-					c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
+					abortWithError(c, err)
 					return
 				}
 				c.AbortWithStatusJSON(200, gin.H{"status": "success"})
@@ -203,12 +196,12 @@ func ModifyProviderHandler(ps notifications.ProviderServiceInterface) gin.Handle
 			} else if !*req.Status {
 				err := ps.DisableProvider(*req.Name)
 				if err != nil {
-					c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
+					abortWithError(c, err)
 					return
 				}
 				err = ps.ModifyProviderPriority(*req.Name, *req.Priority)
 				if err != nil {
-					c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
+					abortWithError(c, err)
 					return
 				}
 				c.AbortWithStatusJSON(200, gin.H{"status": "success"})

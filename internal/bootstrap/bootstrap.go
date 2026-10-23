@@ -239,7 +239,7 @@ func Init(cfg *config.Config) (*App, error) {
 	// Disable deactive providers
 	for _, p := range deactiveProviders {
 		err := providerService.DisableProvider(p)
-		if err == apperr.ErrProviderNotFound {
+		if apperr.Is(err, apperr.ErrProviderNotFound) {
 			logger.Warnw("provider not found to disable", "provider", p)
 		} else if err != nil {
 			logger.Errorw("provider disable failed", "provider", p, "error", err)

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/root-ali/iris/internal/apperr"
 	"go.uber.org/zap"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -66,6 +67,15 @@ func NewZapWriter(sugar *zap.SugaredLogger) logger.Writer {
 
 func (w *zapWriter) Printf(message string, data ...interface{}) {
 	w.sugar.Debugf(message, data...)
+}
+
+// notFoundAs replaces gorm's not-found error with the domain sentinel so callers
+// above the storage layer never depend on gorm.
+func notFoundAs(err, sentinel error) error {
+	if apperr.Is(err, gorm.ErrRecordNotFound) {
+		return sentinel
+	}
+	return err
 }
 
 func (s *Storage) Health() error {

@@ -1,7 +1,6 @@
 package groups
 
 import (
-	"errors"
 	"testing"
 
 	"github.com/root-ali/iris/internal/apperr"
@@ -59,19 +58,19 @@ func TestGroupChangesRefreshCache(t *testing.T) {
 			name:    "create existing group",
 			repo:    &fakeGroupRepo{exists: true},
 			call:    func(s GroupServiceInterface) error { return s.CreateGroup(&Group{Name: "ops"}) },
-			wantErr: apperr.ErrGroupAlreadyexisted,
+			wantErr: apperr.ErrGroupAlreadyExists,
 		},
 		{
 			name:    "create group write failure",
-			repo:    &fakeGroupRepo{writeErr: errors.New("insert failed")},
+			repo:    &fakeGroupRepo{writeErr: apperr.New("insert failed")},
 			call:    func(s GroupServiceInterface) error { return s.CreateGroup(&Group{Name: "ops"}) },
-			wantErr: errors.New("insert failed"),
+			wantErr: apperr.New("insert failed"),
 		},
 		{
 			name:    "create group lookup failure",
-			repo:    &fakeGroupRepo{getErr: errors.New("db down")},
+			repo:    &fakeGroupRepo{getErr: apperr.New("db down")},
 			call:    func(s GroupServiceInterface) error { return s.CreateGroup(&Group{Name: "ops"}) },
-			wantErr: errors.New("db down"),
+			wantErr: apperr.New("db down"),
 		},
 		{
 			name:  "delete group",
@@ -81,9 +80,9 @@ func TestGroupChangesRefreshCache(t *testing.T) {
 		},
 		{
 			name:    "delete group failure",
-			repo:    &fakeGroupRepo{writeErr: errors.New("delete failed")},
+			repo:    &fakeGroupRepo{writeErr: apperr.New("delete failed")},
 			call:    func(s GroupServiceInterface) error { return s.DeleteGroup(&Group{ID: "g1"}) },
-			wantErr: errors.New("delete failed"),
+			wantErr: apperr.New("delete failed"),
 		},
 		{
 			name:  "add user",
@@ -93,9 +92,9 @@ func TestGroupChangesRefreshCache(t *testing.T) {
 		},
 		{
 			name:    "add user failure",
-			repo:    &fakeGroupRepo{writeErr: errors.New("add failed")},
+			repo:    &fakeGroupRepo{writeErr: apperr.New("add failed")},
 			call:    func(s GroupServiceInterface) error { return s.AddUser(&Group{ID: "g1"}, "u1") },
-			wantErr: errors.New("add failed"),
+			wantErr: apperr.New("add failed"),
 		},
 		{
 			name:  "remove user",
@@ -105,9 +104,9 @@ func TestGroupChangesRefreshCache(t *testing.T) {
 		},
 		{
 			name:    "remove user failure",
-			repo:    &fakeGroupRepo{writeErr: errors.New("remove failed")},
+			repo:    &fakeGroupRepo{writeErr: apperr.New("remove failed")},
 			call:    func(s GroupServiceInterface) error { return s.RemoveUser(&Group{ID: "g1"}, "u1") },
-			wantErr: errors.New("remove failed"),
+			wantErr: apperr.New("remove failed"),
 		},
 		{
 			name: "read does not refresh",

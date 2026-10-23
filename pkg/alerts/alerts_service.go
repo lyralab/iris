@@ -1,13 +1,12 @@
 package alerts
 
 import (
-	"errors"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/root-ali/iris/internal/apperr"
 	"go.uber.org/zap"
-	"gorm.io/gorm"
 )
 
 type AlertRepository interface {
@@ -46,7 +45,7 @@ func (as *alertsService) NewAlert(fingerprint, name, severity, description, stat
 ) (Alert, error) {
 	var als Alert
 	checkAlert, err := as.ar.GetAlertByFingerPrintAndStatus(fingerprint, "firing")
-	if errors.Is(err, gorm.ErrRecordNotFound) {
+	if apperr.Is(err, apperr.ErrAlertNotFound) {
 		als.Id = uuid.New().String()
 		als.FingerPrint = fingerprint
 		als.Name = name
@@ -63,7 +62,7 @@ func (as *alertsService) NewAlert(fingerprint, name, severity, description, stat
 		als.UpdatedAt = time.Now()
 		return als, nil
 	} else if err != nil {
-		as.log.Error("error checking alert in database", err)
+		as.log.Errorw("error checking alert in database", "error", err)
 		return als, err
 	}
 	als.Id = checkAlert.Id

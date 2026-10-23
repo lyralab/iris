@@ -2,11 +2,11 @@ package cache_receptors
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"sync"
 	"time"
 
+	"github.com/root-ali/iris/internal/apperr"
 	"github.com/root-ali/iris/pkg/cache"
 	"go.uber.org/zap"
 )
@@ -18,10 +18,10 @@ func NewCacheReceptorsScheduler(
 	config Config,
 ) (*CacheReceptor, error) {
 	if config.Interval <= 0 {
-		return nil, errors.New("interval must be > 0")
+		return nil, apperr.New("interval must be > 0")
 	}
 	if config.Workers < 1 {
-		return nil, errors.New("workers must be >= 1")
+		return nil, apperr.New("workers must be >= 1")
 	}
 	if config.QueueSize <= 0 {
 		config.QueueSize = config.Workers
@@ -42,7 +42,7 @@ func (s *CacheReceptor) Start() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.started {
-		return errors.New("scheduler already started")
+		return apperr.ErrServiceAlreadyStarted
 	}
 	s.started = true
 	s.ctx, s.cancel = context.WithCancel(context.Background())

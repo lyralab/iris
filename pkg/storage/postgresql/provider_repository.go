@@ -4,6 +4,7 @@ import (
 	"github.com/root-ali/iris/internal/apperr"
 	"github.com/root-ali/iris/pkg/notifications"
 	"go.uber.org/zap"
+	"gorm.io/gorm"
 )
 
 func (s *Storage) AddProvider(p *notifications.Providers) error {
@@ -42,7 +43,7 @@ func (s *Storage) SetStatusFalse(p *notifications.Providers) error {
 func (s *Storage) GetProvider(p *notifications.Providers) error {
 	result := s.db.Where("id = ? OR name = ?", &p.ID, &p.Name).First(p)
 	if result.Error != nil {
-		if err := result.Error; err.Error() == "record not found" {
+		if apperr.Is(result.Error, gorm.ErrRecordNotFound) {
 			return apperr.ErrProviderNotFound
 		}
 

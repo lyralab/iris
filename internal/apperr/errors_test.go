@@ -45,8 +45,8 @@ func TestAsAndAsType(t *testing.T) {
 	if got, ok := AsType[*ASError](err); !ok || got != typed {
 		t.Fatalf("AsType did not find ASError")
 	}
-	if _, ok := AsType[*ASError](ErrGroupNotFound); ok {
-		t.Fatalf("AsType matched a plain sentinel")
+	if _, ok := AsType[*ASError](New("plain")); ok {
+		t.Fatalf("AsType matched a plain error")
 	}
 	syntax := json.Unmarshal([]byte("{"), &struct{}{})
 	if _, ok := AsType[*json.SyntaxError](Wrap(syntax, "decode")); !ok {
@@ -90,11 +90,29 @@ func TestHTTPStatus(t *testing.T) {
 		{Wrap(&ASError{Kind: KindNotFound}, "ctx"), http.StatusNotFound},
 		{&ASError{Kind: KindConflict}, http.StatusConflict},
 		{&ASError{Kind: KindInternal}, http.StatusInternalServerError},
-		{ErrGroupNotFound, http.StatusInternalServerError},
+		{Wrap(ErrGroupNotFound, "ctx"), http.StatusNotFound},
+		{New("plain"), http.StatusInternalServerError},
 	}
 	for _, tt := range tests {
 		if got := HTTPStatus(tt.err); got != tt.want {
 			t.Errorf("HTTPStatus(%v) = %d, want %d", tt.err, got, tt.want)
+		}
+	}
+}
+
+func TestPublicMessage(t *testing.T) {
+	tests := []struct {
+		err  error
+		want string
+	}{
+		{Wrap(ErrGroupNotFound, "repo"), "group not found"},
+		{ErrGenerateToken, "internal server error"},
+		{New("pq: connection refused"), "internal server error"},
+		{&ASError{Kind: KindNotFound}, "internal server error"},
+	}
+	for _, tt := range tests {
+		if got := PublicMessage(tt.err); got != tt.want {
+			t.Errorf("PublicMessage(%v) = %q, want %q", tt.err, got, tt.want)
 		}
 	}
 }

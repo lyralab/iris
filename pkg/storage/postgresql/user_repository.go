@@ -3,6 +3,7 @@ package postgresql
 import (
 	"time"
 
+	"github.com/root-ali/iris/internal/apperr"
 	"github.com/root-ali/iris/pkg/user"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
@@ -22,7 +23,7 @@ func (s *Storage) GetUserByID(id string) (*user.User, error) {
 	result := s.db.First(&u, "id = ?", id)
 	if result.Error != nil {
 		s.logger.Error("Error getting user", zap.Error(result.Error))
-		return nil, result.Error
+		return nil, notFoundAs(result.Error, apperr.ErrUserNotFound)
 	}
 	return u, nil
 }
@@ -31,7 +32,7 @@ func (s *Storage) GetUserByUsername(u *user.User) error {
 	result := s.db.First(u, "user_name = ?", u.UserName)
 	if result.Error != nil {
 		s.logger.Error("Error getting user", zap.Error(result.Error))
-		return result.Error
+		return notFoundAs(result.Error, apperr.ErrUserNotFound)
 	}
 	return nil
 }
@@ -41,7 +42,7 @@ func (s *Storage) GetUserByEmail(email string) (*user.User, error) {
 	result := s.db.First(&u, "email = ?", email)
 	if result.Error != nil {
 		s.logger.Error("Error getting user", zap.Error(result.Error))
-		return nil, result.Error
+		return nil, notFoundAs(result.Error, apperr.ErrUserNotFound)
 	}
 	return u, nil
 }
@@ -68,7 +69,7 @@ func (s *Storage) UpdateUserPassword(id string, hashedPassword string, salt stri
 		return result.Error
 	}
 	if result.RowsAffected == 0 {
-		return gorm.ErrRecordNotFound
+		return apperr.ErrUserNotFound
 	}
 	return nil
 }
@@ -79,9 +80,8 @@ func (s *Storage) DeleteUser(_ string) error {
 
 func (s *Storage) GetRole(u *user.User) error {
 	result := s.db.Select("role_id").First(u, "user_name = ?", u.UserName)
-	s.logger.Info("user role is ", u.Role)
 	if result.Error != nil {
-		return result.Error
+		return notFoundAs(result.Error, apperr.ErrUserNotFound)
 	}
 	return nil
 }

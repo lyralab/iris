@@ -1,11 +1,11 @@
 package cache_receptors
 
 import (
-	"errors"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/root-ali/iris/internal/apperr"
 	"github.com/root-ali/iris/pkg/cache"
 	"go.uber.org/zap"
 )
@@ -436,7 +436,7 @@ func TestRefreshKeepsSnapshotWhenRepositoryFails(t *testing.T) {
 	}
 	s.setOnCache()
 
-	repo.setErr(errors.New("db down"))
+	repo.setErr(apperr.New("db down"))
 	s.Refresh()
 
 	got, ok := s.Cache.Get("mobiles_admin")
