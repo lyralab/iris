@@ -3,7 +3,6 @@ package rest
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -115,11 +114,11 @@ func AddUserHandler(us user.UserInterfaceService, logger *zap.SugaredLogger) gin
 		decoder := json.NewDecoder(c.Request.Body)
 		err := decoder.Decode(&u)
 		if err != nil {
-			var syntaxError *json.SyntaxError
-			var unmarshalTypeError *json.UnmarshalTypeError
+			syntaxError, isSyntax := apperr.AsType[*json.SyntaxError](err)
+			unmarshalTypeError, isUnmarshalType := apperr.AsType[*json.UnmarshalTypeError](err)
 
 			switch {
-			case errors.As(err, &syntaxError):
+			case isSyntax:
 				logger.Errorw("Request body contains badly-formed JSON",
 					"method", c.Request.Method,
 					"path", c.Request.URL.Path,
@@ -132,7 +131,7 @@ func AddUserHandler(us user.UserInterfaceService, logger *zap.SugaredLogger) gin
 					"status":  "error",
 					"message": "Request body contains badly-formed JSON",
 				})
-			case errors.As(err, &unmarshalTypeError):
+			case isUnmarshalType:
 				logger.Errorw("Request body contains an invalid value for the "+unmarshalTypeError.Field+
 					" field (at position "+fmt.Sprint(unmarshalTypeError.Offset)+")",
 					"method", c.Request.Method,
@@ -211,11 +210,11 @@ func LoginUserHandler(us user.UserInterfaceService, aths auth.AuthServiceInterfa
 		err := decoder.Decode(&u)
 
 		if err != nil {
-			var syntaxError *json.SyntaxError
-			var unmarshalTypeError *json.UnmarshalTypeError
+			syntaxError, isSyntax := apperr.AsType[*json.SyntaxError](err)
+			unmarshalTypeError, isUnmarshalType := apperr.AsType[*json.UnmarshalTypeError](err)
 
 			switch {
-			case errors.As(err, &syntaxError):
+			case isSyntax:
 				logger.Errorw("Request body contains badly-formed JSON",
 					"method", c.Request.Method,
 					"path", c.Request.URL.Path,
@@ -228,7 +227,7 @@ func LoginUserHandler(us user.UserInterfaceService, aths auth.AuthServiceInterfa
 					"status":  "error",
 					"message": "Request body contains badly-formed JSON",
 				})
-			case errors.As(err, &unmarshalTypeError):
+			case isUnmarshalType:
 				logger.Errorw("Request body contains an invalid value for the "+unmarshalTypeError.Field+
 					" field (at position "+fmt.Sprint(unmarshalTypeError.Offset)+")",
 					"method", c.Request.Method,
@@ -286,14 +285,14 @@ func LoginUserHandler(us user.UserInterfaceService, aths auth.AuthServiceInterfa
 		reqUser.UserName = u.UserName
 		reqUser.Password = u.Password
 		err = us.ValidateUser(&reqUser)
-		if errors.Is(err, apperr.ErrPasswordNotMatch) {
+		if apperr.Is(err, apperr.ErrPasswordNotMatch) {
 			logger.Errorw("Wrong password is entered ", "user", u.UserName)
 			c.AbortWithStatusJSON(401, gin.H{
 				"status":  "error",
 				"message": "Cannot continue the process",
 			})
 			return
-		} else if errors.Is(err, apperr.ErrUserNotVerified) {
+		} else if apperr.Is(err, apperr.ErrUserNotVerified) {
 			c.AbortWithStatusJSON(403, gin.H{
 				"status":  "error",
 				"message": "User is not verified yet",
@@ -353,10 +352,10 @@ func ChangePasswordHandler(us user.UserInterfaceService, aths auth.AuthServiceIn
 		}
 		u := user.User{UserName: userName.(string), Password: body.CurrentPassword}
 		err := us.ChangePassword(&u, body.NewPassword)
-		if errors.Is(err, apperr.ErrPasswordNotMatch) {
+		if apperr.Is(err, apperr.ErrPasswordNotMatch) {
 			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Current password is incorrect"})
 			return
-		} else if errors.Is(err, apperr.ErrPasswordReused) {
+		} else if apperr.Is(err, apperr.ErrPasswordReused) {
 			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"status": "error", "message": err.Error()})
 			return
 		} else if err != nil {
