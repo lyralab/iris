@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/golang-jwt/jwt/v5"
-	iriserror "github.com/root-ali/iris/pkg/errors"
+	"github.com/root-ali/iris/internal/apperr"
 	"go.uber.org/zap"
 	"time"
 )
@@ -41,7 +41,7 @@ func (as *authService) GenerateToken(username string, role string, mustChangePas
 	if err != nil {
 		as.logger.Errorw("Failed to generate token",
 			"user", username, "error", err)
-		return "", iriserror.ErrGenerateToken
+		return "", apperr.ErrGenerateToken
 	}
 	return tokenString, nil
 }
@@ -57,7 +57,7 @@ func (as *authService) ValidateToken(tokenString string) (string, string, bool, 
 	if err != nil {
 		if errors.Is(err, jwt.ErrTokenExpired) {
 			as.logger.Errorw("Token expired", "error", err)
-			return "", "", false, iriserror.ErrTokenExpired
+			return "", "", false, apperr.ErrTokenExpired
 		} else {
 			as.logger.Errorw("Failed to parse token", "error", err)
 			return "", "", false, err
@@ -69,24 +69,24 @@ func (as *authService) ValidateToken(tokenString string) (string, string, bool, 
 
 		if float64(time.Now().Unix()) > claims["exp"].(float64) {
 			as.logger.Errorw("Token expired", "error", err)
-			return "", "", false, iriserror.ErrTokenExpired
+			return "", "", false, apperr.ErrTokenExpired
 		}
 		username, ok := claims["username"].(string)
 		if !ok {
 			as.logger.Errorw("Failed to get username from token")
-			return "", "", false, iriserror.ErrTokenFailedToGetUserName
+			return "", "", false, apperr.ErrTokenFailedToGetUserName
 		}
 		role, ok := claims["role"].(string)
 		if !ok {
 			as.logger.Errorw("Failed to get role from token")
-			return "", "", false, iriserror.ErrTokenFailedToGetRole
+			return "", "", false, apperr.ErrTokenFailedToGetRole
 		}
 		// Tokens issued before this claim existed carry no flag.
 		mustChangePassword, _ := claims["must_change_password"].(bool)
 		return username, role, mustChangePassword, nil
 	} else {
 		as.logger.Errorw("Invalid token")
-		return "", "", false, iriserror.ErrInvalidToken
+		return "", "", false, apperr.ErrInvalidToken
 	}
 
 }

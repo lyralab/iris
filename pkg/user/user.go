@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/oklog/ulid/v2"
-	iris_error "github.com/root-ali/iris/pkg/errors"
+	"github.com/root-ali/iris/internal/apperr"
 	"github.com/root-ali/iris/pkg/groups"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
@@ -148,11 +148,11 @@ func (us *userServiceImpl) ValidateUser(u *User) error {
 	err = bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(enteredPassword+u.Salt))
 	if err != nil {
 		us.logger.Errorw("cannot validate password", "error", err)
-		return iris_error.ErrPasswordNotMatch
+		return apperr.ErrPasswordNotMatch
 	}
 	if u.Status != "Verified" {
 		us.logger.Infow("user cannot login because not verified yet", "username", u.UserName)
-		return iris_error.ErrUserNotVerified
+		return apperr.ErrUserNotVerified
 	}
 	return nil
 }
@@ -165,7 +165,7 @@ func (us *userServiceImpl) ChangePassword(u *User, newPassword string) error {
 		return err
 	}
 	if newPassword == currentPassword {
-		return iris_error.ErrPasswordReused
+		return apperr.ErrPasswordReused
 	}
 	salt, err := generateSalt()
 	if err != nil {
@@ -194,7 +194,7 @@ func (us *userServiceImpl) GetUserRole(u *User) error {
 
 func (us *userServiceImpl) VerifyUser(u *User) error {
 	if u.Status == "Verified" {
-		return iris_error.ErrUserAlreadyVerified
+		return apperr.ErrUserAlreadyVerified
 	}
 	u.Status = "Verified"
 	err := us.repo.VerifyUser(u)

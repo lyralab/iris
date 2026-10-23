@@ -5,13 +5,13 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/root-ali/iris/internal/apperr"
 	"github.com/root-ali/iris/internal/config"
 	"github.com/root-ali/iris/internal/logging"
 	"github.com/root-ali/iris/internal/schedulers"
 	"github.com/root-ali/iris/internal/server"
 	"github.com/root-ali/iris/internal/storage"
 	"github.com/root-ali/iris/pkg/cache"
-	"github.com/root-ali/iris/pkg/errors"
 	"github.com/root-ali/iris/pkg/message"
 	"github.com/root-ali/iris/pkg/notifications"
 	"github.com/root-ali/iris/pkg/notifications/asiatech"
@@ -239,7 +239,7 @@ func Init(cfg *config.Config) (*App, error) {
 	// Disable deactive providers
 	for _, p := range deactiveProviders {
 		err := providerService.DisableProvider(p)
-		if err == errors.ErrProviderNotFound {
+		if err == apperr.ErrProviderNotFound {
 			logger.Warnw("provider not found to disable", "provider", p)
 		} else if err != nil {
 			logger.Errorw("provider disable failed", "provider", p, "error", err)

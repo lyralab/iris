@@ -5,8 +5,8 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/root-ali/iris/internal/apperr"
 	"github.com/root-ali/iris/pkg/auth"
-	iriserror "github.com/root-ali/iris/pkg/errors"
 	"go.uber.org/zap"
 )
 
@@ -25,7 +25,7 @@ func ValidateJWTToken(aths auth.AuthServiceInterface, role string, logger *zap.S
 		authHeader := c.Request.Header.Get("Authorization")
 		jwtToken := strings.TrimPrefix(authHeader, "Bearer ")
 		extractedUsername, extractedRole, mustChangePassword, err := aths.ValidateToken(jwtToken)
-		if errors.Is(err, iriserror.ErrTokenExpired) {
+		if errors.Is(err, apperr.ErrTokenExpired) {
 			logger.Error("Token expired")
 			c.AbortWithStatusJSON(401, gin.H{
 				"status":  "unauthorized",

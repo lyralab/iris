@@ -2,7 +2,7 @@ package groups
 
 import (
 	"errors"
-	iris_error "github.com/root-ali/iris/pkg/errors"
+	"github.com/root-ali/iris/internal/apperr"
 	"github.com/root-ali/iris/pkg/util"
 	"go.uber.org/zap"
 	"time"
@@ -15,7 +15,7 @@ func NewGroupService(logger *zap.SugaredLogger, gr GroupRepositoryInterface, cac
 func (gr *GroupService) CreateGroup(g *Group) error {
 	checkGroup, err := gr.gr.GetGroupByName(g.Name)
 	if err != nil {
-		if errors.Is(err, iris_error.ErrGroupNotFound) {
+		if errors.Is(err, apperr.ErrGroupNotFound) {
 			gr.log.Infow("Group does not exist, creating new group", "group", g.Name)
 			return gr.insertGroup(g)
 		}
@@ -24,7 +24,7 @@ func (gr *GroupService) CreateGroup(g *Group) error {
 	}
 	if checkGroup != nil {
 		gr.log.Infow("Group already exists", "group", checkGroup.Name)
-		return iris_error.ErrGroupAlreadyexisted
+		return apperr.ErrGroupAlreadyexisted
 	}
 	return gr.insertGroup(g)
 }

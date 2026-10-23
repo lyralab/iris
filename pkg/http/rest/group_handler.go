@@ -7,7 +7,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	iris_error "github.com/root-ali/iris/pkg/errors"
+	"github.com/root-ali/iris/internal/apperr"
 	"github.com/root-ali/iris/pkg/groups"
 	"github.com/root-ali/iris/pkg/user"
 	"go.uber.org/zap"
@@ -89,7 +89,7 @@ func GetGroupHandler(gr groups.GroupServiceInterface, logger *zap.SugaredLogger)
 			return
 		}
 		g, err := gr.GetGroupById(groupId)
-		if errors.Is(err, iris_error.ErrGroupNotFound) {
+		if errors.Is(err, apperr.ErrGroupNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "group not found"})
 			return
 		}

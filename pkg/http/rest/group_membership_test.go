@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
-	iris_error "github.com/root-ali/iris/pkg/errors"
+	"github.com/root-ali/iris/internal/apperr"
 	"github.com/root-ali/iris/pkg/groups"
 	"go.uber.org/zap"
 )
@@ -24,7 +24,7 @@ func (m *membershipGroups) GetGroupById(id string) (*groups.Group, error) {
 	if g, ok := m.byID[id]; ok {
 		return g, nil
 	}
-	return nil, iris_error.ErrGroupNotFound
+	return nil, apperr.ErrGroupNotFound
 }
 func (m *membershipGroups) GetAllGroups() ([]*groups.Group, error)    { return nil, nil }
 func (m *membershipGroups) DeleteGroup(*groups.Group) error           { return nil }

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	iris_error "github.com/root-ali/iris/pkg/errors"
+	"github.com/root-ali/iris/internal/apperr"
 	"go.uber.org/zap"
 )
 
@@ -16,7 +16,7 @@ type fakeGroupRepo struct {
 
 func (f *fakeGroupRepo) AddGroup(*Group) error { return f.writeErr }
 func (f *fakeGroupRepo) GetGroupById(string) (*Group, error) {
-	return nil, iris_error.ErrGroupNotFound
+	return nil, apperr.ErrGroupNotFound
 }
 func (f *fakeGroupRepo) GetGroupByName(string) (*Group, error) {
 	if f.getErr != nil {
@@ -25,7 +25,7 @@ func (f *fakeGroupRepo) GetGroupByName(string) (*Group, error) {
 	if f.exists {
 		return &Group{ID: "g1", Name: "ops"}, nil
 	}
-	return nil, iris_error.ErrGroupNotFound
+	return nil, apperr.ErrGroupNotFound
 }
 func (f *fakeGroupRepo) GetAllGroups() ([]*Group, error)          { return nil, nil }
 func (f *fakeGroupRepo) DeleteGroup(*Group) error                 { return f.writeErr }
@@ -59,7 +59,7 @@ func TestGroupChangesRefreshCache(t *testing.T) {
 			name:    "create existing group",
 			repo:    &fakeGroupRepo{exists: true},
 			call:    func(s GroupServiceInterface) error { return s.CreateGroup(&Group{Name: "ops"}) },
-			wantErr: iris_error.ErrGroupAlreadyexisted,
+			wantErr: apperr.ErrGroupAlreadyexisted,
 		},
 		{
 			name:    "create group write failure",

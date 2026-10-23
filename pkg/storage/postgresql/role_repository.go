@@ -2,7 +2,7 @@ package postgresql
 
 import (
 	"errors"
-	iris_error "github.com/root-ali/iris/pkg/errors"
+	"github.com/root-ali/iris/internal/apperr"
 	"github.com/root-ali/iris/pkg/roles"
 )
 
@@ -22,7 +22,7 @@ func (s *Storage) GetRoleByName(r *roles.Role) error {
 	if result.Error != nil {
 		if errors.Is(result.Error, errors.New("record not found")) {
 			s.logger.Info("cannot find a role with name ", r.Name)
-			return iris_error.ErrRoleNotFound
+			return apperr.ErrRoleNotFound
 		} else {
 			s.logger.Infow("Cannot get role from database",
 				"name", r.Name,

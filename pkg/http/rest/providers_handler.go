@@ -5,7 +5,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
-	iriserror "github.com/root-ali/iris/pkg/errors"
+	"github.com/root-ali/iris/internal/apperr"
 	"github.com/root-ali/iris/pkg/message"
 	"github.com/root-ali/iris/pkg/notifications"
 )
@@ -36,7 +36,7 @@ func GetProvidersHandler(ps notifications.ProviderServiceInterface) gin.HandlerF
 		}
 		if name != "" {
 			provider, err := ps.GetProviderByName(name)
-			if errors.Is(err, iriserror.ErrProviderNotFound) {
+			if errors.Is(err, apperr.ErrProviderNotFound) {
 				c.AbortWithStatusJSON(404, gin.H{"error": err.Error()})
 				return
 			}
@@ -59,7 +59,7 @@ func GetProvidersHandler(ps notifications.ProviderServiceInterface) gin.HandlerF
 		}
 		if id != "" {
 			provider, err := ps.GetProviderByID(id)
-			if errors.Is(err, iriserror.ErrProviderNotFound) {
+			if errors.Is(err, apperr.ErrProviderNotFound) {
 				c.AbortWithStatusJSON(404, gin.H{"error": err.Error()})
 				return
 			} else if err != nil {

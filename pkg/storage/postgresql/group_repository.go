@@ -2,7 +2,7 @@ package postgresql
 
 import (
 	"errors"
-	iris_error "github.com/root-ali/iris/pkg/errors"
+	"github.com/root-ali/iris/internal/apperr"
 	"github.com/root-ali/iris/pkg/groups"
 	"gorm.io/gorm"
 )
@@ -20,7 +20,7 @@ func (s *Storage) GetGroupById(id string) (*groups.Group, error) {
 	g := &groups.Group{ID: id}
 	result := s.db.First(g)
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-		return nil, iris_error.ErrGroupNotFound
+		return nil, apperr.ErrGroupNotFound
 	}
 	if result.Error != nil {
 		return nil, result.Error
@@ -33,7 +33,7 @@ func (s *Storage) GetGroupByName(name string) (*groups.Group, error) {
 	var g *groups.Group
 	result := s.db.First(&g, "name = ?", name)
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-		return nil, iris_error.ErrGroupNotFound
+		return nil, apperr.ErrGroupNotFound
 	}
 	if result.Error != nil {
 		return nil, result.Error

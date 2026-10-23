@@ -12,8 +12,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
+	"github.com/root-ali/iris/internal/apperr"
 	"github.com/root-ali/iris/pkg/auth"
-	iris_error "github.com/root-ali/iris/pkg/errors"
 	"github.com/root-ali/iris/pkg/user"
 	"go.uber.org/zap"
 )
@@ -286,14 +286,14 @@ func LoginUserHandler(us user.UserInterfaceService, aths auth.AuthServiceInterfa
 		reqUser.UserName = u.UserName
 		reqUser.Password = u.Password
 		err = us.ValidateUser(&reqUser)
-		if errors.Is(err, iris_error.ErrPasswordNotMatch) {
+		if errors.Is(err, apperr.ErrPasswordNotMatch) {
 			logger.Errorw("Wrong password is entered ", "user", u.UserName)
 			c.AbortWithStatusJSON(401, gin.H{
 				"status":  "error",
 				"message": "Cannot continue the process",
 			})
 			return
-		} else if errors.Is(err, iris_error.ErrUserNotVerified) {
+		} else if errors.Is(err, apperr.ErrUserNotVerified) {
 			c.AbortWithStatusJSON(403, gin.H{
 				"status":  "error",
 				"message": "User is not verified yet",
@@ -353,10 +353,10 @@ func ChangePasswordHandler(us user.UserInterfaceService, aths auth.AuthServiceIn
 		}
 		u := user.User{UserName: userName.(string), Password: body.CurrentPassword}
 		err := us.ChangePassword(&u, body.NewPassword)
-		if errors.Is(err, iris_error.ErrPasswordNotMatch) {
+		if errors.Is(err, apperr.ErrPasswordNotMatch) {
 			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Current password is incorrect"})
 			return
-		} else if errors.Is(err, iris_error.ErrPasswordReused) {
+		} else if errors.Is(err, apperr.ErrPasswordReused) {
 			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"status": "error", "message": err.Error()})
 			return
 		} else if err != nil {

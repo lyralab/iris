@@ -1,4 +1,5 @@
-package errors
+// Package apperr holds sentinel errors shared across iris layers.
+package apperr
 
 import "errors"
 

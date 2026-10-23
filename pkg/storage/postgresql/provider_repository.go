@@ -1,7 +1,7 @@
 package postgresql
 
 import (
-	"github.com/root-ali/iris/pkg/errors"
+	"github.com/root-ali/iris/internal/apperr"
 	"github.com/root-ali/iris/pkg/notifications"
 	"go.uber.org/zap"
 )
@@ -22,7 +22,7 @@ func (s *Storage) ModifyProvider(p *notifications.Providers) error {
 		return result.Error
 	}
 	if result.RowsAffected == 0 {
-		return errors.ErrProviderNotFound
+		return apperr.ErrProviderNotFound
 	}
 	return nil
 }
@@ -34,7 +34,7 @@ func (s *Storage) SetStatusFalse(p *notifications.Providers) error {
 		return result.Error
 	}
 	if result.RowsAffected == 0 {
-		return errors.ErrProviderNotFound
+		return apperr.ErrProviderNotFound
 	}
 	return nil
 }
@@ -43,7 +43,7 @@ func (s *Storage) GetProvider(p *notifications.Providers) error {
 	result := s.db.Where("id = ? OR name = ?", &p.ID, &p.Name).First(p)
 	if result.Error != nil {
 		if err := result.Error; err.Error() == "record not found" {
-			return errors.ErrProviderNotFound
+			return apperr.ErrProviderNotFound
 		}
 
 		s.logger.Errorf("GetProvider error: %v", result.Error)

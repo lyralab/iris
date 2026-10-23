@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	iris_error "github.com/root-ali/iris/pkg/errors"
+	"github.com/root-ali/iris/internal/apperr"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
@@ -76,8 +76,8 @@ func TestChangePassword(t *testing.T) {
 		newPass string
 		wantErr error
 	}{
-		{name: "wrong current password", entered: "Wrong#1234", newPass: "Fresh#1234", wantErr: iris_error.ErrPasswordNotMatch},
-		{name: "same as current", entered: current, newPass: current, wantErr: iris_error.ErrPasswordReused},
+		{name: "wrong current password", entered: "Wrong#1234", newPass: "Fresh#1234", wantErr: apperr.ErrPasswordNotMatch},
+		{name: "same as current", entered: current, newPass: current, wantErr: apperr.ErrPasswordReused},
 		{name: "success", entered: current, newPass: "Fresh#1234"},
 	}
 	for _, tt := range tests {
