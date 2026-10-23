@@ -2,7 +2,6 @@ package rest
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -54,7 +53,7 @@ func AlertManagerHandler(as alerts.Service) gin.HandlerFunc {
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusNotAcceptable, gin.H{
 				"status":  "error",
-				"message": err,
+				"message": err.Error(),
 			})
 			return
 		}
@@ -71,9 +70,9 @@ func AlertManagerHandler(as alerts.Service) gin.HandlerFunc {
 			return
 		}
 		n, err := as.AddAlertManagerAlerts(als)
-		fmt.Println("number of alerts is saved", n)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err})
+			return
 		}
 		c.JSON(http.StatusOK, gin.H{"status": "ok", "count": n})
 	}

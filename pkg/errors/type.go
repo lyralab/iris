@@ -3,6 +3,7 @@ package errors
 import "errors"
 
 var (
+
 	ErrPasswordNotMatch         = errors.New("password not valid")
 	ErrUserAlreadyExists        = errors.New("cannot signup new user because use already exists")
 	ErrUserAlreadyVerified      = errors.New("user already verified")
