@@ -1,19 +1,18 @@
 package user
 
 import (
-	"errors"
 	"testing"
 
-	iris_error "github.com/root-ali/iris/pkg/errors"
+	"github.com/root-ali/iris/internal/apperr"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
-	"gorm.io/gorm"
 )
 
 // fakeUserRepo implements UserInterfaceRepository; only the methods below are exercised.
 type fakeUserRepo struct {
 	UserInterfaceRepository
 	updateErr error
+	getErr    error // returned by GetUserByUsername when set
 	stored    *User // returned by GetUserByUsername; nil means not found
 	added     *User
 	newHash   string
@@ -23,8 +22,11 @@ type fakeUserRepo struct {
 func (f *fakeUserRepo) UpdateUserData(*User) error { return f.updateErr }
 
 func (f *fakeUserRepo) GetUserByUsername(u *User) error {
+	if f.getErr != nil {
+		return f.getErr
+	}
 	if f.stored == nil {
-		return gorm.ErrRecordNotFound
+		return apperr.ErrUserNotFound
 	}
 	*u = *f.stored
 	return nil
@@ -63,6 +65,34 @@ func TestCreatedUsersMustChangePassword(t *testing.T) {
 	}
 }
 
+func TestAddUserExistenceCheck(t *testing.T) {
+	t.Parallel()
+	dbDown := apperr.New("connection refused")
+	tests := []struct {
+		name      string
+		repo      *fakeUserRepo
+		wantErr   error
+		wantAdded bool
+	}{
+		{name: "new user is created", repo: &fakeUserRepo{}, wantAdded: true},
+		{name: "existing user is rejected", repo: &fakeUserRepo{stored: &User{UserName: "bob"}}, wantErr: apperr.ErrUserAlreadyExists},
+		{name: "lookup failure is returned", repo: &fakeUserRepo{getErr: dbDown}, wantErr: dbDown},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			s := NewUserService(tt.repo, fakeRoleRepo{}, nil, zap.NewNop().Sugar())
+			err := s.AddUser(&User{UserName: "bob", Password: "Secret#123"})
+			if !apperr.Is(err, tt.wantErr) {
+				t.Fatalf("err = %v, want %v", err, tt.wantErr)
+			}
+			if (tt.repo.added != nil) != tt.wantAdded {
+				t.Fatalf("added = %v, want %v", tt.repo.added != nil, tt.wantAdded)
+			}
+		})
+	}
+}
+
 func TestChangePassword(t *testing.T) {
 	t.Parallel()
 	const current = "Current#123"
@@ -76,8 +106,8 @@ func TestChangePassword(t *testing.T) {
 		newPass string
 		wantErr error
 	}{
-		{name: "wrong current password", entered: "Wrong#1234", newPass: "Fresh#1234", wantErr: iris_error.ErrPasswordNotMatch},
-		{name: "same as current", entered: current, newPass: current, wantErr: iris_error.ErrPasswordReused},
+		{name: "wrong current password", entered: "Wrong#1234", newPass: "Fresh#1234", wantErr: apperr.ErrPasswordNotMatch},
+		{name: "same as current", entered: current, newPass: current, wantErr: apperr.ErrPasswordReused},
 		{name: "success", entered: current, newPass: "Fresh#1234"},
 	}
 	for _, tt := range tests {
@@ -88,7 +118,7 @@ func TestChangePassword(t *testing.T) {
 			s := NewUserService(repo, nil, nil, zap.NewNop().Sugar())
 			u := &User{UserName: "bob", Password: tt.entered}
 			err := s.ChangePassword(u, tt.newPass)
-			if !errors.Is(err, tt.wantErr) {
+			if !apperr.Is(err, tt.wantErr) {
 				t.Fatalf("err = %v, want %v", err, tt.wantErr)
 			}
 			if tt.wantErr != nil {
@@ -121,7 +151,7 @@ func TestUpdateUserRefreshesReceptorCache(t *testing.T) {
 		wantN   int
 	}{
 		{name: "successful update refreshes once", wantN: 1},
-		{name: "failed update does not refresh", repoErr: errors.New("update failed"), wantN: 0},
+		{name: "failed update does not refresh", repoErr: apperr.New("update failed"), wantN: 0},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -129,7 +159,7 @@ func TestUpdateUserRefreshesReceptorCache(t *testing.T) {
 			c := &countingCache{}
 			s := NewUserService(&fakeUserRepo{updateErr: tt.repoErr}, nil, c, logger)
 			err := s.UpdateUser(&User{ID: "u1", Mobile: "09120000000"})
-			if !errors.Is(err, tt.repoErr) {
+			if !apperr.Is(err, tt.repoErr) {
 				t.Fatalf("err = %v, want %v", err, tt.repoErr)
 			}
 			if c.n != tt.wantN {

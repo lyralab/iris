@@ -1,11 +1,11 @@
 package alert
 
 import (
-	"errors"
 	"reflect"
 	"testing"
 	"time"
 
+	"github.com/root-ali/iris/internal/apperr"
 	"github.com/root-ali/iris/pkg/alerts"
 	"github.com/root-ali/iris/pkg/notifications"
 	"go.uber.org/zap"
@@ -63,7 +63,7 @@ func smsAlert() alerts.Alert {
 }
 
 func TestSmsFallbackFirstFailsSecondDelivers(t *testing.T) {
-	first := sms("Asiatech", 1, errors.New("cannot get token from asiatech"))
+	first := sms("Asiatech", 1, apperr.New("cannot get token from asiatech"))
 	second := sms("Kavenegar", 2, nil)
 	repo, log := &fakeAlertRepo{}, &msgLog{}
 	s := fallbackScheduler(repo, smsProviders(first, second), log)
@@ -106,8 +106,8 @@ func TestSmsFallbackStopsAtFirstSuccess(t *testing.T) {
 }
 
 func TestSmsFallbackAllProvidersFailStaysUnsent(t *testing.T) {
-	first := sms("Asiatech", 1, errors.New("asiatech down"))
-	second := sms("Kavenegar", 2, errors.New("kavenegar 416"))
+	first := sms("Asiatech", 1, apperr.New("asiatech down"))
+	second := sms("Kavenegar", 2, apperr.New("kavenegar 416"))
 	repo, log := &fakeAlertRepo{}, &msgLog{}
 	s := fallbackScheduler(repo, smsProviders(first, second), log)
 
@@ -169,7 +169,7 @@ func TestSmsFallbackEqualPriorityOrderIsDeterministic(t *testing.T) {
 }
 
 func TestSmsFallbackDoesNotLeakReceptorsAcrossProviders(t *testing.T) {
-	sms1 := sms("Asiatech", 1, errors.New("asiatech down"))
+	sms1 := sms("Asiatech", 1, apperr.New("asiatech down"))
 	sms2 := sms("Kavenegar", 2, nil)
 	tg := &fakeNotifier{flag: "telegram", name: "Telegram", prio: 3}
 	recept := flagReceptor{
@@ -244,8 +244,8 @@ func TestSmsFallbackSkipsProviderWithoutImplementation(t *testing.T) {
 }
 
 func TestSmsFallbackFailedProviderIsNotRetriedForSameAlert(t *testing.T) {
-	first := sms("Asiatech", 1, errors.New("cannot get token from asiatech"))
-	second := sms("Kavenegar", 2, errors.New("kavenegar 416"))
+	first := sms("Asiatech", 1, apperr.New("cannot get token from asiatech"))
+	second := sms("Kavenegar", 2, apperr.New("kavenegar 416"))
 	repo, log := &fakeAlertRepo{}, &msgLog{}
 	s := fallbackScheduler(repo, smsProviders(first, second), log)
 
@@ -269,7 +269,7 @@ func TestSmsFallbackFailedProviderIsNotRetriedForSameAlert(t *testing.T) {
 func TestSmsFallbackFailedProviderIsStillSkippedWhenAnotherWasNotReachedYet(t *testing.T) {
 	// Asiatech fails on the first poll while the group has no cached receptors for Kavenegar's pass;
 	// afterwards only Kavenegar may be called.
-	first := sms("Asiatech", 1, errors.New("cannot get token from asiatech"))
+	first := sms("Asiatech", 1, apperr.New("cannot get token from asiatech"))
 	second := sms("Kavenegar", 2, nil)
 	repo := &fakeAlertRepo{}
 	s := fallbackScheduler(repo, smsProviders(first, second), &msgLog{})

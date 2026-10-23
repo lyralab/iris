@@ -2,11 +2,11 @@ package cache_receptors
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"sync"
 	"time"
 
+	"github.com/root-ali/iris/internal/apperr"
 	"github.com/root-ali/iris/pkg/cache"
 	"go.uber.org/zap"
 )
@@ -18,10 +18,10 @@ func NewCacheReceptorsScheduler(
 	config Config,
 ) (*CacheReceptor, error) {
 	if config.Interval <= 0 {
-		return nil, errors.New("interval must be > 0")
+		return nil, apperr.New("interval must be > 0")
 	}
 	if config.Workers < 1 {
-		return nil, errors.New("workers must be >= 1")
+		return nil, apperr.New("workers must be >= 1")
 	}
 	if config.QueueSize <= 0 {
 		config.QueueSize = config.Workers
@@ -42,7 +42,7 @@ func (s *CacheReceptor) Start() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.started {
-		return errors.New("scheduler already started")
+		return apperr.ErrServiceAlreadyStarted
 	}
 	s.started = true
 	s.ctx, s.cancel = context.WithCancel(context.Background())
@@ -152,7 +152,7 @@ func (s *CacheReceptor) setOnCache() {
 	s.refreshMu.Lock()
 	defer s.refreshMu.Unlock()
 
-	s.Logger.Info("Starting Cache Receptors Job at %v", time.Now())
+	s.Logger.Infof("Starting Cache Receptors Job at %v", time.Now())
 
 	results, err := s.Repository.GetPerGroupIds()
 	if err != nil {
@@ -221,7 +221,7 @@ func (s *CacheReceptor) setOnCache() {
 		return
 	}
 
-	s.Logger.Info("Finished Cache Receptors Job at %v", time.Now())
+	s.Logger.Infof("Finished Cache Receptors Job at %v", time.Now())
 }
 
 func (s *CacheReceptor) store(prefix string, data map[string]map[string]string) error {

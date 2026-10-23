@@ -3,7 +3,6 @@ package rest
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -12,8 +11,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
+	"github.com/root-ali/iris/internal/apperr"
 	"github.com/root-ali/iris/pkg/auth"
-	iris_error "github.com/root-ali/iris/pkg/errors"
 	"github.com/root-ali/iris/pkg/user"
 	"go.uber.org/zap"
 )
@@ -115,11 +114,11 @@ func AddUserHandler(us user.UserInterfaceService, logger *zap.SugaredLogger) gin
 		decoder := json.NewDecoder(c.Request.Body)
 		err := decoder.Decode(&u)
 		if err != nil {
-			var syntaxError *json.SyntaxError
-			var unmarshalTypeError *json.UnmarshalTypeError
+			syntaxError, isSyntax := apperr.AsType[*json.SyntaxError](err)
+			unmarshalTypeError, isUnmarshalType := apperr.AsType[*json.UnmarshalTypeError](err)
 
 			switch {
-			case errors.As(err, &syntaxError):
+			case isSyntax:
 				logger.Errorw("Request body contains badly-formed JSON",
 					"method", c.Request.Method,
 					"path", c.Request.URL.Path,
@@ -132,7 +131,7 @@ func AddUserHandler(us user.UserInterfaceService, logger *zap.SugaredLogger) gin
 					"status":  "error",
 					"message": "Request body contains badly-formed JSON",
 				})
-			case errors.As(err, &unmarshalTypeError):
+			case isUnmarshalType:
 				logger.Errorw("Request body contains an invalid value for the "+unmarshalTypeError.Field+
 					" field (at position "+fmt.Sprint(unmarshalTypeError.Offset)+")",
 					"method", c.Request.Method,
@@ -188,14 +187,9 @@ func AddUserHandler(us user.UserInterfaceService, logger *zap.SugaredLogger) gin
 		}
 		newUser := u.toUser()
 		err = us.AddUser(newUser)
-		logger.Info("error is ", err)
-
 		if err != nil {
-
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error":  "Cannot add user right now: " + err.Error(),
-				"status": "error",
-			})
+			logger.Errorw("cannot add user", "user", u.UserName, "error", err)
+			abortWithError(c, err)
 			return
 		}
 		c.JSON(http.StatusCreated, gin.H{"status": "created", "username": u.UserName})
@@ -211,11 +205,11 @@ func LoginUserHandler(us user.UserInterfaceService, aths auth.AuthServiceInterfa
 		err := decoder.Decode(&u)
 
 		if err != nil {
-			var syntaxError *json.SyntaxError
-			var unmarshalTypeError *json.UnmarshalTypeError
+			syntaxError, isSyntax := apperr.AsType[*json.SyntaxError](err)
+			unmarshalTypeError, isUnmarshalType := apperr.AsType[*json.UnmarshalTypeError](err)
 
 			switch {
-			case errors.As(err, &syntaxError):
+			case isSyntax:
 				logger.Errorw("Request body contains badly-formed JSON",
 					"method", c.Request.Method,
 					"path", c.Request.URL.Path,
@@ -228,7 +222,7 @@ func LoginUserHandler(us user.UserInterfaceService, aths auth.AuthServiceInterfa
 					"status":  "error",
 					"message": "Request body contains badly-formed JSON",
 				})
-			case errors.As(err, &unmarshalTypeError):
+			case isUnmarshalType:
 				logger.Errorw("Request body contains an invalid value for the "+unmarshalTypeError.Field+
 					" field (at position "+fmt.Sprint(unmarshalTypeError.Offset)+")",
 					"method", c.Request.Method,
@@ -286,14 +280,15 @@ func LoginUserHandler(us user.UserInterfaceService, aths auth.AuthServiceInterfa
 		reqUser.UserName = u.UserName
 		reqUser.Password = u.Password
 		err = us.ValidateUser(&reqUser)
-		if errors.Is(err, iris_error.ErrPasswordNotMatch) {
-			logger.Errorw("Wrong password is entered ", "user", u.UserName)
+		// Unknown user and wrong password get the same answer so usernames cannot be probed.
+		if apperr.Is(err, apperr.ErrPasswordNotMatch) || apperr.Is(err, apperr.ErrUserNotFound) {
+			logger.Errorw("Wrong username or password", "user", u.UserName)
 			c.AbortWithStatusJSON(401, gin.H{
 				"status":  "error",
 				"message": "Cannot continue the process",
 			})
 			return
-		} else if errors.Is(err, iris_error.ErrUserNotVerified) {
+		} else if apperr.Is(err, apperr.ErrUserNotVerified) {
 			c.AbortWithStatusJSON(403, gin.H{
 				"status":  "error",
 				"message": "User is not verified yet",
@@ -315,7 +310,7 @@ func LoginUserHandler(us user.UserInterfaceService, aths auth.AuthServiceInterfa
 		if err != nil {
 			logger.Errorw("cannot generate token for user",
 				"user", reqUser.UserName, "error", err)
-			c.AbortWithStatusJSON(500, gin.H{"status": "error", "error": err})
+			abortWithError(c, err)
 			return
 		}
 		//c.Cookie("jwt")
@@ -348,15 +343,15 @@ func ChangePasswordHandler(us user.UserInterfaceService, aths auth.AuthServiceIn
 		userName, ok := c.Get("username")
 		if !ok {
 			logger.Errorw("cannot get username from context")
-			c.AbortWithStatusJSON(500, gin.H{"status": "error", "error": "token is invalid"})
+			abortWithMessage(c, http.StatusInternalServerError, "token is invalid")
 			return
 		}
 		u := user.User{UserName: userName.(string), Password: body.CurrentPassword}
 		err := us.ChangePassword(&u, body.NewPassword)
-		if errors.Is(err, iris_error.ErrPasswordNotMatch) {
+		if apperr.Is(err, apperr.ErrPasswordNotMatch) {
 			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Current password is incorrect"})
 			return
-		} else if errors.Is(err, iris_error.ErrPasswordReused) {
+		} else if apperr.Is(err, apperr.ErrPasswordReused) {
 			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"status": "error", "message": err.Error()})
 			return
 		} else if err != nil {
@@ -367,7 +362,7 @@ func ChangePasswordHandler(us user.UserInterfaceService, aths auth.AuthServiceIn
 		token, err := aths.GenerateToken(u.UserName, u.Role, false)
 		if err != nil {
 			logger.Errorw("cannot generate token for user", "user", u.UserName, "error", err)
-			c.AbortWithStatusJSON(500, gin.H{"status": "error", "error": err})
+			abortWithError(c, err)
 			return
 		}
 		c.JSON(200, gin.H{"status": "OK", "token": token})
@@ -383,7 +378,7 @@ func VerifyUserHandler(us user.UserInterfaceService, logger *zap.SugaredLogger) 
 		err := decoder.Decode(&u)
 		if err != nil {
 			logger.Errorw("cannot decode body", "error", err)
-			c.AbortWithStatusJSON(400, gin.H{"status": "error", "error": err})
+			abortWithMessage(c, http.StatusBadRequest, "Invalid request body")
 			return
 		}
 		userVerify := user.User{}
@@ -391,7 +386,7 @@ func VerifyUserHandler(us user.UserInterfaceService, logger *zap.SugaredLogger) 
 		err = us.VerifyUser(&userVerify)
 		if err != nil {
 			logger.Errorw("cannot verify user", "error", err)
-			c.AbortWithStatusJSON(500, gin.H{"status": "error", "error": err})
+			abortWithError(c, err)
 			return
 		}
 		c.JSON(200, gin.H{"status": "OK"})
@@ -408,19 +403,19 @@ func UpdateUserHandler(us user.UserInterfaceService, logger *zap.SugaredLogger) 
 		err := decoder.Decode(&u)
 		if err != nil {
 			logger.Errorw("cannot decode body", "error", err)
-			c.AbortWithStatusJSON(400, gin.H{"status": "error", "error": err})
+			abortWithMessage(c, http.StatusBadRequest, "Invalid request body")
 			return
 		}
 		role, ok := c.Get("role")
 		if !ok {
 			logger.Errorw("cannot get role from context")
-			c.AbortWithStatusJSON(500, gin.H{"status": "error", "error": "token is invalid"})
+			abortWithMessage(c, http.StatusInternalServerError, "token is invalid")
 			return
 		}
 		userName, ok := c.Get("username")
 		if !ok {
 			logger.Errorw("cannot get username from context")
-			c.AbortWithStatusJSON(500, gin.H{"status": "error", "error": "token is invalid"})
+			abortWithMessage(c, http.StatusInternalServerError, "token is invalid")
 			return
 		}
 		if role == "admin" {
@@ -469,7 +464,7 @@ func UpdateUserHandler(us user.UserInterfaceService, logger *zap.SugaredLogger) 
 			err = us.UpdateUser(updateUser)
 			if err != nil {
 				logger.Errorw("cannot update user", "error", err)
-				c.AbortWithStatusJSON(500, gin.H{"status": "error", "error": err})
+				abortWithError(c, err)
 				return
 			}
 			c.JSON(200, gin.H{"status": "OK", "username": updateUser.UserName})
@@ -482,7 +477,7 @@ func GetAllUsersHandler(us user.UserInterfaceService, logger *zap.SugaredLogger)
 		users, err := us.GetAllUsers()
 		if err != nil {
 			logger.Errorw("cannot get all users", "error", err)
-			c.AbortWithStatusJSON(500, gin.H{"status": "error", "error": err})
+			abortWithError(c, err)
 			return
 		}
 		count := len(users)
@@ -510,14 +505,14 @@ func GetUserInfoHandler(us user.UserInterfaceService, logger *zap.SugaredLogger)
 		userName, ok := c.Get("username")
 		if !ok {
 			logger.Errorw("cannot get username or role from context")
-			c.AbortWithStatusJSON(500, gin.H{"status": "error", "error": "token is invalid"})
+			abortWithMessage(c, http.StatusInternalServerError, "token is invalid")
 			return
 		}
 
 		u, err := us.GetByUserName(userName.(string))
 		if err != nil {
 			logger.Errorw("cannot get user", "error", err)
-			c.AbortWithStatusJSON(500, gin.H{"status": "error", "error": err})
+			abortWithError(c, err)
 			return
 		}
 		userResponse := map[string]string{
@@ -540,7 +535,7 @@ func GetUserByIDHandler(us user.UserInterfaceService, logger *zap.SugaredLogger)
 		u, err := us.GetByUserId(userID)
 		if err != nil {
 			logger.Errorw("cannot get user", "error", err)
-			c.AbortWithStatusJSON(500, gin.H{"status": "error", "error": err})
+			abortWithError(c, err)
 			return
 		}
 		userResponse := map[string]string{

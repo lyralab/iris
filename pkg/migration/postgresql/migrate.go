@@ -2,7 +2,6 @@ package migrationpostgresql
 
 import (
 	"database/sql"
-	"errors"
 	"os"
 	"path/filepath"
 
@@ -10,6 +9,7 @@ import (
 	"github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"github.com/root-ali/iris/internal/apperr"
 	"github.com/root-ali/iris/pkg/storage/postgresql"
 	"go.uber.org/zap"
 )
@@ -52,7 +52,7 @@ func (mp *MigrationPostgresql) Migrate() error {
 	}
 	err = m.Up()
 	mp.logger.Infow("migrate finished", "err ", err)
-	if errors.Is(err, migrate.ErrNoChange) || errors.Is(err, nil) {
+	if apperr.Is(err, migrate.ErrNoChange) || apperr.Is(err, nil) {
 		version, _, _ := m.Version()
 		mp.logger.Infow("Everything is up to date let's continue", "Version", version)
 	} else {

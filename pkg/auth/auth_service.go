@@ -1,12 +1,12 @@
 package auth
 
 import (
-	"errors"
 	"fmt"
-	"github.com/golang-jwt/jwt/v5"
-	iriserror "github.com/root-ali/iris/pkg/errors"
-	"go.uber.org/zap"
 	"time"
+
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/root-ali/iris/internal/apperr"
+	"go.uber.org/zap"
 )
 
 type AuthRoleRepository interface {
@@ -25,7 +25,7 @@ func (as *authService) GenerateToken(username string, role string, mustChangePas
 	roleName, roleAccess, err := as.rs.GetRoleByID(role)
 	as.logger.Infow("role information", "name", roleName, "access", roleAccess)
 	if err != nil {
-		as.logger.Info("error is ", err)
+		as.logger.Infow("cannot get role for token", "role", role, "error", err)
 		return "", err
 	}
 	expirationTime := time.Now().Add(72 * time.Hour)
@@ -41,7 +41,7 @@ func (as *authService) GenerateToken(username string, role string, mustChangePas
 	if err != nil {
 		as.logger.Errorw("Failed to generate token",
 			"user", username, "error", err)
-		return "", iriserror.ErrGenerateToken
+		return "", apperr.ErrGenerateToken
 	}
 	return tokenString, nil
 }
@@ -49,15 +49,15 @@ func (as *authService) GenerateToken(username string, role string, mustChangePas
 func (as *authService) ValidateToken(tokenString string) (string, string, bool, error) {
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+			return nil, fmt.Errorf("%w: unexpected signing method %v", apperr.ErrInvalidToken, token.Header["alg"])
 		}
 		return as.secretKey, nil
 	})
 
 	if err != nil {
-		if errors.Is(err, jwt.ErrTokenExpired) {
+		if apperr.Is(err, jwt.ErrTokenExpired) {
 			as.logger.Errorw("Token expired", "error", err)
-			return "", "", false, iriserror.ErrTokenExpired
+			return "", "", false, apperr.ErrTokenExpired
 		} else {
 			as.logger.Errorw("Failed to parse token", "error", err)
 			return "", "", false, err
@@ -65,28 +65,24 @@ func (as *authService) ValidateToken(tokenString string) (string, string, bool, 
 		}
 	}
 
+	// jwt.Parse already rejected an expired exp claim.
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-
-		if float64(time.Now().Unix()) > claims["exp"].(float64) {
-			as.logger.Errorw("Token expired", "error", err)
-			return "", "", false, iriserror.ErrTokenExpired
-		}
 		username, ok := claims["username"].(string)
 		if !ok {
 			as.logger.Errorw("Failed to get username from token")
-			return "", "", false, iriserror.ErrTokenFailedToGetUserName
+			return "", "", false, apperr.ErrTokenFailedToGetUserName
 		}
 		role, ok := claims["role"].(string)
 		if !ok {
 			as.logger.Errorw("Failed to get role from token")
-			return "", "", false, iriserror.ErrTokenFailedToGetRole
+			return "", "", false, apperr.ErrTokenFailedToGetRole
 		}
 		// Tokens issued before this claim existed carry no flag.
 		mustChangePassword, _ := claims["must_change_password"].(bool)
 		return username, role, mustChangePassword, nil
 	} else {
 		as.logger.Errorw("Invalid token")
-		return "", "", false, iriserror.ErrInvalidToken
+		return "", "", false, apperr.ErrInvalidToken
 	}
 
 }

@@ -3,13 +3,13 @@ package smsir
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"strconv"
 	"time"
 
+	"github.com/root-ali/iris/internal/apperr"
 	"github.com/root-ali/iris/pkg/notifications"
 	"go.uber.org/zap"
 )
@@ -146,7 +146,7 @@ func (s *Service) Status(messageId string) (notifications.MessageStatusType, err
 	}
 	if rsp.Data.DeliveryStatus == 6 || rsp.Data.DeliveryStatus == 7 || rsp.Data.DeliveryStatus == 2 || rsp.Data.DeliveryStatus == 4 {
 		messageStatus = notifications.MessageStatusType(6)
-		return messageStatus, errors.New("failed to deliver message")
+		return messageStatus, apperr.New("failed to deliver message")
 	}
 	messageStatus = notifications.TypeMessageStatusDelivered
 	s.Logger.Infow("Smsir status message", "status", messageStatus, "messageId", messageId)

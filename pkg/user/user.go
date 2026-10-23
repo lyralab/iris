@@ -1,16 +1,14 @@
 package user
 
 import (
-	"errors"
 	"math/rand"
 	"time"
 
 	"github.com/oklog/ulid/v2"
-	iris_error "github.com/root-ali/iris/pkg/errors"
+	"github.com/root-ali/iris/internal/apperr"
 	"github.com/root-ali/iris/pkg/groups"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
-	"gorm.io/gorm"
 )
 
 func NewUserService(repo UserInterfaceRepository, role UserRoleRepository, cache groups.ReceptorCache, l *zap.SugaredLogger) UserInterfaceService {
@@ -23,16 +21,17 @@ func NewUserService(repo UserInterfaceRepository, role UserRoleRepository, cache
 }
 
 func (us *userServiceImpl) AddUser(u *User) error {
-	err := us.repo.GetUserByUsername(u)
-	us.logger.Infow("error in getting user", "error", err, "username", u.UserName)
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		us.logger.Infow("User does not exist, creating new user", "username", u.UserName)
-	}
+	// Lookup into a copy so a found user does not overwrite the signup data.
+	err := us.repo.GetUserByUsername(&User{UserName: u.UserName})
 	if err == nil {
-		return errors.New("cannot complete signup process")
+		return apperr.ErrUserAlreadyExists
+	}
+	if !apperr.Is(err, apperr.ErrUserNotFound) {
+		us.logger.Errorw("cannot check whether user exists", "username", u.UserName, "error", err)
+		return err
 	}
 	us.logger.Infow("About to create a new user with",
-		"name", u.UserName, "firstName", u.FirstName, "lastName", u.LastName, "password", u.Password)
+		"name", u.UserName, "firstName", u.FirstName, "lastName", u.LastName)
 	t := time.Now()
 	u.CreatedAt = t
 	u.ModifiedAt = t
@@ -72,7 +71,7 @@ func (us *userServiceImpl) GetUserByEmail(email string) (*User, error) {
 	u, err := us.repo.GetUserByEmail(email)
 	if err != nil {
 		us.logger.Errorw("Failed to get user by email", "email", email, "error", err)
-		return nil, errors.New(err.Error())
+		return nil, err
 	}
 	return u, nil
 }
@@ -80,7 +79,7 @@ func (us *userServiceImpl) GetUserByEmail(email string) (*User, error) {
 func (us *userServiceImpl) CreateDefaultAdminUser() error {
 	u := User{UserName: "admin"}
 	err := us.repo.GetUserByUsername(&u)
-	if errors.Is(err, gorm.ErrRecordNotFound) {
+	if apperr.Is(err, apperr.ErrUserNotFound) {
 		t := time.Now()
 		u.FirstName = "admin"
 		u.LastName = "admin"
@@ -92,7 +91,7 @@ func (us *userServiceImpl) CreateDefaultAdminUser() error {
 		for {
 			generatedPassword, err = generateRandomPassword(20)
 			if err != nil {
-				us.logger.Info("cannot generate random password ", "error", err)
+				us.logger.Infow("cannot generate random password", "error", err)
 				return err
 			}
 			if meetsSigninPolicy(generatedPassword) {
@@ -148,11 +147,11 @@ func (us *userServiceImpl) ValidateUser(u *User) error {
 	err = bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(enteredPassword+u.Salt))
 	if err != nil {
 		us.logger.Errorw("cannot validate password", "error", err)
-		return iris_error.ErrPasswordNotMatch
+		return apperr.ErrPasswordNotMatch
 	}
 	if u.Status != "Verified" {
 		us.logger.Infow("user cannot login because not verified yet", "username", u.UserName)
-		return iris_error.ErrUserNotVerified
+		return apperr.ErrUserNotVerified
 	}
 	return nil
 }
@@ -165,7 +164,7 @@ func (us *userServiceImpl) ChangePassword(u *User, newPassword string) error {
 		return err
 	}
 	if newPassword == currentPassword {
-		return iris_error.ErrPasswordReused
+		return apperr.ErrPasswordReused
 	}
 	salt, err := generateSalt()
 	if err != nil {
@@ -194,7 +193,7 @@ func (us *userServiceImpl) GetUserRole(u *User) error {
 
 func (us *userServiceImpl) VerifyUser(u *User) error {
 	if u.Status == "Verified" {
-		return iris_error.ErrUserAlreadyVerified
+		return apperr.ErrUserAlreadyVerified
 	}
 	u.Status = "Verified"
 	err := us.repo.VerifyUser(u)
@@ -229,7 +228,7 @@ func (us *userServiceImpl) GetAllUsers() ([]*User, error) {
 
 func (us *userServiceImpl) GetByUserName(name string) (*User, error) {
 	if name == "" {
-		return nil, errors.New("username is required")
+		return nil, apperr.ErrUsernameRequired
 	}
 	user := &User{UserName: name}
 	err := us.repo.GetUserByUsername(user)
@@ -241,7 +240,7 @@ func (us *userServiceImpl) GetByUserName(name string) (*User, error) {
 
 func (us *userServiceImpl) GetByUserId(id string) (*User, error) {
 	if id == "" {
-		return nil, errors.New("user id is required")
+		return nil, apperr.ErrUserIDRequired
 	}
 	user, err := us.repo.GetUserByID(id)
 	if err != nil {

@@ -1,9 +1,9 @@
 package notifications
 
 import (
-	"errors"
 	"testing"
 
+	"github.com/root-ali/iris/internal/apperr"
 	"github.com/root-ali/iris/pkg/cache"
 	"go.uber.org/zap"
 )
@@ -95,8 +95,8 @@ func TestDisableProviderInvalidatesCache(t *testing.T) {
 	// Failed write must keep the cache: flip repo state behind the service's back,
 	// then a failing DisableProvider must not drop the stale-but-cached list.
 	repo.providers["sms"].Status = true
-	repo.err = errors.New("db down")
-	if err := svc.DisableProvider("backup"); !errors.Is(err, repo.err) {
+	repo.err = apperr.New("db down")
+	if err := svc.DisableProvider("backup"); !apperr.Is(err, repo.err) {
 		t.Fatalf("want repo error, got %v", err)
 	}
 	repo.err = nil

@@ -33,7 +33,7 @@ func VerifyCaptchaMiddleware(cs captcha.CaptchaServiceInterface, logger *zap.Sug
 		}
 		rawBody, err := c.GetRawData()
 		if err != nil {
-			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "failed to read request body"})
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "failed to read request body"})
 			return
 		}
 		// restore the io.Reader stream for the next handlers
@@ -47,7 +47,7 @@ func VerifyCaptchaMiddleware(cs captcha.CaptchaServiceInterface, logger *zap.Sug
 				"remote_addr", c.Request.RemoteAddr,
 				"error", err,
 			)
-			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid JSON"})
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"status": "error", "message": "invalid JSON"})
 			return
 		}
 		if p.Answer == "" {

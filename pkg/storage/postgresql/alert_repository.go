@@ -2,9 +2,9 @@ package postgresql
 
 import (
 	"context"
-	"errors"
 	"time"
 
+	"github.com/root-ali/iris/internal/apperr"
 	"github.com/root-ali/iris/pkg/alerts"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -159,7 +159,7 @@ func (s *Storage) GetUnsentAlertID(alert alerts.Alert) (string, error) {
 		Options: "SKIP LOCKED"}).
 		First(&alert).Error; err != nil {
 		// If no record is found, return nil
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if apperr.Is(err, gorm.ErrRecordNotFound) {
 			return "", nil
 		}
 		// Log and return the error if any occurs during the fetching process
@@ -181,9 +181,9 @@ func (s *Storage) GetUnsentAlertID(alert alerts.Alert) (string, error) {
 func (s *Storage) GetAlertById(id string) (*alerts.Alert, error) {
 	var alert *alerts.Alert
 	result := s.db.Where("id = ?", id).First(&alert)
-	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+	if apperr.Is(result.Error, gorm.ErrRecordNotFound) {
 		s.logger.Warnw("Alert not found", "id", id)
-		return alert, result.Error
+		return alert, apperr.ErrAlertNotFound
 	}
 	if result.Error != nil {
 		s.logger.Errorw("Error getting alert from database", "error", result.Error)
@@ -202,9 +202,9 @@ func (s *Storage) GetAlertByFingerPrintAndStatus(fingerPrint, status string) (*a
 		Where("status = ?", status).
 		First(&alert).
 		WithContext(ctx)
-	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+	if apperr.Is(result.Error, gorm.ErrRecordNotFound) {
 		s.logger.Warnw("Alert not found", "fingerprint", fingerPrint, "status", status)
-		return nil, result.Error
+		return nil, apperr.ErrAlertNotFound
 	}
 	if result.Error != nil {
 		return nil, result.Error

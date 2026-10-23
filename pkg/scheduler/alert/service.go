@@ -2,11 +2,11 @@ package alert
 
 import (
 	"cmp"
-	"errors"
 	"slices"
 	"strings"
 	"time"
 
+	"github.com/root-ali/iris/internal/apperr"
 	"github.com/root-ali/iris/pkg/alerts"
 	"github.com/root-ali/iris/pkg/message"
 	"github.com/root-ali/iris/pkg/notifications"
@@ -263,12 +263,12 @@ func (s *Scheduler) handleAlert(al alerts.Alert) error {
 	if !sent {
 		var missErr error
 		if len(missed) > 0 {
-			missErr = errors.New("failed to get receptors from group: " + strings.Join(missed, ", "))
+			missErr = apperr.New("failed to get receptors from group: " + strings.Join(missed, ", "))
 		}
 		if missErr == nil && sendErr != nil {
 			return sendErr
 		}
-		if err := errors.Join(sendErr, missErr); err != nil {
+		if err := apperr.Join(sendErr, missErr); err != nil {
 			return err
 		}
 	}
@@ -312,5 +312,5 @@ func (s *Scheduler) getProvider(flags []string, _ int) ([]notifications.Notifica
 		return ni, nil
 	}
 	s.logger.Warnw("No active provider with a working implementation for these methods", "methods", flags)
-	return nil, errors.New("no active provider found")
+	return nil, apperr.ErrNoActiveProvider
 }
