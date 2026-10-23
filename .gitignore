@@ -44,3 +44,9 @@ SKILL.md
 .http
 
 config.yml
+alerts.http
+health.http
+.gitignore
+messages.http
+user.http
+.claude/settings.json
