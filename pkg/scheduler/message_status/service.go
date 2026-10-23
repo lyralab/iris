@@ -153,7 +153,7 @@ func (s *Service) worker(id int) {
 func (s *Service) safeRunJob(msg message.Message) {
 	defer func() {
 		if r := recover(); r != nil {
-			s.logger.Error("panic in job: %v", r)
+			s.logger.Errorw("panic in job", "panic", r)
 		}
 	}()
 	s.checkMessageStatus(msg)

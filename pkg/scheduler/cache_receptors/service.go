@@ -152,7 +152,7 @@ func (s *CacheReceptor) setOnCache() {
 	s.refreshMu.Lock()
 	defer s.refreshMu.Unlock()
 
-	s.Logger.Info("Starting Cache Receptors Job at %v", time.Now())
+	s.Logger.Infof("Starting Cache Receptors Job at %v", time.Now())
 
 	results, err := s.Repository.GetPerGroupIds()
 	if err != nil {
@@ -221,7 +221,7 @@ func (s *CacheReceptor) setOnCache() {
 		return
 	}
 
-	s.Logger.Info("Finished Cache Receptors Job at %v", time.Now())
+	s.Logger.Infof("Finished Cache Receptors Job at %v", time.Now())
 }
 
 func (s *CacheReceptor) store(prefix string, data map[string]map[string]string) error {
