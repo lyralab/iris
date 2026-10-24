@@ -138,6 +138,50 @@
     word-break: break-all;
 }
 
+.alert-row-labels {
+    margin-top: 0.9rem;
+}
+
+.alert-row-section {
+    display: block;
+    margin-bottom: 0.35rem;
+    color: var(--subtle);
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.alert-row-labels ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.label-chip {
+    padding: 0.15rem 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface);
+    font-size: 0.75rem;
+    word-break: break-all;
+}
+
+.label-chip span {
+    color: var(--subtle);
+}
+
+.alert-row-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-top: 0.9rem;
+    font-size: 0.8125rem;
+}
+
 @media (max-width: 640px) {
     .alert-row-main {
         flex-wrap: wrap;

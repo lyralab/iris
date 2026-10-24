@@ -9,15 +9,18 @@ import (
 )
 
 type AlertResponse struct {
-	Id          string `json:"id"`
-	Name        string `json:"name"`
-	Severity    string `json:"severity"`
-	Description string `json:"description"`
-	StartsAt    string `json:"starts_at"`
-	EndsAt      string `json:"ends_at"`
-	Status      string `json:"status"`
-	CreatedAt   string `json:"created_at"`
-	UpdatedAt   string `json:"updated_at"`
+	Id           string            `json:"id"`
+	Name         string            `json:"name"`
+	Severity     string            `json:"severity"`
+	Description  string            `json:"description"`
+	StartsAt     string            `json:"starts_at"`
+	EndsAt       string            `json:"ends_at"`
+	Status       string            `json:"status"`
+	Labels       map[string]string `json:"labels,omitempty"`
+	Annotations  map[string]string `json:"annotations,omitempty"`
+	GeneratorURL string            `json:"generator_url,omitempty"`
+	CreatedAt    string            `json:"created_at"`
+	UpdatedAt    string            `json:"updated_at"`
 }
 
 func GetAlerts(as alerts.Service) gin.HandlerFunc {
@@ -88,15 +91,18 @@ func toAlertResponse(alert []*alerts.Alert) []AlertResponse {
 	var alertResponses []AlertResponse
 	for _, a := range alert {
 		alertResponse := AlertResponse{
-			Id:          a.Id,
-			Name:        a.Name,
-			Severity:    a.Severity,
-			Description: a.Description,
-			StartsAt:    a.StartsAt.String(),
-			EndsAt:      a.EndsAt.String(),
-			Status:      a.Status,
-			CreatedAt:   a.CreatedAt.String(),
-			UpdatedAt:   a.UpdatedAt.String(),
+			Id:           a.Id,
+			Name:         a.Name,
+			Severity:     a.Severity,
+			Description:  a.Description,
+			StartsAt:     a.StartsAt.String(),
+			EndsAt:       a.EndsAt.String(),
+			Status:       a.Status,
+			Labels:       a.Labels,
+			Annotations:  a.Annotations,
+			GeneratorURL: a.GeneratorURL,
+			CreatedAt:    a.CreatedAt.String(),
+			UpdatedAt:    a.UpdatedAt.String(),
 		}
 		alertResponses = append(alertResponses, alertResponse)
 	}
