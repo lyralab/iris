@@ -1,0 +1,4 @@
+ALTER TABLE alerts
+    ADD COLUMN IF NOT EXISTS labels JSONB,
+    ADD COLUMN IF NOT EXISTS annotations JSONB,
+    ADD COLUMN IF NOT EXISTS generator_url TEXT;

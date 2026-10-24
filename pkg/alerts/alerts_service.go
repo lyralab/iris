@@ -24,7 +24,7 @@ type Service interface {
 	AddAlertManagerAlerts([]Alert) (int64, error)
 	NewAlert(id, name, severity, description, status string, method []string,
 		startsAt, endsAt time.Time,
-		receptor []string) (Alert, error)
+		receptor []string, details Details) (Alert, error)
 	GetFiringAlertsBySeverity() ([]*AlertsBySeverity, error)
 	GetAlerts(string, string, int, int) ([]*Alert, error)
 }
@@ -42,6 +42,7 @@ func (as *alertsService) NewAlert(fingerprint, name, severity, description, stat
 	method []string,
 	startsAt, endsAt time.Time,
 	receptor []string,
+	details Details,
 ) (Alert, error) {
 	var als Alert
 	checkAlert, err := as.ar.GetAlertByFingerPrintAndStatus(fingerprint, "firing")
@@ -56,6 +57,9 @@ func (as *alertsService) NewAlert(fingerprint, name, severity, description, stat
 		als.StartsAt = startsAt
 		als.EndsAt = endsAt
 		als.Receptor = receptor
+		als.Labels = details.Labels
+		als.Annotations = details.Annotations
+		als.GeneratorURL = details.GeneratorURL
 		als.SendNotif = false
 		als.Silenced = false
 		als.CreatedAt = time.Now()
@@ -75,6 +79,10 @@ func (as *alertsService) NewAlert(fingerprint, name, severity, description, stat
 	als.StartsAt = checkAlert.StartsAt
 	als.EndsAt = endsAt
 	als.Receptor = checkAlert.Receptor
+	// Annotations can change between notifications; keep the latest.
+	als.Labels = details.Labels
+	als.Annotations = details.Annotations
+	als.GeneratorURL = details.GeneratorURL
 	als.Silenced = checkAlert.Silenced
 	als.CreatedAt = checkAlert.CreatedAt
 	als.UpdatedAt = time.Now()

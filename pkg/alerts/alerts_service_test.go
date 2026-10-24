@@ -24,7 +24,7 @@ func newAlert(t *testing.T, repo *fakeAlertRepo, status string) Alert {
 	s := NewAlertService(zap.NewNop().Sugar(), repo)
 	now := time.Now()
 	got, err := s.NewAlert("fp1", "HighCPU", "critical", "cpu high", status,
-		[]string{"mattermost"}, now, now, []string{"ops"})
+		[]string{"mattermost"}, now, now, []string{"ops"}, Details{})
 	if err != nil {
 		t.Fatalf("NewAlert err = %v", err)
 	}
@@ -69,5 +69,42 @@ func TestNewAlertExistingFiringNowResolvedResetsSendNotif(t *testing.T) {
 	}
 	if got.SendNotif {
 		t.Fatal("SendNotif = true, want false")
+	}
+}
+
+func TestStringMapRoundTrip(t *testing.T) {
+	in := StringMap{"namespace": "batch", "job_name": "nightly-report"}
+	v, err := in.Value()
+	if err != nil {
+		t.Fatalf("Value err = %v", err)
+	}
+	var out StringMap
+	if err := out.Scan([]byte(v.(string))); err != nil {
+		t.Fatalf("Scan err = %v", err)
+	}
+	if out["namespace"] != "batch" || out["job_name"] != "nightly-report" {
+		t.Fatalf("round trip = %v", out)
+	}
+
+	var empty StringMap
+	if v, _ := empty.Value(); v != nil {
+		t.Fatalf("nil map Value = %v, want nil", v)
+	}
+	if err := out.Scan(nil); err != nil || out != nil {
+		t.Fatalf("Scan(nil) = %v, %v, want nil map", out, err)
+	}
+}
+
+func TestNewAlertExistingRowTakesLatestDetails(t *testing.T) {
+	existing := &Alert{Id: "existing-id", FingerPrint: "fp1", Status: "firing"}
+	s := NewAlertService(zap.NewNop().Sugar(), &fakeAlertRepo{alert: existing})
+	now := time.Now()
+	got, err := s.NewAlert("fp1", "HighCPU", "critical", "cpu high", "firing",
+		nil, now, now, nil, Details{Labels: StringMap{"pod": "api-1"}, GeneratorURL: "http://prom"})
+	if err != nil {
+		t.Fatalf("NewAlert err = %v", err)
+	}
+	if got.Labels["pod"] != "api-1" || got.GeneratorURL != "http://prom" {
+		t.Fatalf("Labels, GeneratorURL = %v, %q", got.Labels, got.GeneratorURL)
 	}
 }

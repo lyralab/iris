@@ -18,23 +18,27 @@ type AlertManagerRequest struct {
 }
 
 type AlertRequest struct {
-	Status          string            `json:"status"`
-	AlertLabels     LabelsRequest     `json:"labels"`
-	AlertAnnotation AnnotationRequest `json:"annotations"`
-	StartsAt        *time.Time        `json:"startsAt"`
-	EndsAt          *time.Time        `json:"endsAt"`
-	Fingerprint     string            `json:"fingerprint"`
+	Status       string            `json:"status"`
+	Labels       map[string]string `json:"labels"`
+	Annotations  map[string]string `json:"annotations"`
+	StartsAt     *time.Time        `json:"startsAt"`
+	EndsAt       *time.Time        `json:"endsAt"`
+	GeneratorURL string            `json:"generatorURL"`
+	Fingerprint  string            `json:"fingerprint"`
 }
 
-type LabelsRequest struct {
-	Severity  string `json:"severity"`
-	AlertName string `json:"alertName"`
-	Method    string `json:"method"`
-	Receptor  string `json:"receptor"`
-}
-
-type AnnotationRequest struct {
-	Summary string `json:"summary"`
+// lookup returns m[key], matching the key case-insensitively so both
+// Prometheus' "alertname" and the older "alertName" work.
+func lookup(m map[string]string, key string) string {
+	if v, ok := m[key]; ok {
+		return v
+	}
+	for k, v := range m {
+		if strings.EqualFold(k, key) {
+			return v
+		}
+	}
+	return ""
 }
 
 func AlertManagerHandler(as alerts.Service) gin.HandlerFunc {
@@ -84,14 +88,19 @@ func (ar AlertRequest) convertAlertManagerToAlert(as alerts.Service) (alerts.Ale
 	}
 	alert, err := as.NewAlert(
 		ar.Fingerprint,
-		ar.AlertLabels.AlertName,
-		ar.AlertLabels.Severity,
-		ar.AlertAnnotation.Summary,
+		lookup(ar.Labels, "alertname"),
+		lookup(ar.Labels, "severity"),
+		lookup(ar.Annotations, "summary"),
 		ar.Status,
-		strings.Split(ar.AlertLabels.Method, ","),
+		strings.Split(lookup(ar.Labels, "method"), ","),
 		startAt,
 		endAt,
-		strings.Split(ar.AlertLabels.Receptor, ","),
+		strings.Split(lookup(ar.Labels, "receptor"), ","),
+		alerts.Details{
+			Labels:       ar.Labels,
+			Annotations:  ar.Annotations,
+			GeneratorURL: ar.GeneratorURL,
+		},
 	)
 	if err != nil {
 		return alerts.Alert{}, err
