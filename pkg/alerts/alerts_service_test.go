@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/root-ali/iris/internal/apperr"
 	"go.uber.org/zap"
 )
@@ -106,5 +107,82 @@ func TestNewAlertExistingRowTakesLatestDetails(t *testing.T) {
 	}
 	if got.Labels["pod"] != "api-1" || got.GeneratorURL != "http://prom" {
 		t.Fatalf("Labels, GeneratorURL = %v, %q", got.Labels, got.GeneratorURL)
+	}
+}
+
+type addRepo struct {
+	AlertRepository
+	err    error
+	noRows bool
+}
+
+func (a *addRepo) AddAlert(*Alert) (int64, error) {
+	if a.err != nil || a.noRows {
+		return 0, a.err
+	}
+	return 1, nil
+}
+
+func receivedCount(t *testing.T, status, severity string) float64 {
+	t.Helper()
+	families, err := prometheus.DefaultGatherer.Gather()
+	if err != nil {
+		t.Fatalf("Gather err = %v", err)
+	}
+	for _, f := range families {
+		if f.GetName() != "iris_alerts_received_total" {
+			continue
+		}
+		for _, m := range f.GetMetric() {
+			got := map[string]string{}
+			for _, l := range m.GetLabel() {
+				got[l.GetName()] = l.GetValue()
+			}
+			if got["status"] == status && got["severity"] == severity {
+				return m.GetCounter().GetValue()
+			}
+		}
+	}
+	return 0
+}
+
+func TestAddAlertManagerAlertsCountsEachSavedAlert(t *testing.T) {
+	before := receivedCount(t, "firing", "critical")
+	s := NewAlertService(zap.NewNop().Sugar(), &addRepo{})
+
+	n, err := s.AddAlertManagerAlerts([]Alert{
+		{Id: "1", Status: "firing", Severity: "critical"},
+		{Id: "2", Status: "firing", Severity: "critical"},
+	})
+
+	if err != nil || n != 2 {
+		t.Fatalf("n, err = %d, %v, want 2, nil", n, err)
+	}
+	if got := receivedCount(t, "firing", "critical") - before; got != 2 {
+		t.Fatalf("delta = %v, want 2", got)
+	}
+}
+
+func TestAddAlertManagerAlertsDoesNotCountFailedSave(t *testing.T) {
+	before := receivedCount(t, "firing", "critical")
+	s := NewAlertService(zap.NewNop().Sugar(), &addRepo{err: apperr.New("db down")})
+
+	if _, err := s.AddAlertManagerAlerts([]Alert{{Id: "1", Status: "firing", Severity: "critical"}}); err == nil {
+		t.Fatal("err = nil, want db error")
+	}
+	if got := receivedCount(t, "firing", "critical") - before; got != 0 {
+		t.Fatalf("delta = %v, want 0", got)
+	}
+}
+
+func TestAddAlertManagerAlertsDoesNotCountUnsavedAlert(t *testing.T) {
+	before := receivedCount(t, "firing", "critical")
+	s := NewAlertService(zap.NewNop().Sugar(), &addRepo{noRows: true})
+
+	if _, err := s.AddAlertManagerAlerts([]Alert{{Id: "1", Status: "firing", Severity: "critical"}}); err != nil {
+		t.Fatalf("err = %v", err)
+	}
+	if got := receivedCount(t, "firing", "critical") - before; got != 0 {
+		t.Fatalf("delta = %v, want 0", got)
 	}
 }

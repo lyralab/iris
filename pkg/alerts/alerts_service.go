@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/root-ali/iris/internal/apperr"
+	"github.com/root-ali/iris/pkg/metrics"
 	"go.uber.org/zap"
 )
 
@@ -107,6 +108,9 @@ func (as *alertsService) AddAlertManagerAlerts(alerts []Alert) (int64, error) {
 			return num, err
 		} else {
 			as.log.Info(alert.Name, "is saved to the db")
+			if r > 0 {
+				metrics.AlertReceived(alert.Status, alert.Severity)
+			}
 			num += r
 		}
 	}

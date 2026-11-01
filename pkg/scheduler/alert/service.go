@@ -9,6 +9,7 @@ import (
 	"github.com/root-ali/iris/internal/apperr"
 	"github.com/root-ali/iris/pkg/alerts"
 	"github.com/root-ali/iris/pkg/message"
+	"github.com/root-ali/iris/pkg/metrics"
 	"github.com/root-ali/iris/pkg/notifications"
 )
 
@@ -65,6 +66,8 @@ func (s *Scheduler) fetchAndEnqueue() {
 		s.logger.Errorw("Cannot load unsent alerts from the database", "error", err)
 		return
 	}
+	metrics.SetUnsentAlerts(len(unsent))
+	defer func() { metrics.SetQueueDepth(len(s.queue)) }()
 	for _, al := range unsent {
 		if !s.track(al.Id) {
 			continue
@@ -97,6 +100,7 @@ func (s *Scheduler) untrack(id string) {
 func (s *Scheduler) worker(id int) {
 	defer s.wgWorkers.Done()
 	for al := range s.queue {
+		metrics.SetQueueDepth(len(s.queue))
 		err := func() error {
 			defer s.untrack(al.Id)
 			return s.handleAlert(al)
@@ -251,6 +255,7 @@ func (s *Scheduler) handleAlert(al alerts.Alert) error {
 			default:
 				response, status = err.Error(), message.TypeMessageStatusFailed
 			}
+			metrics.Notification(p.GetName(), p.GetFlag(), status != message.TypeMessageStatusFailed)
 			m := message.NewMessage(senderId, saveTextMsg, v, p.GetName(), userIds[v], "",
 				response, []string{p.GetName()}, status)
 			if err := s.messageRepo.Add(m); err != nil {
