@@ -11,7 +11,8 @@ import (
 )
 
 func (s *Storage) AddAlert(alert *alerts.Alert) (int64, error) {
-	result := s.db.Save(alert)
+	// Silence columns belong to admins; omit them so an Alertmanager update keeps the silence.
+	result := s.db.Omit(alerts.SilenceColumns...).Save(alert)
 	if result.Error != nil {
 		s.logger.Error("Database Error is: ", result.Error)
 		return 0, result.Error
@@ -50,7 +51,7 @@ func (s *Storage) GetLatestResolvedAlerts(l int) ([]*alerts.Alert, error) {
 	return as, err
 }
 
-func (s *Storage) GetAlerts(status string, severity string, l int, p int) ([]*alerts.Alert, error) {
+func (s *Storage) GetAlerts(status string, severity string, silencedOnly bool, l int, p int) ([]*alerts.Alert, error) {
 	s.logger.Info("status", status, "limit", l, "page ", p)
 	var statusQuery string
 	var severityQuery string
@@ -76,7 +77,12 @@ func (s *Storage) GetAlerts(status string, severity string, l int, p int) ([]*al
 	}
 	s.logger.Info("query", statusQuery, "limit", l, "offset", offset)
 	// Recent first. Firing rows use start time; resolved rows use end time.
-	err := s.db.Where("status LIKE ?", statusQuery).Where("severity LIKE ?", severityQuery).
+	q := s.db.Where("status LIKE ?", statusQuery).Where("severity LIKE ?", severityQuery)
+	if silencedOnly {
+		// Same rule as Alert.IsSilenced: an expired silence no longer counts.
+		q = q.Where("silenced = ? AND (silenced_until IS NULL OR silenced_until > ?)", true, time.Now())
+	}
+	err := q.
 		Order("CASE WHEN status = 'resolved' THEN COALESCE(ends_at, updated_at, created_at) ELSE COALESCE(starts_at, created_at) END DESC, created_at DESC").
 		Limit(l).Offset(offset).Find(&as).Error
 	if err != nil {
@@ -211,4 +217,22 @@ func (s *Storage) GetAlertByFingerPrintAndStatus(fingerPrint, status string) (*a
 	}
 	s.logger.Infof("Fetched alert %s for status %s", fingerPrint, status)
 	return alert, nil
+}
+
+// SetAlertSilence writes only the silence columns of one alert.
+func (s *Storage) SetAlertSilence(id string, silenced bool, until *time.Time, by string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	result := s.db.WithContext(ctx).Model(&alerts.Alert{}).
+		Where("id = ?", id).
+		Select(alerts.SilenceColumns).
+		Updates(map[string]any{"silenced": silenced, "silenced_until": until, "silenced_by": by})
+	if result.Error != nil {
+		s.logger.Errorw("Cannot update alert silence", "id", id, "error", result.Error)
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return apperr.ErrAlertNotFound
+	}
+	return nil
 }

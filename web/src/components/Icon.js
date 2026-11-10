@@ -78,6 +78,14 @@ const PATHS = {
     chevronDown: <path d="m6 9 6 6 6-6" />,
     chevronRight: <path d="m9 18 6-6-6-6" />,
     chevronLeft: <path d="m15 18-6-6 6-6" />,
+    bellOff: (
+        <>
+            <path d="M8.7 3.4A6 6 0 0 1 18 8c0 3.2.6 5.4 1.3 6.8" />
+            <path d="M17 17H3s3-2 3-9c0-.6.1-1.2.3-1.8" />
+            <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+            <path d="m2 2 20 20" />
+        </>
+    ),
     check: <path d="M20 6 9 17l-5-5" />,
     checkCircle: (
         <>

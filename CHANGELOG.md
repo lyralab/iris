@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0]
+### Added
+- Admins can silence a firing alert for every user, for 1h, 4h, 24h, 7 days or until unsilenced: `POST /v0/alerts/:id/silence` with `{"duration":"4h"}` (empty body = until unsilenced) and `DELETE /v0/alerts/:id/silence`. While silenced, no firing or resolved notification is sent. The silence ends when the alert resolves, so a later re-fire notifies as usual. Migration 000015 adds `silenced_until` and `silenced_by`
+- `GET /v0/alerts` returns `silenced`, `silenced_until` and `silenced_by`; alert rows show a Silenced badge to everyone, and admins get Silence / Unsilence controls
+- Alerts page has a Silenced tab listing firing alerts whose silence is in effect, backed by `GET /v0/alerts?silenced=true`
+- `iris_alerts_silenced_total` metric counts state changes skipped because of a silence
+
+## [1.3.0] - 2026-10-24
+### Added
+- Alerts keep all Alertmanager labels, annotations and the Prometheus source link; migration 000014 adds the `labels`, `annotations` and `generator_url` columns
+- `GET /v0/alerts` returns `labels`, `annotations` and `generator_url`
+- Expanded alert rows show the full description, labels as chips, other annotations, and links for the runbook, URL annotations such as a Grafana dashboard, and Prometheus
+- Users created by an admin and the generated default admin must change their password at first login; new `PUT /v0/users/password`
+- Docker build arguments `REGISTRY`, `GOPROXY` and `NPM_REGISTRY` with public defaults, so internal builds can point at private mirrors
+
+### Changed
+- Web UI redesign: collapsible sidebar, overview with severity tiles, and an alerts page with a Firing/Resolved switch, severity filters, search and expandable rows
+- Alert descriptions drop the raw `LABELS = map[...]` line from Prometheus rule templates and show `VALUE` as its own field
+- Consistent error responses across the API
+
+### Fixed
+- Alertmanager webhook no longer panics when an alert has no `startsAt` or `endsAt`, and returns an error for an invalid body
+- Alert scheduler uses its configured interval
+- Unverified users can no longer sign in
+- JWTs and other sensitive tokens are no longer written to the logs
+
 ## [1.2.0] - 2026-10-14
 ### Added
 - Dark theme with a header toggle; follows the OS setting until a theme is picked

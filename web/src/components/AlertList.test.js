@@ -1,6 +1,11 @@
 import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
-import AlertList from './AlertList';
+import AlertList, { isSilenced } from './AlertList';
+import { isAdmin } from '../utils/auth';
+import apiService from '../utils/apiService';
+
+jest.mock('../utils/auth', () => ({ isAdmin: jest.fn(() => false) }));
+jest.mock('../utils/apiService', () => ({ silenceAlert: jest.fn(), unsilenceAlert: jest.fn() }));
 
 window.IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -77,4 +82,59 @@ test('alerts without labels render without a labels section', () => {
 
     expect(container.querySelector('.alert-row-labels')).toBeNull();
     expect(container.querySelector('.alert-row-fulldesc').textContent).toBe('Job did not complete in time');
+});
+
+const silenceButton = () => [...container.querySelectorAll('.alert-row-silence button')][0];
+
+test('viewers see the silenced badge but no silence controls', () => {
+    isAdmin.mockReturnValue(false);
+    renderExpanded({ ...kubeAlert, silenced: true, silenced_by: 'root' });
+
+    expect(container.querySelector('.silenced-badge')).not.toBeNull();
+    expect(container.textContent).toContain('Notifications off for everyone by root, until unsilenced');
+    expect(container.querySelector('.alert-row-silence')).toBeNull();
+});
+
+test('admin silences a firing alert with the chosen duration', async () => {
+    isAdmin.mockReturnValue(true);
+    apiService.silenceAlert.mockResolvedValue({ alert: { silenced: true, silenced_by: 'root' } });
+    renderExpanded(kubeAlert);
+    expect(container.querySelector('.silenced-badge')).toBeNull();
+
+    const select = container.querySelector('.alert-row-silence select');
+    act(() => {
+        select.value = '24h';
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    await act(async () => silenceButton().click());
+
+    expect(apiService.silenceAlert).toHaveBeenCalledWith('a1', '24h');
+    expect(container.querySelector('.silenced-badge')).not.toBeNull();
+    expect(silenceButton().textContent).toContain('Unsilence');
+});
+
+test('admin unsilences a silenced alert', async () => {
+    isAdmin.mockReturnValue(true);
+    apiService.unsilenceAlert.mockResolvedValue({ alert: { silenced: false } });
+    renderExpanded({ ...kubeAlert, silenced: true });
+
+    await act(async () => silenceButton().click());
+
+    expect(apiService.unsilenceAlert).toHaveBeenCalledWith('a1');
+    expect(container.querySelector('.silenced-badge')).toBeNull();
+});
+
+test('admin sees no silence control on a resolved, unsilenced alert', () => {
+    isAdmin.mockReturnValue(true);
+    renderExpanded({ ...kubeAlert, status: 'resolved' });
+
+    expect(container.querySelector('.alert-row-silence')).toBeNull();
+});
+
+test('isSilenced drops an expired silence', () => {
+    const now = Date.parse('2026-11-10T12:00:00Z');
+    expect(isSilenced({ silenced: true }, now)).toBe(true);
+    expect(isSilenced({ silenced: true, silenced_until: '2026-11-10T13:00:00Z' }, now)).toBe(true);
+    expect(isSilenced({ silenced: true, silenced_until: '2026-11-10T11:00:00Z' }, now)).toBe(false);
+    expect(isSilenced({ silenced: false }, now)).toBe(false);
 });

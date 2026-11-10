@@ -8,7 +8,7 @@ import Icon from '../components/Icon';
 import RefreshControls from '../components/RefreshControls';
 import useAutoRefresh, { readRefreshMs, latestOnly } from '../utils/useAutoRefresh';
 import { byNewest } from '../utils/alertSort';
-import { SEVERITIES } from '../utils/format';
+import { severitiesFor, severityKey } from '../utils/format';
 import './Dashboard.css';
 
 const LIMITS = [5, 10, 15, 20];
@@ -22,15 +22,15 @@ const LimitSelect = ({ id, value, onChange }) => (
     </label>
 );
 
-const SeverityBar = ({ counts, total }) => (
-    <div className="severity-bar" role="img" aria-label={SEVERITIES.map((s) => `${s.label} ${counts[s.key] || 0}`).join(', ')}>
+const SeverityBar = ({ severities, counts, total }) => (
+    <div className="severity-bar" role="img" aria-label={severities.map((s) => `${s.label} ${counts[s.key] || 0}`).join(', ')}>
         {total === 0 ? (
             <span className="severity-bar-empty" />
         ) : (
-            SEVERITIES.filter((s) => counts[s.key] > 0).map((s) => (
+            severities.filter((s) => counts[s.key] > 0).map((s) => (
                 <span
                     key={s.key}
-                    className={`severity-bar-seg sev-${s.key}`}
+                    className={`severity-bar-seg sev-${severityKey(s.key)}`}
                     style={{ flexGrow: counts[s.key] }}
                     title={`${s.label}: ${counts[s.key]}`}
                 />
@@ -133,7 +133,8 @@ const Dashboard = () => {
         }
     };
 
-    const total = SEVERITIES.reduce((sum, s) => sum + (alerts[s.key] || 0), 0);
+    const severities = severitiesFor(Object.keys(alerts));
+    const total = severities.reduce((sum, s) => sum + (alerts[s.key] || 0), 0);
     const urgent = (alerts.critical || 0) + (alerts.high || 0);
     const health = total === 0 ? 'ok' : urgent > 0 ? 'critical' : 'warning';
 
@@ -174,20 +175,20 @@ const Dashboard = () => {
                             {loading ? <span className="skeleton" style={{ width: 70, height: 44 }} /> : <span className="tabular">{total}</span>}
                             <span className="health-total-label">firing {total === 1 ? 'alert' : 'alerts'}</span>
                         </div>
-                        <SeverityBar counts={alerts} total={loading ? 0 : total} />
+                        <SeverityBar severities={severities} counts={alerts} total={loading ? 0 : total} />
                         <Link to="/alerts" className="health-link">
                             View all alerts <Icon name="chevronRight" size={14} />
                         </Link>
                     </div>
 
                     <div className="stats-grid">
-                        {SEVERITIES.map((item) => {
+                        {severities.map((item) => {
                             const count = alerts[item.key] || 0;
                             return (
                                 <Link
                                     key={item.key}
-                                    to={`/alerts?severity=${item.key}`}
-                                    className={`stat-card sev-${item.key} ${count === 0 ? 'is-zero' : ''}`}
+                                    to={`/alerts?severity=${encodeURIComponent(item.key)}`}
+                                    className={`stat-card sev-${severityKey(item.key)} ${count === 0 ? 'is-zero' : ''}`}
                                 >
                                     <span className="stat-label">
                                         <span className="sev-dot" />

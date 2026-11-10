@@ -91,6 +91,13 @@ func (ht *HttpHandler) Handler() *gin.Engine {
 	alertRouter.GET("/firingCount",
 		middlewares.ValidateJWTToken(ht.ATHS, "admin,viewer", ht.Logger),
 		rest.GetFiringAlertsBySeverity(ht.AS))
+	// Silences are global: an admin silences an alert for every user.
+	alertRouter.POST("/:id/silence",
+		middlewares.ValidateJWTToken(ht.ATHS, "admin", ht.Logger),
+		rest.SilenceAlert(ht.AS))
+	alertRouter.DELETE("/:id/silence",
+		middlewares.ValidateJWTToken(ht.ATHS, "admin", ht.Logger),
+		rest.UnsilenceAlert(ht.AS))
 
 	// User handler routes
 	userRouter := router.Group("v0/users")

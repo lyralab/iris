@@ -26,9 +26,21 @@ type Alert struct {
 	Receptor     pq.StringArray `json:"-" gorm:"column:receptor;type:text[]"`
 	SendNotif    bool           `json:"-" gorm:"column:send_notif;default:false"`
 	Silenced     bool           `json:"-" gorm:"column:silenced;default:false"`
-	CreatedAt    time.Time      `json:"created_at" gorm:"column:created_at"`
-	UpdatedAt    time.Time      `json:"updated_at" gorm:"column:updated_at"`
+	// SilencedUntil is nil for a silence that lasts until an admin lifts it.
+	SilencedUntil *time.Time `json:"-" gorm:"column:silenced_until"`
+	SilencedBy    string     `json:"-" gorm:"column:silenced_by"`
+	CreatedAt     time.Time  `json:"created_at" gorm:"column:created_at"`
+	UpdatedAt     time.Time  `json:"updated_at" gorm:"column:updated_at"`
 	gorm.DeletedAt
+}
+
+// SilenceColumns are written only by an admin silence or unsilence, never by
+// Alertmanager updates, so an incoming update cannot undo a silence.
+var SilenceColumns = []string{"silenced", "silenced_until", "silenced_by"}
+
+// IsSilenced reports whether notifications for the alert are suppressed at now.
+func (a *Alert) IsSilenced(now time.Time) bool {
+	return a.Silenced && (a.SilencedUntil == nil || now.Before(*a.SilencedUntil))
 }
 
 type AlertsBySeverity struct {

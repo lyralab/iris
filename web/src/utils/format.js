@@ -20,6 +20,20 @@ export function severityClass(severity) {
     return `severity-${severityKey(severity)}`;
 }
 
+export function severityLabel(severity) {
+    const key = String(severity || '').toLowerCase();
+    const known = SEVERITIES.find((s) => s.key === key);
+    return known ? known.label : key.charAt(0).toUpperCase() + key.slice(1);
+}
+
+// The known severities in their fixed order, then any others the API reports (e.g. "network"),
+// alphabetically, so a severity the UI doesn't know about is still shown rather than dropped.
+// Extra keys keep the API's spelling: the alerts filter matches it case-sensitively.
+export function severitiesFor(keys) {
+    const extra = [...new Set(keys.filter((k) => k && !KNOWN.has(String(k).toLowerCase())))].sort();
+    return [...SEVERITIES, ...extra.map((key) => ({ key, label: severityLabel(key) }))];
+}
+
 const USER_STATUS = {
     verified: { label: 'Active', className: 'status-active' },
     new: { label: 'New', className: 'status-new' },

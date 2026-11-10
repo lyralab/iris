@@ -2,13 +2,13 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import apiService from '../utils/apiService';
 import Layout from '../components/Layout';
-import AlertList from '../components/AlertList';
+import AlertList, { isSilenced } from '../components/AlertList';
 import EmptyState from '../components/EmptyState';
 import Icon from '../components/Icon';
 import RefreshControls from '../components/RefreshControls';
 import useAutoRefresh, { readRefreshMs, latestOnly } from '../utils/useAutoRefresh';
 import { byNewest } from '../utils/alertSort';
-import { SEVERITIES } from '../utils/format';
+import { severitiesFor, severityKey } from '../utils/format';
 import './AlertsPage.css';
 
 const AlertsPage = () => {
@@ -37,8 +37,11 @@ const AlertsPage = () => {
             setRefreshError(null);
         }
         try {
+            // Silenced = firing alerts whose silence is still in effect.
+            const silenced = activeTab === 'silenced';
             const data = await apiService.getAlerts({
-                status: activeTab,
+                status: silenced ? 'firing' : activeTab,
+                silenced,
                 severity,
                 limit: 100,
                 page: 1,
@@ -89,15 +92,25 @@ const AlertsPage = () => {
     };
 
     const needle = query.trim().toLowerCase();
-    const rows = (Array.isArray(allAlerts) ? allAlerts.filter(alert => alert && alert.status === activeTab) : [])
+    const rows = (Array.isArray(allAlerts) ? allAlerts.filter(alert => alert && alert.status === (activeTab === 'silenced' ? 'firing' : activeTab)) : [])
+        // A silence can expire between refreshes; drop it from the Silenced tab right away.
+        .filter((alert) => activeTab !== 'silenced' || isSilenced(alert))
         .filter((alert) => !needle || [alert.name, alert.alert_name, alert.description, alert.summary]
             .join(' ').toLowerCase().includes(needle))
         .sort(byNewest);
-    const severityLabel = SEVERITIES.find((s) => s.key === severity)?.label;
+    // Chips for the known severities plus any other one in the URL or the loaded alerts (e.g. "network").
+    const severities = severitiesFor([severity, ...(Array.isArray(allAlerts) ? allAlerts.map((a) => a && a.severity) : [])]);
+    const severityLabel = severities.find((s) => s.key === severity)?.label;
 
     let empty;
     if (needle) {
         empty = <EmptyState icon="search" title="No matching alerts">Nothing matches “{query.trim()}”.</EmptyState>;
+    } else if (activeTab === 'silenced') {
+        empty = (
+            <EmptyState icon="bell" title={`No silenced ${severityLabel ? severityLabel.toLowerCase() + ' ' : ''}alerts`}>
+                Notifications are on for every firing alert.
+            </EmptyState>
+        );
     } else if (activeTab === 'firing') {
         empty = (
             <EmptyState icon="checkCircle" tone="success" title={`No ${severityLabel ? severityLabel.toLowerCase() + ' ' : ''}alerts firing`}>
@@ -151,6 +164,16 @@ const AlertsPage = () => {
                                 <Icon name="checkCircle" size={14} />
                                 Resolved
                             </button>
+                            <button
+                                type="button"
+                                role="tab"
+                                aria-selected={activeTab === 'silenced'}
+                                className={activeTab === 'silenced' ? 'active' : ''}
+                                onClick={() => setActiveTab('silenced')}
+                            >
+                                <Icon name="bellOff" size={14} />
+                                Silenced
+                            </button>
                         </div>
                         <div className="input-with-icon alerts-search">
                             <Icon name="search" />
@@ -175,11 +198,11 @@ const AlertsPage = () => {
                             >
                                 All severities
                             </button>
-                            {SEVERITIES.map((level) => (
+                            {severities.map((level) => (
                                 <button
                                     type="button"
                                     key={level.key}
-                                    className={`chip sev-${level.key} ${severity === level.key ? 'active' : ''}`}
+                                    className={`chip sev-${severityKey(level.key)} ${severity === level.key ? 'active' : ''}`}
                                     aria-pressed={severity === level.key}
                                     onClick={() => onSeverityChange(severity === level.key ? '' : level.key)}
                                 >
@@ -201,7 +224,13 @@ const AlertsPage = () => {
                         </div>
                     )}
 
-                    {!error && <AlertList alerts={rows} loading={loading} empty={empty} />}
+                    {!error && <AlertList
+                        alerts={rows}
+                        loading={loading}
+                        empty={empty}
+                        // On the Silenced tab an unsilenced alert must leave the list.
+                        onSilenceChange={activeTab === 'silenced' ? () => load(true) : undefined}
+                    />}
                 </section>
             </div>
         </Layout>

@@ -169,11 +169,26 @@ class APIService {
         const queryParams = new URLSearchParams();
         if (params.status) queryParams.append('status', params.status);
         if (params.severity) queryParams.append('severity', params.severity);
+        if (params.silenced) queryParams.append('silenced', 'true');
         if (params.limit) queryParams.append('limit', params.limit);
         if (params.page) queryParams.append('page', params.page);
         
         const url = `${config.api.alerts}?${queryParams.toString()}`;
         return this.fetch(url);
+    }
+
+    // Admin only. Silences apply to every user. Empty duration = until unsilenced.
+    async silenceAlert(id, duration = '') {
+        return this.fetch(`${config.api.alerts}/${encodeURIComponent(id)}/silence`, {
+            method: 'POST',
+            body: JSON.stringify(duration ? { duration } : {}),
+        });
+    }
+
+    async unsilenceAlert(id) {
+        return this.fetch(`${config.api.alerts}/${encodeURIComponent(id)}/silence`, {
+            method: 'DELETE',
+        });
     }
 
     async getAlertSummary() {

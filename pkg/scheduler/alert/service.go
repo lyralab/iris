@@ -116,6 +116,16 @@ func (s *Scheduler) handleAlert(al alerts.Alert) error {
 	s.logger.Infow("Processing alert",
 		"alertID", al.Id, "name", al.Name, "methods", al.Method, "receptors", al.Receptor)
 
+	// An admin silenced it for everyone: consume this state change without notifying.
+	// Lifting the silence later does not resend it; the next state change notifies as usual.
+	if al.IsSilenced(time.Now()) {
+		s.logger.Infow("Alert is silenced; marking it as sent without notifying",
+			"alertID", al.Id, "status", al.Status, "silencedBy", al.SilencedBy, "silencedUntil", al.SilencedUntil)
+		metrics.NotificationSilenced(al.Status)
+		s.failed.forget(al.Id)
+		return s.repo.MarkAlertAsSent(al.Id)
+	}
+
 	// Check if alert has method and receptor to set candidate fot sending alert
 	if len(al.Method) == 0 || len(al.Receptor) == 0 {
 		s.logger.Warnw("Alert has no method or no receptor; marking it as sent without notifying",

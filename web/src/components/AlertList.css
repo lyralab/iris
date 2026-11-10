@@ -209,3 +209,40 @@
         padding-left: 1.25rem;
     }
 }
+
+.silenced-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    height: 22px;
+    padding: 0 0.55rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--muted);
+    border: 1px dashed currentcolor;
+}
+
+.alert-row.is-silenced .sev-dot {
+    animation: none;
+    opacity: 0.5;
+}
+
+.alert-row-silence {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.9rem;
+}
+
+.alert-row-silence button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.alert-row-silence-error {
+    color: var(--sev-critical-fg);
+    font-size: 0.8125rem;
+}

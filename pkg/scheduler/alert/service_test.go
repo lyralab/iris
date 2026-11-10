@@ -304,10 +304,11 @@ func (f *fakeAlertRepo) GetAlertById(string) (*alerts.Alert, error) {
 func (f *fakeAlertRepo) AlertsBySeverity() ([]*alerts.AlertsBySeverity, error) {
 	return nil, nil
 }
-func (f *fakeAlertRepo) GetAlerts(string, string, int, int) ([]*alerts.Alert, error) {
+func (f *fakeAlertRepo) GetAlerts(string, string, bool, int, int) ([]*alerts.Alert, error) {
 	return nil, nil
 }
-func (f *fakeAlertRepo) GetUnsentAlertID(alerts.Alert) (string, error) { return "", nil }
+func (f *fakeAlertRepo) SetAlertSilence(string, bool, *time.Time, string) error { return nil }
+func (f *fakeAlertRepo) GetUnsentAlertID(alerts.Alert) (string, error)          { return "", nil }
 func (f *fakeAlertRepo) GetAlertByFingerPrintAndStatus(string, string) (*alerts.Alert, error) {
 	return nil, nil
 }
