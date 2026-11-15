@@ -82,7 +82,7 @@ const SilenceControls = ({ alert, silenced, onSilenceChange }) => {
                 </button>
             ) : (
                 <>
-                    <select aria-label="Silence duration" value={duration} disabled={busy}
+                    <select className="select-input" aria-label="Silence duration" value={duration} disabled={busy}
                         onChange={(e) => setDuration(e.target.value)}>
                         {SILENCE_DURATIONS.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}
                     </select>

@@ -236,6 +236,18 @@
     margin-top: 0.9rem;
 }
 
+/* Same height, border, radius and weight as the btn-secondary next to it. */
+.alert-row-silence .select-input {
+    font-weight: 550;
+    box-shadow: var(--shadow-sm);
+    cursor: pointer;
+}
+
+.alert-row-silence .select-input:disabled {
+    cursor: default;
+    opacity: 0.6;
+}
+
 .alert-row-silence button {
     display: inline-flex;
     align-items: center;

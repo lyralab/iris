@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.1] - 2026-11-14
+### Fixed
+- The silence duration picker on an expanded alert row matches the Silence button next to it (same height, border, corners and font) instead of showing the browser's default select
+
 ## [1.4.0]
 ### Added
 - Admins can silence a firing alert for every user, for 1h, 4h, 24h, 7 days or until unsilenced: `POST /v0/alerts/:id/silence` with `{"duration":"4h"}` (empty body = until unsilenced) and `DELETE /v0/alerts/:id/silence`. While silenced, no firing or resolved notification is sent. The silence ends when the alert resolves, so a later re-fire notifies as usual. Migration 000015 adds `silenced_until` and `silenced_by`
