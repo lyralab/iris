@@ -172,7 +172,7 @@ const AlertRow = ({ alert, now, expanded, onToggle, admin, onSilenceChange }) =>
                             </ul>
                         </div>
                     )}
-                    {admin && alert.id && (!resolved || silenced) && (
+                    {admin && alert.id && (
                         <SilenceControls alert={alert} silenced={silenced} onSilenceChange={onSilenceChange} />
                     )}
                     {links.length > 0 && (

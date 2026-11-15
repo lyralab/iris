@@ -67,12 +67,12 @@ const Dashboard = () => {
 
         try {
             const alertData = await apiService.getAlertSummary();
-            const detailedAlerts = await apiService.getAlerts({ status: 'firing', limit: firingLimit * 2, page: 1 })
+            const detailedAlerts = await apiService.getAlerts({ status: 'firing', silenced: false, limit: firingLimit * 2, page: 1 })
                 .catch((e) => {
                     console.log('Detailed alerts API error:', e);
                     return null;
                 });
-            const resolvedData = await apiService.getAlerts({ status: 'resolved', limit: resolvedLimit, page: 1 })
+            const resolvedData = await apiService.getAlerts({ status: 'resolved', silenced: false, limit: resolvedLimit, page: 1 })
                 .catch((e) => {
                     console.log('Resolved alerts API error:', e);
                     return null;
@@ -216,6 +216,7 @@ const Dashboard = () => {
                         <AlertList
                             alerts={topAlerts}
                             loading={loading}
+                            onSilenceChange={() => fetchDashboardData(true)}
                             empty={
                                 <EmptyState icon="checkCircle" tone="success" title="Nothing critical is firing">
                                     Critical and warning alerts will show up here.
@@ -236,6 +237,7 @@ const Dashboard = () => {
                         <AlertList
                             alerts={resolvedAlerts}
                             loading={loading}
+                            onSilenceChange={() => fetchDashboardData(true)}
                             empty={<EmptyState icon="inbox" title="No resolved alerts yet" />}
                         />
                     </section>

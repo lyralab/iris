@@ -51,7 +51,11 @@ func (s *Storage) GetLatestResolvedAlerts(l int) ([]*alerts.Alert, error) {
 	return as, err
 }
 
-func (s *Storage) GetAlerts(status string, severity string, silencedOnly bool, l int, p int) ([]*alerts.Alert, error) {
+// activeSilence matches rows whose silence is in effect at the bound time; same
+// rule as Alert.IsSilenced, so an expired silence no longer counts.
+const activeSilence = "COALESCE(silenced, false) AND (silenced_until IS NULL OR silenced_until > ?)"
+
+func (s *Storage) GetAlerts(status string, severity string, silence alerts.SilenceFilter, l int, p int) ([]*alerts.Alert, error) {
 	s.logger.Info("status", status, "limit", l, "page ", p)
 	var statusQuery string
 	var severityQuery string
@@ -78,9 +82,11 @@ func (s *Storage) GetAlerts(status string, severity string, silencedOnly bool, l
 	s.logger.Info("query", statusQuery, "limit", l, "offset", offset)
 	// Recent first. Firing rows use start time; resolved rows use end time.
 	q := s.db.Where("status LIKE ?", statusQuery).Where("severity LIKE ?", severityQuery)
-	if silencedOnly {
-		// Same rule as Alert.IsSilenced: an expired silence no longer counts.
-		q = q.Where("silenced = ? AND (silenced_until IS NULL OR silenced_until > ?)", true, time.Now())
+	switch silence {
+	case alerts.SilenceOnly:
+		q = q.Where(activeSilence, time.Now())
+	case alerts.SilenceExclude:
+		q = q.Where("NOT ("+activeSilence+")", time.Now())
 	}
 	err := q.
 		Order("CASE WHEN status = 'resolved' THEN COALESCE(ends_at, updated_at, created_at) ELSE COALESCE(starts_at, created_at) END DESC, created_at DESC").
@@ -98,6 +104,8 @@ func (s *Storage) AlertsBySeverity() ([]*alerts.AlertsBySeverity, error) {
 		Select("severity,count(severity) as count").
 		Group("severity").
 		Where("status = ?", "firing").
+		// Silenced alerts are listed only among silenced alerts, so they are not counted as firing.
+		Where("NOT ("+activeSilence+")", time.Now()).
 		Scan(&als)
 	if result.Error != nil {
 		s.logger.Error("Error getting query from database ,", result.Error)

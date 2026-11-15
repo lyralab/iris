@@ -124,11 +124,18 @@ test('admin unsilences a silenced alert', async () => {
     expect(container.querySelector('.silenced-badge')).toBeNull();
 });
 
-test('admin sees no silence control on a resolved, unsilenced alert', () => {
+test('admin can silence a resolved alert', async () => {
     isAdmin.mockReturnValue(true);
-    renderExpanded({ ...kubeAlert, status: 'resolved' });
+    apiService.silenceAlert.mockResolvedValue({ alert: { silenced: true, silenced_by: 'root' } });
+    const onSilenceChange = jest.fn();
+    // eslint-disable-next-line testing-library/no-unnecessary-act -- raw react-dom, no RTL installed
+    act(() => root.render(<AlertList alerts={[{ ...kubeAlert, status: 'resolved' }]} onSilenceChange={onSilenceChange} />));
+    act(() => container.querySelector('.alert-row-main').click());
 
-    expect(container.querySelector('.alert-row-silence')).toBeNull();
+    await act(async () => silenceButton().click());
+
+    expect(apiService.silenceAlert).toHaveBeenCalledWith('a1', '1h');
+    expect(onSilenceChange).toHaveBeenCalledWith({ silenced: true, silenced_by: 'root' });
 });
 
 test('isSilenced drops an expired silence', () => {

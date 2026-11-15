@@ -169,7 +169,8 @@ class APIService {
         const queryParams = new URLSearchParams();
         if (params.status) queryParams.append('status', params.status);
         if (params.severity) queryParams.append('severity', params.severity);
-        if (params.silenced) queryParams.append('silenced', 'true');
+        // true = only silenced alerts, false = hide silenced alerts, omitted = all.
+        if (typeof params.silenced === 'boolean') queryParams.append('silenced', String(params.silenced));
         if (params.limit) queryParams.append('limit', params.limit);
         if (params.page) queryParams.append('page', params.page);
         

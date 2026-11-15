@@ -64,7 +64,6 @@ func TestSilenceAlertRejects(t *testing.T) {
 		d    time.Duration
 		want error
 	}{
-		{"resolved", &silenceRepo{alert: &Alert{Status: "resolved"}}, time.Hour, apperr.ErrAlertNotFiring},
 		{"missing", &silenceRepo{err: apperr.ErrAlertNotFound}, time.Hour, apperr.ErrAlertNotFound},
 		{"too long", &silenceRepo{alert: &Alert{Status: "firing"}}, MaxSilenceDuration + time.Hour, apperr.ErrInvalidSilenceDuration},
 		{"negative", &silenceRepo{alert: &Alert{Status: "firing"}}, -time.Hour, apperr.ErrInvalidSilenceDuration},
@@ -77,6 +76,17 @@ func TestSilenceAlertRejects(t *testing.T) {
 		if c.repo.calls != 0 {
 			t.Errorf("%s: SetAlertSilence called, want no write", c.name)
 		}
+	}
+}
+
+func TestSilenceAlertResolved(t *testing.T) {
+	r := &silenceRepo{alert: &Alert{Id: "a", Status: "resolved"}}
+	got, err := silenceService(r).SilenceAlert("a", "admin", 0)
+	if err != nil {
+		t.Fatalf("err = %v, want resolved alerts to be silenceable", err)
+	}
+	if r.calls != 1 || !r.silenced || !got.IsSilenced(time.Now()) {
+		t.Fatalf("resolved alert not silenced: calls=%d silenced=%v", r.calls, r.silenced)
 	}
 }
 

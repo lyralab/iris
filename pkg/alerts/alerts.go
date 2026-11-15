@@ -38,6 +38,15 @@ type Alert struct {
 // Alertmanager updates, so an incoming update cannot undo a silence.
 var SilenceColumns = []string{"silenced", "silenced_until", "silenced_by"}
 
+// SilenceFilter selects alerts by whether their silence is in effect.
+type SilenceFilter int
+
+const (
+	SilenceAny     SilenceFilter = iota // every alert
+	SilenceOnly                         // only alerts silenced now
+	SilenceExclude                      // only alerts not silenced now
+)
+
 // IsSilenced reports whether notifications for the alert are suppressed at now.
 func (a *Alert) IsSilenced(now time.Time) bool {
 	return a.Silenced && (a.SilencedUntil == nil || now.Before(*a.SilencedUntil))

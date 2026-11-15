@@ -32,7 +32,6 @@ var (
 	ErrGroupNotFound      = sentinel(KindNotFound, "group_not_found", "group not found")
 
 	ErrAlertNotFound          = sentinel(KindNotFound, "alert_not_found", "alert not found")
-	ErrAlertNotFiring         = sentinel(KindConflict, "alert_not_firing", "only a firing alert can be silenced")
 	ErrInvalidSilenceDuration = sentinel(KindInvalid, "invalid_silence_duration", "silence duration must be positive and at most 30 days")
 
 	ErrProviderNotFound      = sentinel(KindNotFound, "provider_not_found", "provider not found")

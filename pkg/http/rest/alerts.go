@@ -59,15 +59,20 @@ func GetAlerts(as alerts.Service) gin.HandlerFunc {
 				return
 			}
 		}
-		var silencedOnly bool
+		// silenced=true lists only silenced alerts, silenced=false hides them, absent lists all.
+		silence := alerts.SilenceAny
 		if v := c.Request.URL.Query().Get("silenced"); v != "" {
-			silencedOnly, err = strconv.ParseBool(v)
+			only, err := strconv.ParseBool(v)
 			if err != nil {
 				abortWithMessage(c, http.StatusBadRequest, "Invalid silenced in query param")
 				return
 			}
+			silence = alerts.SilenceExclude
+			if only {
+				silence = alerts.SilenceOnly
+			}
 		}
-		als, err := as.GetAlerts(status, severity, silencedOnly, l, p)
+		als, err := as.GetAlerts(status, severity, silence, l, p)
 		alertResponses := toAlertResponse(als)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{

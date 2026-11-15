@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-11-15
+### Added
+- Admins can silence resolved alerts too, not only firing ones
+- `GET /v0/alerts?silenced=false` hides silenced alerts; `silenced=true` still lists only silenced ones, and leaving it out lists all
+
+### Changed
+- A silenced alert, firing or resolved, is listed only on the Silenced tab. It no longer appears on the Firing or Resolved tabs, in the overview's firing and recently resolved lists, or in the firing counts (`GET /v0/alerts/firingCount`). When the silence ends or an admin unsilences it, it moves back to its status tab
+- Silencing or unsilencing an alert reloads the list, so the alert moves to its new tab right away
+
 ## [1.4.1] - 2026-11-14
 ### Fixed
 - The silence duration picker on an expanded alert row matches the Silence button next to it (same height, border, corners and font) instead of showing the browser's default select

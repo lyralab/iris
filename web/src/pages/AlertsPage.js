@@ -37,10 +37,10 @@ const AlertsPage = () => {
             setRefreshError(null);
         }
         try {
-            // Silenced = firing alerts whose silence is still in effect.
+            // A silenced alert, firing or resolved, is listed only on the Silenced tab.
             const silenced = activeTab === 'silenced';
             const data = await apiService.getAlerts({
-                status: silenced ? 'firing' : activeTab,
+                status: silenced ? '' : activeTab,
                 silenced,
                 severity,
                 limit: 100,
@@ -92,9 +92,9 @@ const AlertsPage = () => {
     };
 
     const needle = query.trim().toLowerCase();
-    const rows = (Array.isArray(allAlerts) ? allAlerts.filter(alert => alert && alert.status === (activeTab === 'silenced' ? 'firing' : activeTab)) : [])
-        // A silence can expire between refreshes; drop it from the Silenced tab right away.
-        .filter((alert) => activeTab !== 'silenced' || isSilenced(alert))
+    const rows = (Array.isArray(allAlerts) ? allAlerts.filter(alert => alert && (activeTab === 'silenced' || alert.status === activeTab)) : [])
+        // A silence can expire between refreshes; move the alert back to its status tab right away.
+        .filter((alert) => (activeTab === 'silenced') === isSilenced(alert))
         .filter((alert) => !needle || [alert.name, alert.alert_name, alert.description, alert.summary]
             .join(' ').toLowerCase().includes(needle))
         .sort(byNewest);
@@ -108,7 +108,7 @@ const AlertsPage = () => {
     } else if (activeTab === 'silenced') {
         empty = (
             <EmptyState icon="bell" title={`No silenced ${severityLabel ? severityLabel.toLowerCase() + ' ' : ''}alerts`}>
-                Notifications are on for every firing alert.
+                Silenced alerts, firing or resolved, show up here instead of on the other tabs.
             </EmptyState>
         );
     } else if (activeTab === 'firing') {
@@ -228,8 +228,8 @@ const AlertsPage = () => {
                         alerts={rows}
                         loading={loading}
                         empty={empty}
-                        // On the Silenced tab an unsilenced alert must leave the list.
-                        onSilenceChange={activeTab === 'silenced' ? () => load(true) : undefined}
+                        // Silencing or unsilencing moves the alert between tabs.
+                        onSilenceChange={() => load(true)}
                     />}
                 </section>
             </div>

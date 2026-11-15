@@ -10,12 +10,13 @@ import (
 	"go.uber.org/zap"
 )
 
+const MaxSilenceDuration = 30 * 24 * time.Hour
+
 type AlertRepository interface {
 	AddAlert(*Alert) (int64, error)
 	GetAlertById(id string) (*Alert, error)
 	AlertsBySeverity() ([]*AlertsBySeverity, error)
-	// GetAlerts lists alerts; silencedOnly keeps those whose silence is in effect.
-	GetAlerts(status, severity string, silencedOnly bool, limit, page int) ([]*Alert, error)
+	GetAlerts(status, severity string, silence SilenceFilter, limit, page int) ([]*Alert, error)
 	GetUnsentAlerts() ([]Alert, error)
 	MarkAlertAsSent(alertID string) error
 	GetUnsentAlertID(alert Alert) (string, error)
@@ -23,18 +24,15 @@ type AlertRepository interface {
 	SetAlertSilence(id string, silenced bool, until *time.Time, by string) error
 }
 
-// MaxSilenceDuration caps a timed silence.
-const MaxSilenceDuration = 30 * 24 * time.Hour
-
 type Service interface {
 	AddAlertManagerAlerts([]Alert) (int64, error)
 	NewAlert(id, name, severity, description, status string, method []string,
 		startsAt, endsAt time.Time,
 		receptor []string, details Details) (Alert, error)
 	GetFiringAlertsBySeverity() ([]*AlertsBySeverity, error)
-	// GetAlerts lists alerts; silencedOnly keeps those whose silence is in effect.
-	GetAlerts(status, severity string, silencedOnly bool, limit, page int) ([]*Alert, error)
-	// SilenceAlert suppresses notifications of a firing alert for every user.
+	GetAlerts(status, severity string, silence SilenceFilter, limit, page int) ([]*Alert, error)
+	// SilenceAlert silences a firing or resolved alert for every user: no
+	// notifications, and it is listed only among silenced alerts.
 	// A zero duration silences it until UnsilenceAlert.
 	SilenceAlert(id, by string, duration time.Duration) (*Alert, error)
 	UnsilenceAlert(id string) (*Alert, error)
@@ -129,9 +127,9 @@ func (as *alertsService) AddAlertManagerAlerts(alerts []Alert) (int64, error) {
 	return num, nil
 }
 
-func (as *alertsService) GetAlerts(status, severity string, silencedOnly bool, limit, page int) ([]*Alert, error) {
+func (as *alertsService) GetAlerts(status, severity string, silence SilenceFilter, limit, page int) ([]*Alert, error) {
 	var als []*Alert
-	als, err := as.ar.GetAlerts(status, severity, silencedOnly, limit, page)
+	als, err := as.ar.GetAlerts(status, severity, silence, limit, page)
 	if err != nil {
 		as.log.Error("Error getting alerts from db ")
 		return nil, err
@@ -156,9 +154,6 @@ func (as *alertsService) SilenceAlert(id, by string, duration time.Duration) (*A
 	al, err := as.ar.GetAlertById(id)
 	if err != nil {
 		return nil, err
-	}
-	if al.Status != "firing" {
-		return nil, apperr.ErrAlertNotFiring
 	}
 	var until *time.Time
 	if duration > 0 {

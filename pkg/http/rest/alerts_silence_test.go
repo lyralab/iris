@@ -85,8 +85,8 @@ func TestSilenceAlertHandler(t *testing.T) {
 
 func TestSilenceAlertHandlerMapsErrors(t *testing.T) {
 	for err, code := range map[error]int{
-		apperr.ErrAlertNotFiring: http.StatusConflict,
-		apperr.ErrAlertNotFound:  http.StatusNotFound,
+		apperr.ErrAlertNotFound:          http.StatusNotFound,
+		apperr.ErrInvalidSilenceDuration: http.StatusBadRequest,
 	} {
 		if w := postSilence(t, &silenceAlertService{err: err}, `{"duration":"1h"}`); w.Code != code {
 			t.Errorf("%v: code = %d, want %d", err, w.Code, code)
@@ -104,33 +104,34 @@ func TestAlertResponseHidesExpiredSilence(t *testing.T) {
 
 type listAlertService struct {
 	alerts.Service
-	called       bool
-	silencedOnly bool
+	called  bool
+	silence alerts.SilenceFilter
 }
 
-func (s *listAlertService) GetAlerts(_, _ string, silencedOnly bool, _, _ int) ([]*alerts.Alert, error) {
-	s.called, s.silencedOnly = true, silencedOnly
+func (s *listAlertService) GetAlerts(_, _ string, silence alerts.SilenceFilter, _, _ int) ([]*alerts.Alert, error) {
+	s.called, s.silence = true, silence
 	return nil, nil
 }
 
 func TestGetAlertsSilencedParam(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	for query, want := range map[string]struct {
-		code     int
-		silenced bool
+		code    int
+		silence alerts.SilenceFilter
 	}{
-		"":               {http.StatusOK, false},
-		"?silenced=true": {http.StatusOK, true},
-		"?silenced=0":    {http.StatusOK, false},
-		"?silenced=yes":  {http.StatusBadRequest, false},
+		"":                {http.StatusOK, alerts.SilenceAny},
+		"?silenced=true":  {http.StatusOK, alerts.SilenceOnly},
+		"?silenced=false": {http.StatusOK, alerts.SilenceExclude},
+		"?silenced=0":     {http.StatusOK, alerts.SilenceExclude},
+		"?silenced=yes":   {http.StatusBadRequest, alerts.SilenceAny},
 	} {
 		svc := &listAlertService{}
 		r := gin.New()
 		r.GET("/v0/alerts", GetAlerts(svc))
 		w := httptest.NewRecorder()
 		r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/v0/alerts"+query, nil))
-		if w.Code != want.code || svc.silencedOnly != want.silenced || svc.called != (want.code == http.StatusOK) {
-			t.Errorf("%q: code=%d silencedOnly=%v called=%v, want %+v", query, w.Code, svc.silencedOnly, svc.called, want)
+		if w.Code != want.code || svc.silence != want.silence || svc.called != (want.code == http.StatusOK) {
+			t.Errorf("%q: code=%d silence=%v called=%v, want %+v", query, w.Code, svc.silence, svc.called, want)
 		}
 	}
 }
