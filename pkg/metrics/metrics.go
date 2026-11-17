@@ -25,6 +25,11 @@ var (
 		Help: "Per-recipient notifications attempted, by provider, channel and result.",
 	}, []string{"provider", "channel", "result"})
 
+	silenced = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "iris_alerts_silenced_total",
+		Help: "Alert state changes not notified because an admin silenced the alert, by status.",
+	}, []string{"status"})
+
 	queueDepth = promauto.NewGauge(prometheus.GaugeOpts{
 		Name: "iris_alert_queue_depth",
 		Help: "Alerts waiting in the scheduler's in-memory queue, sampled after each poll and each dequeue.",
@@ -61,6 +66,11 @@ func Notification(provider, channel string, sent bool) {
 		result = "sent"
 	}
 	notifications.WithLabelValues(provider, channel, result).Inc()
+}
+
+// NotificationSilenced counts one alert state change skipped by a silence.
+func NotificationSilenced(status string) {
+	silenced.WithLabelValues(bounded(status, knownStatuses)).Inc()
 }
 
 // SetQueueDepth records the scheduler queue length.

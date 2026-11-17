@@ -31,7 +31,8 @@ var (
 	ErrGroupAlreadyExists = sentinel(KindConflict, "group_already_exists", "group already exists")
 	ErrGroupNotFound      = sentinel(KindNotFound, "group_not_found", "group not found")
 
-	ErrAlertNotFound = sentinel(KindNotFound, "alert_not_found", "alert not found")
+	ErrAlertNotFound          = sentinel(KindNotFound, "alert_not_found", "alert not found")
+	ErrInvalidSilenceDuration = sentinel(KindInvalid, "invalid_silence_duration", "silence duration must be positive and at most 30 days")
 
 	ErrProviderNotFound      = sentinel(KindNotFound, "provider_not_found", "provider not found")
 	ErrNoActiveProvider      = sentinel(KindInternal, "no_active_provider", "no active provider found")

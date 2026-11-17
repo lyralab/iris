@@ -1,4 +1,4 @@
-import { timeAgo, formatDuration, severityClass, userStatusInfo, initials } from './format';
+import { timeAgo, formatDuration, severityClass, severityLabel, severitiesFor, userStatusInfo, initials } from './format';
 
 const NOW = Date.parse('2026-01-01T12:00:00Z');
 
@@ -36,4 +36,12 @@ test('initials', () => {
     expect(initials('Ada', 'Lovelace')).toBe('AL');
     expect(initials('admin')).toBe('ad');
     expect(initials('', null)).toBe('?');
+});
+
+test('severitiesFor keeps the known order and appends unknown severities', () => {
+    const keys = severitiesFor(['network', 'critical', 'Database', 'network', '', null]).map((s) => s.key);
+    expect(keys).toEqual(['critical', 'high', 'warning', 'medium', 'low', 'page', 'Database', 'network']);
+    expect(severitiesFor([]).map((s) => s.key)).toHaveLength(6);
+    expect(severityLabel('network')).toBe('Network');
+    expect(severityLabel('critical')).toBe('Critical');
 });
