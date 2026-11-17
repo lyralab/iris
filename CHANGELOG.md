@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Admins can silence resolved alerts too, not only firing ones
 - `GET /v0/alerts?silenced=false` hides silenced alerts; `silenced=true` still lists only silenced ones, and leaving it out lists all
 
+
 ### Changed
 - A silenced alert, firing or resolved, is listed only on the Silenced tab. It no longer appears on the Firing or Resolved tabs, in the overview's firing and recently resolved lists, or in the firing counts (`GET /v0/alerts/firingCount`). When the silence ends or an admin unsilences it, it moves back to its status tab
 - Silencing or unsilencing an alert reloads the list, so the alert moves to its new tab right away
